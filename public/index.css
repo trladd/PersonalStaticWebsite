@@ -12,5 +12,10 @@ main {
   color: #000000;
 }
 .secondaryColor {
-  color: orange;
+  color: rgb(221, 144, 0);
+}
+
+.navLinkIcon {
+  width: 20px;
+  height: 20px;
 }
