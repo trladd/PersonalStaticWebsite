@@ -9,10 +9,10 @@ main {
 }
 
 .primaryColor {
-  color: #000000;
+  background-color: #e65100;
 }
 .secondaryColor {
-  color: rgb(221, 144, 0);
+  background-color: #ef6c00;
 }
 
 .navLinkIcon {
