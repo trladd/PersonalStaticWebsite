@@ -9,13 +9,16 @@ main {
 }
 
 .primaryColor {
-  background-color: #e65100;
+  background-color: #e65100 !important;
 }
 .secondaryColor {
-  background-color: #ef6c00;
+  background-color: #ef6c00 !important;
 }
 
 .navLinkIcon {
   width: 20px;
   height: 20px;
+}
+
+.rightNav {
 }
