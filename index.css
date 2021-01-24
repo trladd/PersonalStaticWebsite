@@ -20,5 +20,8 @@ main {
   height: 20px;
 }
 
-.rightNav {
+.construction {
+  width: 20%;
+  min-width: 120px !important;
+  max-width: 200px !important;
 }
