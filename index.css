@@ -25,3 +25,7 @@ main {
   min-width: 120px !important;
   max-width: 200px !important;
 }
+
+.mainImage {
+  max-width: 80% !important;
+}
