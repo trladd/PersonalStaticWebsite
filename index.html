@@ -27,10 +27,6 @@
   <body>
     <nav class="primaryColor">
       <div class="nav-wrapper">
-        <img
-          class="construction responsive-img s2 m1"
-          src="images/underConstruction.png"
-        />
         <a href="#" class="brand-logo"> Trevar Ladd</a>
         <a href="#" data-target="mobileSideNav" class="sidenav-trigger"
           ><i class="material-icons">menu</i></a
@@ -38,38 +34,53 @@
         <ul id="nav-links" class="right hide-on-med-and-down">
           <li>
             <a href="https://www.linkedin.com/in/trevarladd"
-              ><img class="navLinkIcon" src="images/linkedin.png" />LinkedIn</a
-            >
-          </li>
-          <li><a href="https://github.com/trladd/">Github</a></li>
-          <li>
-            <a href="https://www.facebook.com/trevor.ladd.71">Facebook</a>
+              ><img class="navLinkIcon" src="images/linkedin.png"
+            /></a>
           </li>
           <li>
-            <a href="https://www.instagram.com/trevarladd/">Instagram</a>
+            <a href="https://github.com/trladd/"
+              ><img class="navLinkIcon" src="images/github.png"
+            /></a>
+          </li>
+          <li>
+            <a href="https://www.facebook.com/trevor.ladd.71"
+              ><img class="navLinkIcon" src="images/facebook.png"
+            /></a>
+          </li>
+          <li>
+            <a href="https://www.instagram.com/trevarladd/"
+              ><img class="navLinkIcon" src="images/instagram.png"
+            /></a>
           </li>
         </ul>
       </div>
     </nav>
-
+    <img id="profilePicture" src="images/profileimage.jpg" class="circle" />
     <ul class="sidenav" id="mobileSideNav">
       <li>
         <a href="https://www.linkedin.com/in/trevarladd"
           ><img class="navLinkIcon" src="images/linkedin.png" />LinkedIn</a
         >
       </li>
-      <li><a href="https://github.com/trladd/">Github</a></li>
-      <li><a href="https://www.facebook.com/trevor.ladd.71">Facebook</a></li>
-      <li><a href="https://www.instagram.com/trevarladd/">Instagram</a></li>
+      <li>
+        <a href="https://github.com/trladd/"
+          ><img class="navLinkIcon" src="images/github.png" />Github</a
+        >
+      </li>
+      <li>
+        <a href="https://www.facebook.com/trevor.ladd.71"
+          ><img class="navLinkIcon" src="images/facebook.png" />Facebook</a
+        >
+      </li>
+      <li>
+        <a href="https://www.instagram.com/trevarladd/"
+          ><img class="navLinkIcon" src="images/instagram.png" />Instagram</a
+        >
+      </li>
     </ul>
     <div id="bodybox" class="container flow-text">
       <div class="row">
         <div class="col s12 m9 l10">
-          <div class="parallax-container">
-            <div class="parallax">
-              <img src="images/IMG_4662.JPG" class="mainImage" />
-            </div>
-          </div>
           <div id="introduction" class="section scrollspy">
             <p>
               <b>Hi! My name is Trevar</b> and I am a software engineer with a
@@ -90,10 +101,15 @@
               lead teams in agile adoption, devops practices, and automated
               testing initiatives.
             </p>
+            <div class="parallax-container">
+              <div class="parallax">
+                <img src="images/IMG_4662.JPG" class="mainImage" />
+              </div>
+            </div>
             <h3>Hobbies/ Interests</h3>
             <ul>
               <li>
-                <h4>Family</h4>
+                <h4><i class="material-icons">people</i> Family</h4>
                 <p>
                   Much of my time is spent with my family. I am married to my
                   wife Jessica and live in Brownsburg Indiana. Having two young
@@ -102,7 +118,7 @@
                 </p>
               </li>
               <li>
-                <h4>Road Trips</h4>
+                <h4><i class="material-icons">drive_eta</i> Road Trips</h4>
                 <p>
                   Cars are a passion of mine. I've always had an interest in
                   cars and motorsports. With that I also enjoy driving quite a
@@ -121,6 +137,11 @@
                   mount rushmore, and finally a long drive back home across the
                   plains states.
                 </p>
+                <div class="parallax-container">
+                  <div class="parallax">
+                    <img src="images/wrx.JPG" class="mainImage" />
+                  </div>
+                </div>
                 <p>
                   As my youngest daughter grows older we plan to get back to
                   traveling and exploring. Some of our next road trips will lead
@@ -134,7 +155,9 @@
                 </p>
               </li>
               <li>
-                <h4>Mechanical Interests</h4>
+                <h4>
+                  <i class="material-icons">settings</i> Mechanical Interests
+                </h4>
                 <p>
                   I've always been very mechanically focused. I've always
                   tinkered with things and grew up taking things apart and
@@ -167,38 +190,95 @@
               </li>
             </ul>
           </div>
-          <div id="skills" class="section scrollspy">
+          <div id="skills" class="section scrollspy row">
             <h1>Skills</h1>
-            <ul>
-              <li>Technical Leadership</li>
-              <li>Software Engineering</li>
-
-              <li>JavaScript</li>
-              <li>MarkLogic</li>
-              <li>Java</li>
-              <li></li>
+            <div class="col l6 m12">
+              <h2>Technology</h2>
+              <ul>
+                <li>JavaScript (frontend and backend)</li>
+                <li>Java</li>
+                <li>C++</li>
+                <li>AWS</li>
+                <li>Azure</li>
+                <li>MongoDB</li>
+                <li>Pega Platform</li>
+                <li>Jest</li>
+            </div>
+            <div class="col l6 m12">
+              <h2>Software</h2>
+              <ul>
+                <li>MS Windows</li>
+                <li>VSCode</li>
+                <li>Microsoft Office</li>
+                <li>Git</li>
+                <li>NPM</li>
+                <li>Putty</li>
+                <li>WinSCP</li>
+                <li>Eclipse</li>
+                <li>Jenkins</li>
+                <li>Swagger</li>
+            </div>
+            <div class="col l6 m12">
+              <h2>Soft Skills</h2>
+              <ul>
+                <li>Technical Leadership</li>
+                <li>Software Engineering</li>
+  
+                <li>Leading Agile Adoption</li>
+                <li>Educating Others</li>
+                <li>Continuous Learning</li>
+                <li></li>
+            </div>
+            
+            
             </ul>
           </div>
           <div id="portfolio" class="section scrollspy">
             <h1>Portfolio</h1>
             <h2>Personal Projects</h2>
             <p>Here you can see some of my side projects that I have done.</p>
-            <div class="carousel carousel-slider">
-              <a class="carousel-item" href="#one!"
-                ><img src="https://lorempixel.com/250/250/nature/1"
-              /></a>
-              <a class="carousel-item" href="#two!"
-                ><img src="https://lorempixel.com/250/250/nature/2"
-              /></a>
-              <a class="carousel-item" href="#three!"
-                ><img src="https://lorempixel.com/250/250/nature/3"
-              /></a>
-              <a class="carousel-item" href="#four!"
-                ><img src="https://lorempixel.com/250/250/nature/4"
-              /></a>
-              <a class="carousel-item" href="#five!"
-                ><img src="https://lorempixel.com/250/250/nature/5"
-              /></a>
+            <div class="card">
+              <div class="card-image waves-effect waves-block waves-light">
+                <img class="activator" src="images/emaily.PNG" />
+              </div>
+              <div class="card-content">
+                <span class="card-title activator grey-text text-darken-4"
+                  >Emaily - Survey Application<i class="material-icons right"
+                    >more_vert</i
+                  ></span
+                >
+                <p>
+                  <a
+                    href="https://stormy-lake-36747.herokuapp.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >See Website Here</a
+                  >
+                </p>
+                <p>
+                  <a
+                    href="https://stormy-lake-36747.herokuapp.com/about"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Read More About Website Here!</a
+                  >
+                </p>
+              </div>
+              <div class="card-reveal">
+                <span class="card-title grey-text text-darken-4"
+                  >Emaily - Survey Application<i class="material-icons right"
+                    >close</i
+                  ></span
+                >
+                <p>
+                  Emaily is an application that I built after completing a
+                  fullstack JavaScript course. I took what was started with the
+                  course and extended functionality to include LinkedIn and
+                  Google oauth, custom web surveys, personal and global survey
+                  templates, advanced account page with pictures pulled from
+                  oauth sources and more! Check out my about page linked below!
+                </p>
+              </div>
             </div>
 
             <h2>Professional Projects by Technology/Category</h2>
@@ -348,26 +428,36 @@
               <a
                 class="grey-text text-lighten-3"
                 href="https://github.com/trladd/"
-                >Github</a
+                ><img class="navLinkIcon" src="images/github.png" />Github</a
               >
             </li>
             <li>
               <a
                 class="grey-text text-lighten-3"
                 href="https://www.facebook.com/trevor.ladd.71"
-                >Facebook</a
+                ><img
+                  class="navLinkIcon"
+                  src="images/facebook.png"
+                />Facebook</a
               >
             </li>
             <li>
               <a
                 class="grey-text text-lighten-3"
                 href="https://www.instagram.com/trevarladd/"
-                >Instagram</a
+                ><img
+                  class="navLinkIcon"
+                  src="images/instagram.png"
+                />Instagram</a
               >
             </li>
           </ul>
         </div>
       </div>
+      <img
+        class="construction responsive-img s2 m1"
+        src="images/underConstruction.png"
+      />
     </div>
     <div class="footer-copyright primaryColor">
       <div class="container">

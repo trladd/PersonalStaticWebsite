@@ -16,8 +16,8 @@ main {
 }
 
 .navLinkIcon {
-  width: 20px;
-  height: 20px;
+  width: 25px;
+  height: 25px;
 }
 
 .construction {
@@ -28,4 +28,10 @@ main {
 
 .mainImage {
   max-width: 80% !important;
+}
+
+#profilePicture {
+  display: absolute;
+  margin-top: 10px;
+  margin-left: 10px;
 }

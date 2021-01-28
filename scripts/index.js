@@ -1,4 +1,5 @@
 $(document).ready(function() {
+  checkProfileSizing();
   $('.sidenav').sidenav();
   $('.parallax').parallax();
   $('.carousel-slider').carousel({
@@ -7,7 +8,21 @@ $(document).ready(function() {
   $('.scrollspy').scrollSpy();
   $('.collapsible').collapsible();
   makeScrollspyMove();
+  $(window).resize(checkProfileSizing);
 });
+
+function checkProfileSizing() {
+  let width = $(window).width();
+  if (width < 1000) {
+    $('#profilePicture').css({
+      width: '100px'
+    });
+  } else {
+    $('#profilePicture').css({
+      width: '200px'
+    });
+  }
+}
 
 /**
  * makes it so that as you scroll down, the scrollspy side nav will
