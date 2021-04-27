@@ -31,11 +31,10 @@ function checkProfileSizing() {
 function makeScrollspyMove() {
   var fixmeTop = $('.table-of-contents').offset().top;
   $(window).scroll(function() {
-    var currentScroll = $(window).scrollTop(),
-      currentScroll = currentScroll + 20,
-      actualBottom =
-        $('#bodybox').offset().top + $('#bodybox').outerHeight(true),
-      heightSideNav = $('.table-of-contents').outerHeight(true);
+    let currentScroll = $(window).scrollTop() + 10;
+    let actualBottom =
+      $('#bodybox').offset().top + $('#bodybox').outerHeight(true);
+    let heightSideNav = $('.table-of-contents').outerHeight(true);
     if (
       currentScroll >= fixmeTop &&
       currentScroll <= actualBottom - heightSideNav
