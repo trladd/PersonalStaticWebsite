@@ -35,3 +35,9 @@ main {
   margin-top: 10px;
   margin-left: 10px;
 }
+
+.contactlink {
+  color: black;
+  font-weight: 500;
+  font-size: large;
+}
