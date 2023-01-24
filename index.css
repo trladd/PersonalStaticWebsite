@@ -41,3 +41,7 @@ main {
   font-weight: 500;
   font-size: large;
 }
+
+#headerName {
+  margin-left: 20px;
+}

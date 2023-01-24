@@ -9,8 +9,14 @@ $(document).ready(function() {
   $('.collapsible').collapsible();
   makeScrollspyMove();
   $(window).resize(checkProfileSizing);
+  $("#adalynAge").text(getAge('2/7/2012'));
+  $("#blakelyAge").text(getAge('8/18/2019'))
+  $("#chloeAge").text(getAge('4/6/2022'))
 });
 
+/**
+ * Adjusts profile picture based on window width
+ */
 function checkProfileSizing() {
   let width = $(window).width();
   if (width < 1000) {
@@ -22,6 +28,20 @@ function checkProfileSizing() {
       width: '200px'
     });
   }
+}
+
+function getAge(date){
+  let birthday = new Date(date);
+  let current = new Date();
+  let seconds =  (current-birthday)/1000;
+  let minutes = seconds/60;
+  let hours = minutes/60;
+  let days = hours/24;
+  let years = days/365;
+  if(years < 1){
+    return  Math.floor(days/30.5) + " months"
+  }
+  return Math.floor(years);
 }
 
 /**
