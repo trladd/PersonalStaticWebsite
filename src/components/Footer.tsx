@@ -24,11 +24,6 @@ const Footer: React.FC = () => {
               free to reach out to me on one of my linked social media platforms
               or email
             </p>
-            <p>
-              <a className="white-text" href="tel:7657205311">
-                765-720-5311
-              </a>
-            </p>
 
             <p>
               <a
