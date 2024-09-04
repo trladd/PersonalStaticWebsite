@@ -11,6 +11,13 @@ import MainPage from "./components/MainPage";
 import Numeronym from "./components/sideProjects/numeronym/Numeronym";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Footer from "./components/Footer";
+import { siteConfig } from "./utility/siteConfig";
+
+function renderSideProjects() {
+  return siteConfig.sideProjects.map((sideProject) => (
+    <Route path={sideProject.link} Component={sideProject.component} />
+  ));
+}
 
 function App() {
   return (
@@ -22,7 +29,7 @@ function App() {
           <div className="bodyArea">
             <Routes>
               <Route path="/" Component={MainPage} />
-              <Route path="/sideProjects/numeronym" Component={Numeronym} />
+              {renderSideProjects()}
             </Routes>
           </div>
         </body>

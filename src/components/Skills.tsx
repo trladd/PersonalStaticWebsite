@@ -1,5 +1,5 @@
 import React from "react";
-import { siteConfig } from "../siteConfig";
+import { siteConfig } from "../utility/siteConfig";
 import GoldStars from "./GoldStars";
 
 const Skills: React.FC = () => {

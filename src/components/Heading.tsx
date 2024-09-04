@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { siteConfig } from "../siteConfig";
+import { siteConfig } from "../utility/siteConfig";
 
 interface HeadingProps {
   title: string;
@@ -18,7 +18,7 @@ const sideProjectList = siteConfig.sideProjects.map((sideProject) => (
   <li>
     <a href={sideProject.link} className="grey darken-4">
       {sideProject.label}
-      <i className="material-icons">developer_mode</i>
+      <i className="material-icons">{sideProject.icon || "developer_mode"}</i>
     </a>
   </li>
 ));

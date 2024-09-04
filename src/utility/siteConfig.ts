@@ -1,3 +1,7 @@
+import React from "react";
+import Numeronym from "../components/sideProjects/numeronym/Numeronym";
+import About from "../components/sideProjects/about/About";
+
 const socialLinks: { link: string; image: string; label: string }[] = [
   {
     link: "https://www.linkedin.com/in/trevarladd",
@@ -79,10 +83,22 @@ const skills: { title: string; list: { name: string; rating: number }[] }[] = [
   },
 ];
 
-const sideProjects: { link: string; label: string }[] = [
+const sideProjects: {
+  link: string;
+  label: string;
+  icon?: string;
+  component: React.FC;
+}[] = [
   {
     link: "/sideProjects/numeronym",
     label: "Numeronym Generator",
+    component: Numeronym,
+  },
+  {
+    link: "/sideProjects/about",
+    label: "About This Site",
+    icon: "web",
+    component: About,
   },
 ];
 

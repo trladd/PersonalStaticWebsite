@@ -1,5 +1,5 @@
 import React from "react";
-import { siteConfig } from "../siteConfig";
+import { siteConfig } from "../utility/siteConfig";
 
 const navLinkList = siteConfig.socialLinks.map((navLink) => (
   <li>

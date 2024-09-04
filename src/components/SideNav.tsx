@@ -1,5 +1,5 @@
 import React from "react";
-import { siteConfig } from "../siteConfig";
+import { siteConfig } from "../utility/siteConfig";
 
 const SideNav: React.FC = () => {
   const navLinkList = siteConfig.socialLinks.map((navLink) => (
@@ -17,7 +17,7 @@ const SideNav: React.FC = () => {
     <li>
       <a href={sideProject.link}>
         {sideProject.label}
-        <i className="material-icons">developer_mode</i>
+        <i className="material-icons">{sideProject.icon || "developer_mode"}</i>
       </a>
     </li>
   ));
