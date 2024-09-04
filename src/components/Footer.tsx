@@ -43,10 +43,7 @@ const Footer: React.FC = () => {
       <div className="footer-copyright primaryColor">
         <div className="container">
           © 2024 Copyright
-          <a
-            className="grey-text text-lighten-4 right"
-            href="/resources/resume.pdf"
-          >
+          <a className="grey-text text-lighten-4 right" href="/resume.pdf">
             View My Resume
           </a>
         </div>

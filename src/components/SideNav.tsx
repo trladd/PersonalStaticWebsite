@@ -30,7 +30,7 @@ const SideNav: React.FC = () => {
       <li className="divider"></li>
       <li>
         <a
-          href="/resources/resume.pdf"
+          href="/resume.pdf"
           className="primaryColor waves-effect waves-light btn"
         >
           <i className="material-icons left">attach_file</i>My Resume
