@@ -37,6 +37,12 @@ function About() {
         registered domains, codepipeline where my code is deployed once pushed
         to my main branch.
       </p>
+      <h3>Source Code</h3>
+      <p>
+        <a href="https://github.com/trladd/PersonalStaticWebsite/tree/main">
+          Github Source Code
+        </a>
+      </p>
     </div>
   );
 }
