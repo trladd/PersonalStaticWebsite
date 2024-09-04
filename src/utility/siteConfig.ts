@@ -5,22 +5,22 @@ import About from "../components/sideProjects/about/About";
 const socialLinks: { link: string; image: string; label: string }[] = [
   {
     link: "https://www.linkedin.com/in/trevarladd",
-    image: "images/linkedin.png",
+    image: "/images/linkedin.png",
     label: "LinkedIn",
   },
   {
     link: "https://github.com/trladd/",
-    image: "images/github.png",
+    image: "/images/github.png",
     label: "GitHub",
   },
   {
     link: "https://www.facebook.com/trevor.ladd.71",
-    image: "images/facebook.png",
+    image: "/images/facebook.png",
     label: "Facebook",
   },
   {
     link: "https://www.instagram.com/trevarladd/",
-    image: "images/instagram.png",
+    image: "/images/instagram.png",
     label: "Instagram",
   },
 ];
