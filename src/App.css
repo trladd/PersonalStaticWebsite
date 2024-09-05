@@ -2,6 +2,11 @@
   color: #ffd700;
 }
 
+/* Make input text field gray */
+.numeronym-input {
+  max-width: 40%;
+}
+
 .application-header {
   position: fixed;
   width: 100%;
