@@ -1,14 +1,8 @@
 import React, { useEffect } from "react";
 import "./App.css";
-import {
-  checkProfileSizing,
-  getAge,
-  makeScrollspyMove,
-} from "./utility/utility";
 import Heading from "./components/Heading";
 import SideNav from "./components/SideNav";
 import MainPage from "./components/MainPage";
-import Numeronym from "./components/sideProjects/numeronym/Numeronym";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Footer from "./components/Footer";
 import { siteConfig } from "./utility/siteConfig";

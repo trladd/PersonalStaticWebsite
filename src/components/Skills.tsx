@@ -31,6 +31,7 @@ const Skills: React.FC = () => {
 
   return (
     <div id="skills" className="section scrollspy row">
+      <h1>Skills</h1>
       {skillsList}
     </div>
   );

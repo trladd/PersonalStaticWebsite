@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import Introduction from "./Introduction";
 import Skills from "./Skills";
-import { makeScrollspyMove } from "../utility/utility";
 
 const MainPage: React.FC = () => {
   useEffect(() => {
@@ -14,7 +13,12 @@ const MainPage: React.FC = () => {
 
     // @ts-ignore
     $(".collapsible").collapsible();
-    makeScrollspyMove();
+
+    var elems = document.querySelectorAll(".scrollspy");
+    var instances = M.ScrollSpy.init(elems, {});
+    //set css position as fixed for table of contents
+    var elem = document.querySelector(".mainpage-scrollspy");
+    elem?.setAttribute("style", `position: fixed;`);
   }, []);
   return (
     <div id="bodybox" className="container flow-text">
@@ -228,9 +232,12 @@ const MainPage: React.FC = () => {
           </div>
         </div>
         <div className="col hide-on-small-only m3 l2 rightNav">
-          <ul className="section table-of-contents">
+          <ul className="section table-of-contents mainpage-scrollspy">
             <li>
               <a href="#introduction">About Me</a>
+            </li>
+            <li>
+              <a href="#hobbies">Hobbies/Interests</a>
             </li>
             <li>
               <a href="#skills">Skills</a>

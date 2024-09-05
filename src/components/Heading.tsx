@@ -13,27 +13,34 @@ const navLinkList = siteConfig.socialLinks.map((navLink) => (
     </a>
   </li>
 ));
-
 const sideProjectList = siteConfig.sideProjects.map((sideProject) => (
-  <li>
-    <a href={sideProject.link} className="grey darken-4">
+  <li className="black-text">
+    <a href={sideProject.link} className="black-text">
       {sideProject.label}
-      <i className="material-icons">{sideProject.icon || "developer_mode"}</i>
+      <i className="material-icons black-text">
+        {sideProject.icon || "developer_mode"}
+      </i>
     </a>
   </li>
 ));
 
 const Heading: React.FC<HeadingProps> = ({ title }) => {
   useEffect(() => {
-    //@ts-ignore
-    $(".dropdown-trigger").dropdown();
-    // @ts-ignore
-    $(".sidenav").sidenav();
+    var sideNav = document.querySelectorAll(".sidenav");
+    var instances = M.Sidenav.init(sideNav, {});
+
+    var dropDown = document.querySelectorAll(".dropdown-trigger");
+    M.Dropdown.init(dropDown, {
+      alignment: "right",
+      constrainWidth: false,
+      inDuration: 300,
+      outDuration: 500,
+    });
   }, []);
 
   return (
     <div className="application-header">
-      <ul id="sideProjects" className="dropdown-content">
+      <ul id="sideProjects" className="dropdown-content sideProjects">
         {sideProjectList}
       </ul>
 

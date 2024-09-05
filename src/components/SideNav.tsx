@@ -33,7 +33,7 @@ const SideNav: React.FC = () => {
           href="/resume.pdf"
           className="primaryColor waves-effect waves-light btn"
         >
-          <i className="material-icons left">attach_file</i>My Resume
+          <i className="material-icons left white-text">attach_file</i>My Resume
         </a>
       </li>
     </ul>

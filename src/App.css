@@ -2,6 +2,16 @@
   color: #ffd700;
 }
 
+mainpage-scrollspy {
+  position: fixed !important;
+  top: 40px !important;
+  right: 0px !important;
+}
+
+.sideProjects {
+  color: black;
+}
+
 /* Make input text field gray */
 .numeronym-input {
   max-width: 40%;
