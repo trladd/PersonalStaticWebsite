@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useContext } from "react";
 import { siteConfig } from "../utility/siteConfig";
+import { ThemeContext } from "../utility/ThemeContext";
 
 const SideNav: React.FC = () => {
+  const { isDarkMode, toggleDarkMode } = useContext(ThemeContext);
   const navLinkList = siteConfig.socialLinks.map((navLink) => (
     <li>
       <a href={navLink.link}>
@@ -27,6 +29,20 @@ const SideNav: React.FC = () => {
       {navLinkList}
       <li className="divider"></li>
       {sideProjectList}
+      <li className="divider"></li>
+      <li>
+        <div className="switch">
+          <label id="darkModeToggle">
+            <input
+              type="checkbox"
+              checked={isDarkMode}
+              onChange={toggleDarkMode}
+            />
+            <span className="lever"></span>
+            {isDarkMode ? "Dark Mode" : "Light Mode"}
+          </label>
+        </div>
+      </li>
       <li className="divider"></li>
       <li>
         <a

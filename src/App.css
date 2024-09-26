@@ -1,3 +1,10 @@
+:root {
+  --background-color: #ffffff;
+  --text-color: #000000;
+  --primary-color: #332a1f;
+  --secondary-color: #433728;
+}
+
 .goldStars {
   color: #ffd700;
 }
@@ -27,9 +34,12 @@ mainpage-scrollspy {
 }
 
 body {
+  background-color: var(--background-color);
+  color: var(--text-color);
   display: flex;
   min-height: 100vh;
   flex-direction: column;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 main {
@@ -37,15 +47,31 @@ main {
 }
 
 .primaryColor {
-  background-color: #332a1f !important;
+  background-color: var(--primary-color) !important;
+  transition: background-color 0.3s ease;
 }
 .secondaryColor {
-  background-color: #433728 !important;
+  background-color: var(--secondary-color) !important;
+  transition: background-color 0.3s ease;
 }
 
 .navLinkIcon {
   width: 25px;
   height: 25px;
+  margin-top: 18px;
+  transition: transform 0.2s ease-in-out;
+}
+
+.navLinkIcon:hover {
+  transform: scale(1.8);
+}
+
+.brand-logo {
+  transition: transform 0.2s ease-in-out;
+}
+
+.brand-logo:hover {
+  transform: scale(1.2);
 }
 
 .construction {
@@ -59,9 +85,12 @@ main {
 }
 
 #profilePicture {
-  display: absolute;
-  margin-top: 10px;
-  margin-left: 10px;
+  transition: transform 3s ease-in-out; /* Smooth scaling transition */
+}
+
+#profilePicture:hover {
+  transform: scale(1.8); /* Scale the image by 30% on hover */
+  transition: transform 0.5s ease-in, transform 3s ease-out; /* Smooth scaling transition */
 }
 
 .contactlink {
@@ -72,4 +101,25 @@ main {
 
 #headerName {
   margin-left: 20px;
+}
+
+.switch label input[type="checkbox"]:checked + .lever {
+  background-color: #5c5c5c !important;
+}
+
+.switch label input[type="checkbox"]:checked + .lever:after {
+  background-color: rgb(29, 29, 29);
+}
+
+.tap-target {
+  background-color: #4747479f;
+}
+
+.tap-target-wave {
+  background-color: #5c1b1b77;
+}
+
+.tap-target-wave::before,
+.tap-target-wave::after {
+  background-color: #e9e9e977;
 }

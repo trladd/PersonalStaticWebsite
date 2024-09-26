@@ -1,0 +1,16 @@
+body.dark-mode {
+  --text-color: #cacaca;
+  --background-color: #000000;
+  --primary-color: #272018;
+  --secondary-color: #332a1f;
+}
+.dark-mode .collapsible-header {
+  background-color: var(--primary-color) !important;
+  color: var(--text-color) !important;
+}
+
+.dark-mode .collapsible {
+  background-color: var(--primary-color) !important;
+  color: var(--text-color) !important;
+  border-color: #242424;
+}

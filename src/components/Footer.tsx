@@ -3,11 +3,8 @@ import { siteConfig } from "../utility/siteConfig";
 
 const navLinkList = siteConfig.socialLinks.map((navLink) => (
   <li>
-    <a href={navLink.link} className="grey-text text-lighten-3">
+    <a href={navLink.link} className="grey-text text-lighten-3 valign-wrapper">
       {navLink.label}
-      <i className="material-icons">
-        <img className="navLinkIcon" src={navLink.image} />
-      </i>
     </a>
   </li>
 ));
@@ -35,7 +32,7 @@ const Footer: React.FC = () => {
             </p>
           </div>
           <div className="col l4 offset-l2 s12">
-            <h5 className="white-text">Links</h5>
+            <h5 className="white-text">Social Links</h5>
             <ul>{navLinkList}</ul>
           </div>
         </div>

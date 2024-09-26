@@ -5,13 +5,17 @@ import exp from "constants";
  */
 function checkProfileSizing() {
   let width = $(window).width();
+  //Change image size on hover
+
   if (width && width < 1000) {
     $("#profilePicture").css({
       width: "100px",
+      "z-index": -1,
     });
   } else {
     $("#profilePicture").css({
       width: "200px",
+      "z-index": -1,
     });
   }
 }

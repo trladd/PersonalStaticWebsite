@@ -1,6 +1,7 @@
 import React from "react";
 import Numeronym from "../components/sideProjects/numeronym/Numeronym";
 import About from "../components/sideProjects/about/About";
+import SiteDebugTools from "../components/sideProjects/siteDebugTools/SiteDebugTools";
 
 const socialLinks: { link: string; image: string; label: string }[] = [
   {
@@ -90,15 +91,21 @@ const sideProjects: {
   component: React.FC;
 }[] = [
   {
+    link: "/sideProjects/about",
+    label: "About This Site",
+    icon: "info_outline",
+    component: About,
+  },
+  {
     link: "/sideProjects/numeronym",
     label: "Numeronym Generator",
+    icon: "shuffle",
     component: Numeronym,
   },
   {
-    link: "/sideProjects/about",
-    label: "About This Site",
-    icon: "web",
-    component: About,
+    link: "/sideProjects/siteDebugTools",
+    label: "Site Debug Tools",
+    component: SiteDebugTools,
   },
 ];
 

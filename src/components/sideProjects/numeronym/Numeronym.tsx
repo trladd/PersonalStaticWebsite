@@ -35,9 +35,10 @@ const Numeronym: React.FC<NumeronymProps> = () => {
           className="validate"
           value={inputValue}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-            setInputValue(event.target.value)
+            setInputValue(event.target.value.replace(/\s+/g, ""))
           }
           type="text"
+          maxLength={50}
         />
         <label htmlFor="input_word">Word</label>
       </div>
