@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
 
+// Extend Navigator interface to include deviceMemory
+interface NavigatorExtended extends Navigator {
+  deviceMemory?: number;
+}
+
 interface Location {
   latitude: number;
   longitude: number;
@@ -9,6 +14,7 @@ interface ScreenInfo {
   width: number;
   height: number;
   colorDepth: number;
+  orientation: ScreenOrientation;
 }
 
 interface BatteryInfo {
@@ -26,6 +32,9 @@ const DeviceInfo: React.FC = () => {
   const [browser, setBrowser] = useState<string>("");
   const [timeZone, setTimeZone] = useState<string>("");
   const [batteryInfo, setBatteryInfo] = useState<BatteryInfo | null>(null);
+  const [deviceMemory, setDeviceMemory] = useState<number | null>(null);
+  const [deviceMemoryUsed, setDeviceMemoryUsed] = useState<number | null>(null);
+  const [deviceCores, setDeviceCores] = useState<number | null>(null);
 
   // Geolocation
   useEffect(() => {
@@ -37,7 +46,7 @@ const DeviceInfo: React.FC = () => {
         });
       });
     }
-  }, []);
+  }, [navigator]);
 
   // Device Type
   useEffect(() => {
@@ -49,7 +58,7 @@ const DeviceInfo: React.FC = () => {
     } else {
       setDeviceType("Desktop");
     }
-  }, []);
+  }, [navigator]);
 
   // Dark Mode Preference
   useEffect(() => {
@@ -64,12 +73,12 @@ const DeviceInfo: React.FC = () => {
     darkModeMediaQuery.addEventListener("change", handleDarkModeChange);
     return () =>
       darkModeMediaQuery.removeEventListener("change", handleDarkModeChange);
-  }, []);
+  }, [window]);
 
   // Language
   useEffect(() => {
     setLanguage(navigator.language || navigator.languages[0]);
-  }, []);
+  }, [navigator]);
 
   // Screen Information
   useEffect(() => {
@@ -77,6 +86,7 @@ const DeviceInfo: React.FC = () => {
       width: window.screen.width,
       height: window.screen.height,
       colorDepth: window.screen.colorDepth,
+      orientation: window.screen.orientation,
     });
   }, []);
 
@@ -106,7 +116,8 @@ const DeviceInfo: React.FC = () => {
         });
       }
     };
-    getBatteryInfo();
+    setDeviceMemory((navigator as NavigatorExtended).deviceMemory || null);
+    setDeviceCores(navigator.hardwareConcurrency || null);
   }, []);
 
   return (
@@ -135,7 +146,8 @@ const DeviceInfo: React.FC = () => {
       {screenInfo && (
         <p>
           Screen: {screenInfo.width}x{screenInfo.height}, Color Depth:{" "}
-          {screenInfo.colorDepth} bits
+          {screenInfo.colorDepth} bits, Orientation:{" "}
+          {JSON.stringify(screenInfo.orientation)}
         </p>
       )}
 
@@ -156,6 +168,9 @@ const DeviceInfo: React.FC = () => {
       ) : (
         <p>Battery Information: Not Available</p>
       )}
+      {/* Cores and Memory Info */}
+      <p>Device Memory: {deviceMemory}GB</p>
+      <p>Device Cores: {deviceCores}</p>
     </div>
   );
 };
