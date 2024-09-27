@@ -4,6 +4,7 @@ import { ThemeContext } from "../utility/ThemeContext"; // Adjust the import pat
 
 interface HeadingProps {
   title: string;
+  navWrapperRef: React.RefObject<HTMLDivElement>;
 }
 
 //build a nav link for each object in the navLinks array
@@ -25,8 +26,9 @@ const sideProjectList = siteConfig.sideProjects.map((sideProject) => (
   </li>
 ));
 
-const Heading: React.FC<HeadingProps> = ({ title }) => {
+const Heading: React.FC<HeadingProps> = ({ title, navWrapperRef }) => {
   const { isDarkMode, toggleDarkMode } = useContext(ThemeContext);
+
   useEffect(() => {
     var sideNav = document.querySelectorAll(".sidenav");
     var instances = M.Sidenav.init(sideNav, {});
@@ -47,7 +49,7 @@ const Heading: React.FC<HeadingProps> = ({ title }) => {
       </ul>
 
       <nav className="primaryColor">
-        <div className="nav-wrapper">
+        <div className="nav-wrapper" ref={navWrapperRef}>
           <a href="/" className="brand-logo" id="headerName">
             {" "}
             {title}

@@ -3,6 +3,12 @@ import Numeronym from "../components/sideProjects/numeronym/Numeronym";
 import About from "../components/sideProjects/about/About";
 import SiteDebugTools from "../components/sideProjects/siteDebugTools/SiteDebugTools";
 
+interface ComponentWithNavWrapperRefProps {
+  navWrapperRef: React.RefObject<HTMLDivElement>;
+}
+
+type ComponentWithNavWrapperRef = React.FC<ComponentWithNavWrapperRefProps>;
+
 const socialLinks: { link: string; image: string; label: string }[] = [
   {
     link: "https://www.linkedin.com/in/trevarladd",
@@ -88,24 +94,24 @@ const sideProjects: {
   link: string;
   label: string;
   icon?: string;
-  component: React.FC;
+  component: ComponentWithNavWrapperRef;
 }[] = [
   {
     link: "/sideProjects/about",
     label: "About This Site",
     icon: "info_outline",
-    component: About,
+    component: About as ComponentWithNavWrapperRef,
   },
   {
     link: "/sideProjects/numeronym",
     label: "Numeronym Generator",
     icon: "shuffle",
-    component: Numeronym,
+    component: Numeronym as ComponentWithNavWrapperRef,
   },
   {
     link: "/sideProjects/siteDebugTools",
     label: "Site Debug Tools",
-    component: SiteDebugTools,
+    component: SiteDebugTools as ComponentWithNavWrapperRef,
   },
 ];
 

@@ -1,0 +1,16 @@
+/* SiteDebugTools.module.css */
+.debugTabs {
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 1;
+}
+
+.tabContent {
+  overflow-y: auto;
+  padding-top: 20px; /* Add some padding to avoid content overlap */
+}
+
+.debugTabPane {
+  padding: 20px;
+}

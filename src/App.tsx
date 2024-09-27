@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
 import "./DarkMode.css";
 import Heading from "./components/Heading";
@@ -9,24 +9,32 @@ import Footer from "./components/Footer";
 import { siteConfig } from "./utility/siteConfig";
 import { ThemeProvider } from "./utility/ThemeContext";
 
-function renderSideProjects() {
+function renderSideProjects(navWrapperRef: React.RefObject<HTMLDivElement>) {
   return siteConfig.sideProjects.map((sideProject) => (
-    <Route path={sideProject.link} Component={sideProject.component} />
+    <Route
+      key={sideProject.link}
+      path={sideProject.link}
+      element={React.cloneElement(React.createElement(sideProject.component), {
+        navWrapperRef,
+      })}
+    />
   ));
 }
 
 function App() {
+  const navWrapperRef = useRef<HTMLDivElement>(null);
+
   return (
     <ThemeProvider>
       <Router>
         <div className="App">
           <body>
-            <Heading title="Trevar Ladd" />
+            <Heading title="Trevar Ladd" navWrapperRef={navWrapperRef} />
             <SideNav />
             <div className="bodyArea">
               <Routes>
                 <Route path="/" Component={MainPage} />
-                {renderSideProjects()}
+                {renderSideProjects(navWrapperRef)}
               </Routes>
             </div>
           </body>
