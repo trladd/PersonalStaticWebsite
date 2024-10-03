@@ -104,7 +104,7 @@ const sideProjects: {
   },
   {
     link: "/sideProjects/numeronym",
-    label: "Numeronym Generator",
+    label: "Numeronym Converter",
     icon: "shuffle",
     component: Numeronym as ComponentWithNavWrapperRef,
   },

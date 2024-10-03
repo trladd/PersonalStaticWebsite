@@ -31,11 +31,45 @@ function About() {
       </p>
       <h3>Hosting</h3>
       <p>
-        For hosting, I am using AWS S3. I like that AWS offers scalability of
-        free tier services that can also scale up to enterprise size allowing
-        for vast differences in demand. I use AWS Route 53 where I have
-        registered domains, codepipeline where my code is deployed once pushed
-        to my main branch.
+        For hosting, I am using AWS. Why? The answer to that is pretty simple -
+        because at a previous company I started doing training for AWS and went
+        pretty far with it. I also did some training in Azure but prefer AWS.
+        While there are much easier platforms for hosting a static site, I like
+        using AWS because it translates to something real companies can use -
+        and a transferable skill.
+      </p>
+      <p>
+        Of course I like that AWS offers scalability of free tier services that
+        can also scale up to enterprise size allowing for vast differences in
+        demand.
+      </p>
+      <p>
+        I started out with a simple S3 bucket, but as my needs growed, I started
+        using other services too.
+      </p>
+      <ul>
+        <li>
+          <b>S3</b>: For simple static hosting
+        </li>
+        <li>
+          <b>CloudFront</b>: For CDN and HTTPS
+        </li>
+        <li>
+          <b>Route 53</b>: For DNS
+        </li>
+        <li>
+          <b>CodeBuild</b>: For Building into my S3 Bucket
+        </li>
+        <li>
+          <b>CodePipeline</b>: For Continuous Deployment when I push to main
+        </li>
+      </ul>
+      <h3>Analytics</h3>
+      <p>
+        I am using Google Analytics to track user interactions. It's not that
+        this site gets much (if any) traffic, but nevertheless it is intersting
+        to see traffic, and play around with a common tool used by many. I don't
+        use this data for anything other than personal interest.
       </p>
       <h3>Source Code</h3>
       <p>
