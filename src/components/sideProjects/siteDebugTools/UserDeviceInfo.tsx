@@ -10,13 +10,6 @@ interface Location {
   longitude: number;
 }
 
-interface ScreenInfo {
-  width: number;
-  height: number;
-  colorDepth: number;
-  orientation: ScreenOrientation;
-}
-
 interface BatteryInfo {
   level: string;
   charging: string;
@@ -26,15 +19,11 @@ const DeviceInfo: React.FC = () => {
   const [location, setLocation] = useState<Location | null>(null);
   const [deviceType, setDeviceType] = useState<string>("");
   const [darkMode, setDarkMode] = useState<boolean>(false);
-  const [language, setLanguage] = useState<string>("");
-  const [screenInfo, setScreenInfo] = useState<ScreenInfo | null>(null);
-  const [platform, setPlatform] = useState<string>("");
-  const [browser, setBrowser] = useState<string>("");
-  const [timeZone, setTimeZone] = useState<string>("");
+  const [screen, setScreen] = useState<Screen | null>(window.screen);
   const [batteryInfo, setBatteryInfo] = useState<BatteryInfo | null>(null);
-  const [deviceMemory, setDeviceMemory] = useState<number | null>(null);
-  const [deviceMemoryUsed, setDeviceMemoryUsed] = useState<number | null>(null);
-  const [deviceCores, setDeviceCores] = useState<number | null>(null);
+  const [navigator, setNavigator] = useState<NavigatorExtended>(
+    window.navigator
+  );
 
   // Geolocation
   useEffect(() => {
@@ -60,8 +49,9 @@ const DeviceInfo: React.FC = () => {
     }
   }, [navigator]);
 
-  // Dark Mode Preference
+  // Screen Info
   useEffect(() => {
+    setScreen(window.screen);
     const darkModeMediaQuery = window.matchMedia(
       "(prefers-color-scheme: dark)"
     );
@@ -75,34 +65,9 @@ const DeviceInfo: React.FC = () => {
       darkModeMediaQuery.removeEventListener("change", handleDarkModeChange);
   }, [window]);
 
-  // Language
-  useEffect(() => {
-    setLanguage(navigator.language || navigator.languages[0]);
-  }, [navigator]);
-
-  // Screen Information
-  useEffect(() => {
-    setScreenInfo({
-      width: window.screen.width,
-      height: window.screen.height,
-      colorDepth: window.screen.colorDepth,
-      orientation: window.screen.orientation,
-    });
-  }, []);
-
-  // Platform and Browser
-  useEffect(() => {
-    setPlatform(navigator.platform);
-    setBrowser(navigator.userAgent);
-  }, []);
-
-  // Time Zone
-  useEffect(() => {
-    setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  }, []);
-
   // Battery Information
   useEffect(() => {
+    const navigator = window.navigator;
     const getBatteryInfo = async () => {
       if (
         (navigator as Navigator & { getBattery: () => Promise<any> }).getBattery
@@ -116,8 +81,7 @@ const DeviceInfo: React.FC = () => {
         });
       }
     };
-    setDeviceMemory((navigator as NavigatorExtended).deviceMemory || null);
-    setDeviceCores(navigator.hardwareConcurrency || null);
+    getBatteryInfo();
   }, []);
 
   return (
@@ -132,35 +96,27 @@ const DeviceInfo: React.FC = () => {
       ) : (
         <p>Location: Permission Denied or Not Available</p>
       )}
-
-      {/* Device Type */}
       <p>Device Type: {deviceType}</p>
-
-      {/* Dark Mode */}
+      <p>User Agent: {navigator.userAgent}</p>
       <p>Dark Mode Preference: {darkMode ? "Dark Mode" : "Light Mode"}</p>
-
-      {/* Language */}
-      <p>Language: {language}</p>
-
-      {/* Screen Info */}
-      {screenInfo && (
+      <p>Language: {navigator.language}</p>
+      <p>Languages: {navigator.languages.join(", ")}</p>
+      {screen && (
         <p>
-          Screen: {screenInfo.width}x{screenInfo.height}, Color Depth:{" "}
-          {screenInfo.colorDepth} bits, Orientation:{" "}
-          {JSON.stringify(screenInfo.orientation)}
+          Screen: {screen.width}x{screen.height}, Color Depth:{" "}
+          {screen.colorDepth} bits, Orientation:{" "}
+          {JSON.stringify(screen.orientation)}
         </p>
       )}
-
-      {/* Platform */}
-      <p>Platform: {platform}</p>
-
-      {/* Browser */}
-      <p>Browser: {browser}</p>
-
-      {/* Time Zone */}
-      <p>Time Zone: {timeZone}</p>
-
-      {/* Battery Info */}
+      <p>Platform: {navigator.platform}</p>
+      <p>Time Zone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+      <p>Cookie Enabled: {navigator.cookieEnabled ? "Yes" : "No"}</p>
+      <p>Do Not Track: {navigator.doNotTrack}</p>
+      <p>Max Touch Points: {navigator.maxTouchPoints}</p>
+      <p>Hardware Concurrency: {navigator.hardwareConcurrency}</p>
+      <p>Device Memory: {navigator.deviceMemory}GB</p>
+      <p>Game Pad: {JSON.stringify(navigator.getGamepads())}</p>
+      <p>Web Driver: {navigator.webdriver}</p>
       {batteryInfo ? (
         <p>
           Battery: {batteryInfo.level}, {batteryInfo.charging}
@@ -169,8 +125,8 @@ const DeviceInfo: React.FC = () => {
         <p>Battery Information: Not Available</p>
       )}
       {/* Cores and Memory Info */}
-      <p>Device Memory: {deviceMemory}GB</p>
-      <p>Device Cores: {deviceCores}</p>
+      <p>Device Memory: {navigator.deviceMemory}GB</p>
+      <p>Device Cores: {navigator.hardwareConcurrency}</p>
     </div>
   );
 };

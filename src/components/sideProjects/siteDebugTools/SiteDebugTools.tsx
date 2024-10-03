@@ -64,7 +64,7 @@ const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
       name: "Local Storage",
       content: (
         <div className="container">
-          <h4>Local Storage</h4>
+          <h1>Local Storage</h1>
           <div className="row">
             <div className="col s12 m8 l6">
               <table className="mt-2 mb-2">
