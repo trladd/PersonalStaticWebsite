@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { checkProfileSizing, getAge } from "../utility/utility";
+import M from "materialize-css"; // Import the necessary library
 
 const Introduction: React.FC = () => {
   useEffect(() => {
@@ -9,6 +10,7 @@ const Introduction: React.FC = () => {
     $("#adalynAge").text(getAge("2/7/2012"));
     $("#blakelyAge").text(getAge("8/18/2019"));
     $("#chloeAge").text(getAge("4/6/2022"));
+    M.Materialbox.init(document.querySelectorAll(".materialboxed"), {});
   }, []);
 
   return (
@@ -20,28 +22,25 @@ const Introduction: React.FC = () => {
           className="circle"
         />
         <p>
-          <b>Hi! My name is Trevar</b> and I am a software engineer with a
-          strong passion for learning and building applications that make a
-          difference. Originally from Greencastle, Indiana, I now reside in
-          Brownsburg, Indiana with my wife Jessica and three children; Adalyn (
+          <b>Hi! My name is Trevar</b>, a software engineer with a passion for
+          creating impactful applications and continuously expanding my skill
+          set. I’m originally from Greencastle, Indiana, and now live in
+          Brownsburg with my wife Jessica and our three children: Adalyn (
           <span id="adalynAge"></span>), Blakely (<span id="blakelyAge"></span>
           ), and Chloe (<span id="chloeAge"></span>).
         </p>
-
         <p>
-          I enjoy opportunities to lead and help others grow. By teaching others
-          I am able to expand my influence beyond what a single person can
-          contribute. While contributing technically with NoSQL databases,
-          JavaScript development, and Pega development I have often found myself
-          in positions where I am organizing and leading teams in agile
-          adoption, devops practices, and automated testing initiatives.
+          I’m driven by the belief that leadership is about empowering others.
+          Through teaching and mentorship, I amplify the value I bring to teams,
+          fostering growth beyond individual contributions. I specialize in
+          NoSQL databases, full stack JavaScript development, and have a very
+          deep knowledge of Pega, and have led initiatives in agile adoption,
+          DevOps, and automated testing. These experiences have honed my skills
+          in both technical problem-solving and team organization, allowing me
+          to lead with a balance of strategy and hands-on execution.
         </p>
-        <div className="parallax-container">
-          <div className="parallax">
-            <img src="images/IMG_4662.JPG" className="mainImage" />
-          </div>
-        </div>
       </div>
+      <div className="divider"></div>
       <div id="hobbies" className="section scrollspy">
         <h3>Hobbies/ Interests</h3>
         <ul>
@@ -51,7 +50,11 @@ const Introduction: React.FC = () => {
             </h4>
             <p>
               My weekends are filled with family activities. I stay busy with
-              kids activities, family outings, and home projects.
+              kids activities, family outings, and home projects. Of course
+              having a busy house with many kids, there is always some house
+              work that needs caught up over the weekends. From there I enjoy
+              watching movies with the kids, going on walks around our
+              neighborhood, and going to various sporting events.
             </p>
           </li>
           <li>
@@ -95,11 +98,11 @@ const Introduction: React.FC = () => {
               Dakotas and plain states to Indiana.
             </p>
 
-            <div className="parallax-container">
-              <div className="parallax">
-                <img src="images/wrx.JPG" className="mainImage" />
-              </div>
-            </div>
+            <img
+              className="materialboxed responsive-img mainImage"
+              src="images/wrx.JPG"
+            />
+
             <p>
               As my youngest daughter grows older we plan to get back to our
               adventures. Our future plans are to explore the Northeastern U.S.
@@ -117,40 +120,49 @@ const Introduction: React.FC = () => {
               <i className="material-icons">settings</i> Mechanical Interests
             </h4>
             <p>
-              I've always been very mechanically focused. I've always tinkered
-              with things and grew up taking things apart and putting them back
-              together to see how they work. This fueled by my love of racing
-              videogames when I was younger made me in to somewhat of a
-              gear-head.
-            </p>
-            <p>
-              Much of my mechanical intersests are rooted when I was still
-              pretty young. When I was 15, my parents got me my first car: a
-              2000 Chevy Cavalier with a cracked engine block that I started
-              repairing as I looked forward to being able to drive. I purchased
-              a totalled parts car with a good engine and interior, swapped the
-              interior components (from a different model year) into my 2000,
-              and swapped engines replacing all major seals and components. I
-              redid the interior to be 'cool' or as cool as I thought it was
-              when I was 15, with speakers in the dash and painting interior
-              panels. Some of these things that I once thought were cool, now
-              seem somewhat juvenile, but I walked away with a plethora of
-              knowledge, confidence, and value in good workmanship. Working on
-              that Cavalier taught me to care for things even if they are small.
-              It taught me hard work, and in general helped to teach me
-              mechanical and electrical skills.
-            </p>
-            <p>
               {" "}
-              I had strong interests in high school in aeronautical engineering
-              and was planning to go to Rose Hulman or Purdue University
-              majoring in aeronautical or mechanical engineering. At the time, I
-              decided to pursue a secondary passion of mine: technology. I
-              instead majored in computer science where I could build on my
-              problem solving and tinkering attributes. While I enjoy technology
-              and computer science, a personal goal of mine is to tie in my
-              technological skills into a mechanical industry through embedded
-              systems or related area of work.
+              I’ve always been mechanically inclined, constantly tinkering and
+              taking things apart to understand how they work. Growing up, my
+              love for racing video games only deepened my interest in cars,
+              turning me into a bit of a gearhead.
+            </p>
+            <p>
+              My passion for mechanics really took off at 15 when my parents
+              gave me my first car: a 2000 Chevy Cavalier with a cracked engine
+              block. Eager to drive, I took on the challenge of repairing it. I
+              bought a totaled parts car with a good engine and interior, and
+              from there, I swapped engines, replaced seals and major
+              components, and even installed interior parts from a different
+              model year. I also customized the interior with new speakers and
+              painted panels—what I thought was ‘cool’ at the time. Though some
+              of my design choices now seem a bit juvenile, the experience was
+              invaluable.
+            </p>
+            <p>
+              That Cavalier taught me the importance of hard work, attention to
+              detail, and the pride that comes from doing things right. It gave
+              me hands-on experience with mechanical and electrical systems, and
+              more importantly, it instilled in me a lifelong appreciation for
+              quality workmanship, no matter the scale of the project.
+            </p>
+            <p>
+              The Cavalier was just the start of my journey toward mechanical
+              independence. Throughout my childhood, I worked alongside my dad
+              on cars and other equipment, and I owe much of my mechanical
+              expertise to those early experiences with him. Because of this
+              basic mentality that anything can be fixed, that replacing valves
+              on an old engine is nearly basic maintanence, I was ingrained with
+              the idea that the world around me was complex, but understandable.
+            </p>
+            <p>
+              My next vehicle spun a bearing at 230,000 miles. With limited
+              funds, I took on the challenge of rebuilding the motor instead of
+              opting for another engine swap. This rebuild was far more
+              intricate, and I learned even more through the process. By now,
+              I’ve developed a deep understanding of nearly every aspect of
+              mechanical systems in cars and other equipment, allowing me to
+              confidently diagnose issues and make effective, long-lasting
+              repairs.
             </p>
           </li>
         </ul>

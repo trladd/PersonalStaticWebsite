@@ -80,10 +80,6 @@ main {
   max-width: 200px !important;
 }
 
-.mainImage {
-  max-width: 80% !important;
-}
-
 #profilePicture {
   transition: transform 3s ease-in-out; /* Smooth scaling transition */
 }

@@ -25,7 +25,9 @@ const MainPage: React.FC = () => {
       <div className="row">
         <div className="col s12 m9 l10">
           <Introduction />
+          <div className="divider"></div>
           <Skills />
+          <div className="divider"></div>
           <div id="portfolio" className="section scrollspy">
             <h1>Portfolio</h1>
             <h2>Personal Projects</h2>
