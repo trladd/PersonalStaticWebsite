@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import LocationMap from "./LocationMap";
 
 // Extend Navigator interface to include deviceMemory
 interface NavigatorExtended extends Navigator {
@@ -90,11 +91,23 @@ const DeviceInfo: React.FC = () => {
 
       {/* Location */}
       {location ? (
-        <p>
-          Location: Latitude {location.latitude}, Longitude {location.longitude}
-        </p>
+        <>
+          <p>
+            Location: Latitude {location.latitude}, Longitude{" "}
+            {location.longitude}
+          </p>
+          <LocationMap
+            latitude={location.latitude}
+            longitude={location.longitude}
+          />
+        </>
       ) : (
-        <p>Location: Permission Denied or Not Available</p>
+        <p>
+          Location: Not available. I have a map component here that can show
+          your approximate location, but it requires location access from your
+          browser. If you deny permission or your device does not support
+          geolocation, the map cannot be shown.
+        </p>
       )}
       <p>Device Type: {deviceType}</p>
       <p>User Agent: {navigator.userAgent}</p>

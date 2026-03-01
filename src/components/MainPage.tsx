@@ -23,7 +23,8 @@ const MainPage: React.FC = () => {
     tocElem?.setAttribute("style", "position: fixed;");
 
     return () => {
-      instances.forEach((inst) => inst?.destroy?.());
+      const arr = Array.isArray(instances) ? instances : [instances];
+      arr.forEach((inst) => inst?.destroy?.());
     };
   }, []);
   return (
