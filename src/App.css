@@ -9,7 +9,7 @@
   color: #ffd700;
 }
 
-mainpage-scrollspy {
+.mainpage-scrollspy {
   position: fixed !important;
   top: 40px !important;
   right: 0px !important;
@@ -28,6 +28,7 @@ mainpage-scrollspy {
 .application-header {
   position: fixed;
   width: 100%;
+  z-index: 1000;
 }
 
 .bodyArea {

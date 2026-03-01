@@ -6,16 +6,28 @@ import React, {
   ReactNode,
 } from "react";
 import UserDeviceInfo from "./UserDeviceInfo";
-import M from "materialize-css"; // Import the necessary library
-import styles from "./SiteDebugTools.module.css"; // Import the CSS Module
+import M from "materialize-css";
+import styles from "./SiteDebugTools.module.css";
 
 interface SiteDebugToolsProps {
   navWrapperRef: React.RefObject<HTMLDivElement>;
+}
+
+interface NetworkInfo {
+  online: boolean;
+  effectiveType?: string;
+  downlink?: number;
+  rtt?: number;
+  saveData?: boolean;
 }
 const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
   const [localStorageItems, setLocalStorageItems] = useState<
     { key: string; value: string | null }[]
   >([]);
+
+  const [networkInfo, setNetworkInfo] = useState<NetworkInfo>({
+    online: navigator.onLine,
+  });
 
   const debugTabsRef = useRef<HTMLUListElement>(null);
 
@@ -42,14 +54,42 @@ const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
   });
 
   useEffect(() => {
-    var elems = document.querySelectorAll(".tabs");
+    const elems = document.querySelectorAll(".tabs");
     M.Tabs.init(elems, {});
     setTabsOffset();
   }, []);
 
   useEffect(() => {
     updateLocalStorage();
-  }, [localStorageItems]);
+  }, []);
+
+  useEffect(() => {
+    const nav: any = window.navigator;
+    const connection =
+      nav.connection || nav.mozConnection || nav.webkitConnection;
+
+    const updateNetworkInfo = () => {
+      setNetworkInfo({
+        online: navigator.onLine,
+        effectiveType: connection?.effectiveType,
+        downlink: connection?.downlink,
+        rtt: connection?.rtt,
+        saveData: connection?.saveData,
+      });
+    };
+
+    updateNetworkInfo();
+
+    window.addEventListener("online", updateNetworkInfo);
+    window.addEventListener("offline", updateNetworkInfo);
+    connection?.addEventListener?.("change", updateNetworkInfo);
+
+    return () => {
+      window.removeEventListener("online", updateNetworkInfo);
+      window.removeEventListener("offline", updateNetworkInfo);
+      connection?.removeEventListener?.("change", updateNetworkInfo);
+    };
+  }, []);
 
   const clearLocalStorage = () => {
     localStorage.clear();
@@ -95,15 +135,43 @@ const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
       name: "Device Info",
       content: <UserDeviceInfo />,
     },
+    {
+      name: "Network & Connectivity",
+      content: (
+        <div className="container">
+          <h1>Network & Connectivity</h1>
+          <p>
+            Online Status:{" "}
+            <b>{networkInfo.online ? "Online" : "Offline"}</b>
+          </p>
+          {networkInfo.effectiveType ? (
+            <>
+              <p>Connection Type: {networkInfo.effectiveType}</p>
+              <p>Estimated Downlink: {networkInfo.downlink} Mbps</p>
+              <p>Estimated RTT: {networkInfo.rtt} ms</p>
+              <p>
+                Data Saver Enabled: {networkInfo.saveData ? "Yes" : "No"}
+              </p>
+            </>
+          ) : (
+            <p>
+              Detailed connection information is not available in this browser,
+              but online/offline status is always shown.
+            </p>
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
-    <div className="">
+    <div className="container flow-text">
       <p>
-        This section of my site features debugging tools and interactive
-        explorations of the data provided by browsers and devices. I find it
-        fascinating to work with the available information and uncover insights
-        into what a browser can reveal about user interactions.
+        This section showcases client-side diagnostics I use to understand how
+        the site behaves in a real browser. It highlights the kinds of data
+        available directly from the device and network—without any backend
+        integration—covering local storage, device capabilities, and
+        connectivity characteristics.
       </p>
       <ul
         id="debugToolsTabs"

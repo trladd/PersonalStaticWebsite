@@ -9,6 +9,8 @@ const navLinkList = siteConfig.socialLinks.map((navLink) => (
   </li>
 ));
 
+const currentYear = new Date().getFullYear();
+
 const Footer: React.FC = () => {
   return (
     <footer className="page-footer secondaryColor">
@@ -39,7 +41,7 @@ const Footer: React.FC = () => {
       </div>
       <div className="footer-copyright primaryColor">
         <div className="container">
-          © 2024 Copyright
+          © {currentYear} Trevar Ladd. All rights reserved.
           <a className="grey-text text-lighten-4 right" href="/resume.pdf">
             View My Resume
           </a>

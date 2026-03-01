@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import M from "materialize-css";
 import Introduction from "./Introduction";
 import Skills from "./Skills";
 
@@ -14,11 +15,16 @@ const MainPage: React.FC = () => {
     // @ts-ignore
     $(".collapsible").collapsible();
 
-    var elems = document.querySelectorAll(".scrollspy");
-    var instances = M.ScrollSpy.init(elems, {});
-    //set css position as fixed for table of contents
-    var elem = document.querySelector(".mainpage-scrollspy");
-    elem?.setAttribute("style", `position: fixed;`);
+    const elems = document.querySelectorAll(".scrollspy");
+    const instances = M.ScrollSpy.init(elems, {
+      scrollOffset: 80, // align with fixed header so sections deactivate when scrolled past
+    });
+    const tocElem = document.querySelector(".mainpage-scrollspy");
+    tocElem?.setAttribute("style", "position: fixed;");
+
+    return () => {
+      instances.forEach((inst) => inst?.destroy?.());
+    };
   }, []);
   return (
     <div id="bodybox" className="container flow-text">
@@ -34,7 +40,11 @@ const MainPage: React.FC = () => {
             <p>Here you can see some of my side projects that I have done.</p>
             <div className="card">
               <div className="card-image waves-effect waves-block waves-light">
-                <img className="activator" src="images/emaily.PNG" />
+                <img
+                  className="activator"
+                  src="images/emaily.PNG"
+                  alt="Emaily survey application preview"
+                />
               </div>
               <div className="card-content">
                 <span className="card-title activator grey-text text-darken-4">
@@ -97,7 +107,7 @@ const MainPage: React.FC = () => {
                     skilled engineers building and maintaining a global
                     application. This complex application involved a lot of
                     dependency management and integrated with many marketing
-                    cloud apis.
+                    cloud APIs.
                   </p>
                   <hr />
                   <p>
@@ -143,7 +153,11 @@ const MainPage: React.FC = () => {
                   <i className="material-icons">code</i>Pega
                 </div>
                 <div className="collapsible-body">
-                  <img src="images/SSA.png" className="responsive-img" />
+                  <img
+                    src="images/SSA.png"
+                    className="responsive-img"
+                    alt="Pega Senior System Architect certification badge"
+                  />
                   <p>
                     <a href="https://www.pega.com/about">Pega platform</a> is a
                     low-code / no-code development technology that is marketed
@@ -179,12 +193,12 @@ const MainPage: React.FC = () => {
                   <i className="material-icons">info_outline</i>ADA Compliance
                 </div>
                 <div className="collapsible-body">
-                  <ul>
+                  <div>
                     <p>
                       I was tasked with exploring ADA compliance for my company
                       where we previously had no experience with. In an effort
                       to improve our websites, I explored ADA compliance, what
-                      it means, levels of compliance, etc to educate others in
+                      it means, levels of compliance, etc. to educate others in
                       our design and frontend space.
                     </p>
                     <p>
@@ -194,7 +208,7 @@ const MainPage: React.FC = () => {
                       illustrating next best steps to get to WCAG 2.1 AA
                       compliance level on all sites.
                     </p>
-                  </ul>
+                  </div>
                 </div>
               </li>
               <li>
@@ -203,31 +217,32 @@ const MainPage: React.FC = () => {
                   CI/CD
                 </div>
                 <div className="collapsible-body">
-                  <ul>
+                  <div>
                     <p>
-                      <b>Serving as Scrummaster</b> while working at Salesforce.
-                      In this role I help manage work for the team, facilitate
-                      conversations, and find areas for improvement in our team
-                      operations while still contributing as an engineer.
+                      <b>Serving as Scrum Master</b> while working at
+                      Salesforce. In this role I help manage work for the team,
+                      facilitate conversations, and find areas for improvement
+                      in our team operations while still contributing as an
+                      engineer.
                     </p>
                     <hr />
                     <p>
-                      <b>Agile/Devops Adoption: </b>Throughout 2020 and in to
+                      <b>Agile/DevOps Adoption:</b> Throughout 2020 and into
                       2021 my project team was trying to figure out how agile
-                      and dev-ops fit in to our organization. The benefit to
-                      this was that we were building a greenfield software
-                      solution where we were able to structure our people around
-                      these concepts from the start. My involvement from this
-                      effort as a technical lead was to help guide the team and
-                      project leadership through prioritization of support (ops)
-                      tasks and not become too focused on (dev) but to see the
-                      full picture. To help reduce bugs we shifted quality left,
-                      built out extensive automated testing, and workspace
+                      and DevOps fit into our organization. The benefit to this
+                      was that we were building a greenfield software solution
+                      where we were able to structure our people around these
+                      concepts from the start. My involvement in this effort as
+                      a technical lead was to help guide the team and project
+                      leadership through prioritization of support (ops) tasks
+                      and not become too focused on (dev) but to see the full
+                      picture. To help reduce bugs we shifted quality left,
+                      built out extensive automated testing and workspace
                       validation tooling, built custom CLI tools to speed up
-                      code development, improved build pipelines and streamlined
-                      enterprise change management tasks.
+                      code development, improved build pipelines, and
+                      streamlined enterprise change management tasks.
                     </p>
-                  </ul>
+                  </div>
                 </div>
               </li>
             </ul>

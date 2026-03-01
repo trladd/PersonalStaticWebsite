@@ -1,5 +1,4 @@
 import React from "react";
-import GoldStars from "../../GoldStars";
 
 function About() {
   return (
@@ -21,12 +20,12 @@ function About() {
       <h3>Frontend</h3>
       <p>
         This site is built using React. It provides great features like state
-        management, routers for managing different pages, and a great way to
-        render content in a metadata driven fashion. Much of the content on my
+        management, routing for managing different pages, and a great way to
+        render content in a metadata-driven fashion. Much of the content on my
         main page is stored as configuration. In simplest terms, why hardcode
-        html when you can programatically render repeating elements instead? It
+        HTML when you can programmatically render repeating elements instead? It
         also provides the ability for me to host side projects as well. These
-        side projects are here for fun, and to occasinoally play around with a
+        side projects are here for fun, and to occasionally play around with a
         new topic.
       </p>
       <h3>Hosting</h3>
@@ -44,7 +43,7 @@ function About() {
         demand.
       </p>
       <p>
-        I started out with a simple S3 bucket, but as my needs growed, I started
+        I started out with a simple S3 bucket, but as my needs grew, I started
         using other services too.
       </p>
       <ul>
@@ -67,7 +66,7 @@ function About() {
       <h3>Analytics</h3>
       <p>
         I am using Google Analytics to track user interactions. It's not that
-        this site gets much (if any) traffic, but nevertheless it is intersting
+        this site gets much (if any) traffic, but nevertheless it is interesting
         to see traffic, and play around with a common tool used by many. I don't
         use this data for anything other than personal interest.
       </p>
