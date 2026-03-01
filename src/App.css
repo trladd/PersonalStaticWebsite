@@ -19,9 +19,10 @@ mainpage-scrollspy {
   color: black;
 }
 
-/* Make input text field gray */
+/* Numeronym input layout */
 .numeronym-input {
-  max-width: 40%;
+  width: 100%;
+  max-width: 100%;
 }
 
 .application-header {
@@ -118,4 +119,64 @@ main {
 .tap-target-wave::before,
 .tap-target-wave::after {
   background-color: #e9e9e977;
+}
+
+/* Override Materialize input colors to use site palette */
+.input-field input[type="text"],
+.input-field textarea.materialize-textarea {
+  color: var(--text-color);
+}
+
+.input-field input[type="text"]:focus,
+.input-field textarea.materialize-textarea:focus {
+  border-bottom: 1px solid var(--secondary-color) !important;
+  box-shadow: 0 1px 0 0 var(--secondary-color) !important;
+}
+
+.input-field input[type="text"] + label,
+.input-field textarea.materialize-textarea + label {
+  color: var(--secondary-color);
+}
+
+.input-field input[type="text"]:focus + label,
+.input-field textarea.materialize-textarea:focus + label {
+  color: var(--secondary-color) !important;
+}
+
+/* Radio buttons: use secondary (brown) instead of teal */
+[type="radio"] + span:before,
+[type="radio"] + span:after {
+  border: 2px solid var(--secondary-color) !important;
+}
+
+[type="radio"]:checked + span:after {
+  background-color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+}
+
+[type="radio"].with-gap:checked + span:before,
+[type="radio"].with-gap:checked + span:after {
+  border-color: var(--secondary-color) !important;
+}
+
+/* Override Materialize input colors to use site palette */
+.input-field input[type="text"],
+.input-field textarea.materialize-textarea {
+  color: var(--text-color);
+}
+
+.input-field input[type="text"]:focus,
+.input-field textarea.materialize-textarea:focus {
+  border-bottom: 1px solid var(--secondary-color) !important;
+  box-shadow: 0 1px 0 0 var(--secondary-color) !important;
+}
+
+.input-field input[type="text"] + label,
+.input-field textarea.materialize-textarea + label {
+  color: var(--secondary-color);
+}
+
+.input-field input[type="text"]:focus + label,
+.input-field textarea.materialize-textarea:focus + label {
+  color: var(--secondary-color) !important;
 }
