@@ -238,7 +238,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
             {autoCycle && !isAutoCycleEnabled ? (
               <button
                 type="button"
-                className="waves-effect btn-flat"
+                className="btn-flat"
                 onClick={() => setIsAutoCycleEnabled(true)}
                 style={{
                   borderRadius: "999px",
@@ -268,7 +268,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
                 <button
                   key={mode.key}
                   type="button"
-                  className="waves-effect btn-flat"
+                  className="btn-flat"
                   onClick={() => handleModeSelect(mode.key)}
                   style={{
                     borderRadius: "999px",

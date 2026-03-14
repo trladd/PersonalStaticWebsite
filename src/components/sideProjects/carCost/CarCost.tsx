@@ -232,6 +232,21 @@ const STALE_STATE_MS = 60 * 60 * 1000;
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 const isToggleEnabled = (value: number) => value === 1;
 
+const cleanupModalArtifacts = () => {
+  document.body.style.overflow = "";
+  document.body.style.width = "";
+
+  if (document.querySelector(".modal.open")) {
+    return;
+  }
+
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.parentElement?.removeChild(overlay);
+  });
+
+  document.body.classList.remove("modal-open");
+};
+
 const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const { isDarkMode } = useContext(ThemeContext);
   const typedTemplates = useMemo(
@@ -479,9 +494,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     modalInstanceRef.current = M.Modal.init(modalRef.current, {
       dismissible: false,
       preventScrolling: false,
+      onOpenStart: () => {
+        cleanupModalArtifacts();
+      },
       onCloseEnd: () => {
-        document.body.style.overflow = "";
-        document.body.style.width = "";
+        cleanupModalArtifacts();
       },
     });
 
@@ -573,8 +590,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }
 
     return () => {
-      document.body.style.overflow = "";
-      document.body.style.width = "";
+      cleanupModalArtifacts();
       modalInstanceRef.current?.destroy();
     };
   }, []);
@@ -587,15 +603,16 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     breakdownModalInstanceRef.current = M.Modal.init(breakdownModalRef.current, {
       dismissible: true,
       preventScrolling: false,
+      onOpenStart: () => {
+        cleanupModalArtifacts();
+      },
       onCloseEnd: () => {
-        document.body.style.overflow = "";
-        document.body.style.width = "";
+        cleanupModalArtifacts();
       },
     });
 
     return () => {
-      document.body.style.overflow = "";
-      document.body.style.width = "";
+      cleanupModalArtifacts();
       breakdownModalInstanceRef.current?.destroy();
     };
   }, []);
@@ -745,6 +762,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   };
 
   const handleOpenOwnCarModal = () => {
+    cleanupModalArtifacts();
     setCustomVehicleDraft({ year: "", make: "", model: "", fuelType: "regular" });
     modalInstanceRef.current?.open();
   };
@@ -979,6 +997,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     title: string,
     visibleModes: BreakdownMode[]
   ) => {
+    cleanupModalArtifacts();
     setBreakdownModalMode(mode);
     setBreakdownModalTitle(title);
     setBreakdownModalModes(visibleModes);
@@ -1751,7 +1770,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <h3 style={{ margin: 0 }}>Trip estimate</h3>
                 <button
                   type="button"
-                  className="waves-effect btn-flat"
+                  className="btn-flat"
                   onClick={() =>
                     openBreakdownModal("trip", "Trip cost breakdown", ["mile", "trip"])
                   }
@@ -1832,7 +1851,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <h3 style={{ margin: 0 }}>Recurring driving totals</h3>
                 <button
                   type="button"
-                  className="waves-effect btn-flat"
+                  className="btn-flat"
                   onClick={() =>
                     openBreakdownModal(
                       recurringType,
@@ -1943,7 +1962,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     >
                       <button
                         type="button"
-                        className="waves-effect btn-flat"
+                        className="btn-flat"
                         onClick={() =>
                           openBreakdownModal(
                             key,
