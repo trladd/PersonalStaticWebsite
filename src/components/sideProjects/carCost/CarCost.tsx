@@ -86,6 +86,8 @@ type CustomVehicleDraft = {
   fuelType: FuelType;
 };
 
+type CustomVehicleField = "year" | "make" | "model";
+
 type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;
 type InsightDefinition = {
   id: string;
@@ -307,6 +309,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     model: "",
     fuelType: "regular",
   });
+  const [customVehicleTouched, setCustomVehicleTouched] = useState<Record<CustomVehicleField, boolean>>({
+    year: false,
+    make: false,
+    model: false,
+  });
+  const [showCustomVehicleValidation, setShowCustomVehicleValidation] = useState(false);
   const [stickyTop, setStickyTop] = useState(72);
   const [isMobileView, setIsMobileView] = useState(false);
   const [breakdownModalMode, setBreakdownModalMode] = useState<BreakdownMode>("mile");
@@ -372,6 +380,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       overflow: "hidden",
     }),
     [palette]
+  );
+
+  const invalidInputContainerStyle: React.CSSProperties = useMemo(
+    () => ({
+      ...inputContainerStyle,
+      border: isDarkMode
+        ? "1px solid rgba(222, 114, 114, 0.55)"
+        : "1px solid rgba(196, 73, 73, 0.38)",
+      boxShadow: isDarkMode
+        ? "0 0 0 1px rgba(222, 114, 114, 0.14)"
+        : "0 0 0 1px rgba(196, 73, 73, 0.08)",
+    }),
+    [inputContainerStyle, isDarkMode]
   );
 
   const prefixStyle: React.CSSProperties = useMemo(
@@ -749,17 +770,40 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       }));
     };
 
+  const handleCustomVehicleFieldBlur = (field: CustomVehicleField) => () => {
+    setCustomVehicleTouched((current) => ({
+      ...current,
+      [field]: true,
+    }));
+    setShowCustomVehicleValidation(true);
+  };
+
   const parsedCustomVehicleYear = Number(customVehicleDraft.year);
   const currentModelYear = new Date().getFullYear() + 1;
+  const customVehicleFieldErrors: Record<CustomVehicleField, string> = {
+    year:
+      customVehicleDraft.year.trim().length === 0
+        ? "Enter a year."
+        : !Number.isInteger(parsedCustomVehicleYear)
+          ? "Year must be a whole number."
+          : parsedCustomVehicleYear < 1886 || parsedCustomVehicleYear > currentModelYear
+            ? `Year must be between 1886 and ${currentModelYear}.`
+            : "",
+    make: customVehicleDraft.make.trim().length === 0 ? "Enter a make." : "",
+    model: customVehicleDraft.model.trim().length === 0 ? "Enter a model." : "",
+  };
   const isCustomVehicleValid =
-    Number.isInteger(parsedCustomVehicleYear) &&
-    parsedCustomVehicleYear >= 1886 &&
-    parsedCustomVehicleYear <= currentModelYear &&
-    customVehicleDraft.make.trim().length > 0 &&
-    customVehicleDraft.model.trim().length > 0;
+    customVehicleFieldErrors.year === "" &&
+    customVehicleFieldErrors.make === "" &&
+    customVehicleFieldErrors.model === "";
+
+  const customVehicleValidationMessage =
+    customVehicleFieldErrors.year || customVehicleFieldErrors.make || customVehicleFieldErrors.model;
 
   const handleStartWithOwnCar = () => {
     if (!isCustomVehicleValid) {
+      setCustomVehicleTouched({ year: true, make: true, model: true });
+      setShowCustomVehicleValidation(true);
       M.toast({ html: "Enter a valid year, make, and model", displayLength: 2500 });
       return;
     }
@@ -788,6 +832,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const handleOpenOwnCarModal = () => {
     cleanupModalArtifacts();
     setCustomVehicleDraft({ year: "", make: "", model: "", fuelType: "regular" });
+    setCustomVehicleTouched({ year: false, make: false, model: false });
+    setShowCustomVehicleValidation(false);
     modalInstanceRef.current?.open();
   };
 
@@ -1154,6 +1200,16 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             white-space: normal;
             overflow-wrap: anywhere;
           }
+
+          .car-cost-placeholder::placeholder {
+            color: rgba(107, 98, 91, 0.7);
+            opacity: 1;
+          }
+
+          .car-cost-placeholder::-webkit-input-placeholder {
+            color: rgba(107, 98, 91, 0.7);
+            opacity: 1;
+          }
         `}
       </style>
       <div id="car-cost-restore-modal" className="modal" ref={modalRef}>
@@ -1238,7 +1294,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     >
                       Year
                     </label>
-                    <div style={inputContainerStyle}>
+                    <div
+                      style={
+                        showCustomVehicleValidation && customVehicleTouched.year && customVehicleFieldErrors.year
+                          ? invalidInputContainerStyle
+                          : inputContainerStyle
+                      }
+                    >
                       <input
                         id="customVehicleYear"
                         type="number"
@@ -1247,10 +1309,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         step="1"
                         value={customVehicleDraft.year}
                         onChange={handleCustomVehicleDraftChange("year")}
+                        onBlur={handleCustomVehicleFieldBlur("year")}
                         placeholder="2020"
                         style={inputStyle}
+                        className="car-cost-placeholder"
                       />
                     </div>
+                    {showCustomVehicleValidation &&
+                    customVehicleTouched.year &&
+                    customVehicleFieldErrors.year ? (
+                      <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                        {customVehicleFieldErrors.year}
+                      </small>
+                    ) : null}
                   </div>
                   <div className="col s12 m6">
                     <label
@@ -1259,16 +1330,31 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     >
                       Make
                     </label>
-                    <div style={inputContainerStyle}>
+                    <div
+                      style={
+                        showCustomVehicleValidation && customVehicleTouched.make && customVehicleFieldErrors.make
+                          ? invalidInputContainerStyle
+                          : inputContainerStyle
+                      }
+                    >
                       <input
                         id="customVehicleMake"
                         type="text"
                         value={customVehicleDraft.make}
                         onChange={handleCustomVehicleDraftChange("make")}
+                        onBlur={handleCustomVehicleFieldBlur("make")}
                         placeholder="Toyota"
                         style={inputStyle}
+                        className="car-cost-placeholder"
                       />
                     </div>
+                    {showCustomVehicleValidation &&
+                    customVehicleTouched.make &&
+                    customVehicleFieldErrors.make ? (
+                      <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                        {customVehicleFieldErrors.make}
+                      </small>
+                    ) : null}
                   </div>
                   <div className="col s12 m6">
                     <label
@@ -1277,16 +1363,31 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     >
                       Model
                     </label>
-                    <div style={inputContainerStyle}>
+                    <div
+                      style={
+                        showCustomVehicleValidation && customVehicleTouched.model && customVehicleFieldErrors.model
+                          ? invalidInputContainerStyle
+                          : inputContainerStyle
+                      }
+                    >
                       <input
                         id="customVehicleModel"
                         type="text"
                         value={customVehicleDraft.model}
                         onChange={handleCustomVehicleDraftChange("model")}
+                        onBlur={handleCustomVehicleFieldBlur("model")}
                         placeholder="Camry"
                         style={inputStyle}
+                        className="car-cost-placeholder"
                       />
                     </div>
+                    {showCustomVehicleValidation &&
+                    customVehicleTouched.model &&
+                    customVehicleFieldErrors.model ? (
+                      <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                        {customVehicleFieldErrors.model}
+                      </small>
+                    ) : null}
                   </div>
                   <div className="col s12">
                     <label
@@ -1337,6 +1438,25 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <p style={{ color: palette.muted, fontSize: "0.92rem", margin: "0.5rem 0 0" }}>
                   Year must be between 1886 and {currentModelYear}.
                 </p>
+                {showCustomVehicleValidation && !isCustomVehicleValid ? (
+                  <p style={{ color: "#c44949", fontSize: "0.88rem", margin: "0.5rem 0 0" }}>
+                    {customVehicleValidationMessage}
+                  </p>
+                ) : null}
+                <div
+                  onMouseDown={() => {
+                    if (!isCustomVehicleValid) {
+                      setCustomVehicleTouched({ year: true, make: true, model: true });
+                      setShowCustomVehicleValidation(true);
+                    }
+                  }}
+                  onTouchStart={() => {
+                    if (!isCustomVehicleValid) {
+                      setCustomVehicleTouched({ year: true, make: true, model: true });
+                      setShowCustomVehicleValidation(true);
+                    }
+                  }}
+                >
                 <button
                   type="button"
                   className="waves-effect waves-light btn primaryColor"
@@ -1349,6 +1469,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 >
                   Use my vehicle
                 </button>
+                </div>
               </div>
             </div>
           </div>
