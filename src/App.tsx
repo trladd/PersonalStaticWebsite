@@ -8,6 +8,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Footer from "./components/Footer";
 import { siteConfig } from "./utility/siteConfig";
 import { ThemeProvider } from "./utility/ThemeContext";
+import CarCostAbout from "./components/sideProjects/carCost/about/CarCostAbout";
 
 function renderSideProjects(navWrapperRef: React.RefObject<HTMLDivElement>) {
   return siteConfig.sideProjects.map((sideProject) => (
@@ -34,6 +35,7 @@ function App() {
             <div className="bodyArea">
               <Routes>
                 <Route path="/" Component={MainPage} />
+                <Route path="/sideProjects/carCost/about" Component={CarCostAbout} />
                 {renderSideProjects(navWrapperRef)}
               </Routes>
             </div>

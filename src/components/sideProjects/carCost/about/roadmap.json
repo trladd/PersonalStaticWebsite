@@ -1,0 +1,166 @@
+{
+  "completed": [
+    {
+      "status": "Done",
+      "title": "Build the core vehicle cost calculator for fuel, maintenance, tires, depreciation, and annual ownership costs",
+      "points": 8
+    },
+    {
+      "status": "Done",
+      "title": "Add annual ownership costs like insurance, registration, parking, inspection, and roadside assistance",
+      "points": 3
+    },
+    {
+      "status": "Done",
+      "title": "Convert the calculator into the PersonalStaticWebsite side project and TypeScript structure",
+      "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Add responsive layout support and mobile-friendly adjustments",
+      "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Add true-cost pie chart breakdown with linked hover states and tooltips",
+      "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Extract the cost breakdown viewer into its own reusable component",
+      "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Add trip and recurring modal expansion flows using the shared breakdown component",
+      "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Add local persistence, saved state restore, and custom vehicle support",
+      "points": 8
+    },
+    {
+      "status": "Done",
+      "title": "Add starter templates and custom vehicle entry workflow",
+      "points": 8
+    },
+    {
+      "status": "Done",
+      "title": "Add include / exclude controls for depreciation and annual ownership costs",
+      "points": 2
+    },
+    {
+      "status": "Done",
+      "title": "Add fuel-type-aware calculations and current fuel price loading",
+      "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Add one-way / round-trip trip planning toggle",
+      "points": 2
+    },
+    {
+      "status": "Done",
+      "title": "Add benchmark insight cards with learn-more modals and source references",
+      "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Move insights to metadata-driven JSON with category-based filtering for related modals",
+      "points": 5
+    }
+  ],
+  "backlog": [
+    {
+      "status": "Todo",
+      "title": "Add major-version-aware saved state handling so users are notified when data is outdated and it can be migrated or cleared safely",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Support multiple unit systems, including metric",
+      "points": 5
+    },
+    {
+      "status": "Todo",
+      "title": "Add internationalization for English, Spanish, and French across North and South American audiences",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Add a small true-cost-per-mile pill to the sticky header",
+      "points": 2
+    },
+    {
+      "status": "Todo",
+      "title": "Review and tighten labels across the page for clarity and consistency",
+      "points": 3
+    },
+    {
+      "status": "Todo",
+      "title": "Add comparison mode for evaluating multiple vehicles side by side",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Add share support by generating a URL with serialized state",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Add support for maintaining up to 3 personal vehicles",
+      "points": 5
+    },
+    {
+      "status": "Todo",
+      "title": "Add a help section explaining how local state and saved data are managed",
+      "points": 3
+    },
+    {
+      "status": "Todo",
+      "title": "Fix remaining mobile-friendly bugs",
+      "points": 5
+    },
+    {
+      "status": "Todo",
+      "title": "Fix the mobile modal bug where input placeholders do not display correctly",
+      "points": 2
+    },
+    {
+      "status": "Todo",
+      "title": "Fix custom-vehicle input validation so an error message explains why \"Calculate with this vehicle\" is disabled",
+      "points": 2
+    },
+    {
+      "status": "Todo",
+      "title": "Pull vehicle data from year / make / model",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Pull vehicle fuel economy automatically when possible",
+      "points": 5
+    },
+    {
+      "status": "Todo",
+      "title": "Add maintenance warnings for likely high-mileage vehicles and rising upkeep costs over time",
+      "points": 5
+    },
+    {
+      "status": "Todo",
+      "title": "Add more expense categories",
+      "points": 3
+    },
+    {
+      "status": "Todo",
+      "title": "Support other ownership types such as rental, lease, and finance",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Incorporate APR into the equation for financed vehicles",
+      "points": 5
+    }
+  ]
+}

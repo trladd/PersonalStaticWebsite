@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import M from "materialize-css";
+import { Link } from "react-router-dom";
 import { ThemeContext } from "../../../utility/ThemeContext";
 import CostBreakdownViewer, {
   BreakdownMode,
@@ -2234,6 +2235,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               />
             </section>
           </div>
+        </div>
+
+        <div style={{ textAlign: "center", padding: "0.5rem 0 1rem" }}>
+          <Link
+            to="/sideProjects/carCost/about"
+            onClick={() => window.scrollTo({ top: 0, behavior: "auto" })}
+            style={{
+              color: palette.accentDark,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            More about this page
+          </Link>
         </div>
       </div>
     </div>
