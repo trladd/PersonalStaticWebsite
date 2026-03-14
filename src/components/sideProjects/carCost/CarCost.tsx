@@ -1,6 +1,10 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import M from "materialize-css";
 import { ThemeContext } from "../../../utility/ThemeContext";
+import CostBreakdownViewer, {
+  BreakdownMode,
+  CostBreakdownViewerMode,
+} from "./CostBreakdownViewer";
 import vehicleTemplates from "./vehicleTemplates.json";
 
 interface CarCostProps {
@@ -48,12 +52,6 @@ type FieldDefinition = {
   name: keyof CarCostValues;
   step: string;
   prefix?: string;
-};
-
-type CostBreakdownItem = {
-  label: string;
-  value: number;
-  color: string;
 };
 
 type PersistedCarCostState = {
@@ -232,28 +230,6 @@ const CAR_COST_CUSTOM_KEY = "carCostCustomVehicle";
 const STALE_STATE_MS = 60 * 60 * 1000;
 
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
-const formatPercent = (value: number) => `${value.toFixed(1)}%`;
-
-const buildPieSlice = (
-  percentage: number,
-  cumulativePercentage: number,
-  radius: number
-) => {
-  if (percentage <= 0) {
-    return "";
-  }
-
-  const startAngle = cumulativePercentage * Math.PI * 2 - Math.PI / 2;
-  const endAngle = (cumulativePercentage + percentage) * Math.PI * 2 - Math.PI / 2;
-  const x1 = 50 + radius * Math.cos(startAngle);
-  const y1 = 50 + radius * Math.sin(startAngle);
-  const x2 = 50 + radius * Math.cos(endAngle);
-  const y2 = 50 + radius * Math.sin(endAngle);
-  const largeArcFlag = percentage > 0.5 ? 1 : 0;
-
-  return `M 50 50 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
-};
-
 const isToggleEnabled = (value: number) => value === 1;
 
 const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
@@ -299,10 +275,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   });
   const [stickyTop, setStickyTop] = useState(72);
   const [isMobileView, setIsMobileView] = useState(false);
-  const [activeBreakdownLabel, setActiveBreakdownLabel] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const [breakdownModalMode, setBreakdownModalMode] = useState<BreakdownMode>("mile");
+  const [breakdownModalTitle, setBreakdownModalTitle] = useState("Cost breakdown details");
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<M.Modal | null>(null);
+  const breakdownModalRef = useRef<HTMLDivElement>(null);
+  const breakdownModalInstanceRef = useRef<M.Modal | null>(null);
 
   const palette = useMemo(
     () => ({
@@ -601,6 +579,27 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   }, []);
 
   useEffect(() => {
+    if (!breakdownModalRef.current) {
+      return;
+    }
+
+    breakdownModalInstanceRef.current = M.Modal.init(breakdownModalRef.current, {
+      dismissible: true,
+      preventScrolling: false,
+      onCloseEnd: () => {
+        document.body.style.overflow = "";
+        document.body.style.width = "";
+      },
+    });
+
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.width = "";
+      breakdownModalInstanceRef.current?.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!hasResolvedStartupChoice) {
       return;
     }
@@ -821,60 +820,158 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     };
   }, [recurringType, values]);
 
-  const breakdownItems: CostBreakdownItem[] = [
-    { label: "Fuel", value: calculations.fuelCostPerMile, color: "#b85c38" },
-    { label: "Oil changes", value: calculations.oilCostPerMile, color: "#d47a4d" },
-    { label: "Tires", value: calculations.tireCostPerMile, color: "#8f633c" },
-    { label: "Misc. maintenance", value: calculations.miscCostPerMile, color: "#d9a15d" },
-    { label: "Depreciation", value: calculations.depreciationCostPerMile, color: "#6f8f72" },
-    { label: "Ownership overhead", value: calculations.fixedCostPerMile, color: "#4f6d7a" },
-  ].filter((item) => item.value > 0);
+  const recurringMilesByPeriod: Record<RecurringType, number> = useMemo(
+    () => ({
+      day: calculations.annualMileage / 365,
+      week: calculations.annualMileage / 52,
+      month: calculations.annualMileage / 12,
+      year: calculations.annualMileage,
+    }),
+    [calculations.annualMileage]
+  );
 
-  let cumulativePercentage = 0;
-  const pieSlices = breakdownItems.map((item) => {
-    const percentage =
-      calculations.trueCostPerMile > 0 ? item.value / calculations.trueCostPerMile : 0;
-    const path = buildPieSlice(percentage, cumulativePercentage, 44);
-    const midpointPercentage = cumulativePercentage + percentage / 2;
-    const midAngle = midpointPercentage * Math.PI * 2 - Math.PI / 2;
-    const offsetDistance = activeBreakdownLabel === item.label ? 5 : 0;
-    const offsetX = Math.cos(midAngle) * offsetDistance;
-    const offsetY = Math.sin(midAngle) * offsetDistance;
-    cumulativePercentage += percentage;
+  const recurringOwnershipByPeriod: Record<RecurringType, number> = useMemo(
+    () => ({
+      day: calculations.annualFixedCosts / 365,
+      week: calculations.annualFixedCosts / 52,
+      month: calculations.annualFixedCosts / 12,
+      year: calculations.annualFixedCosts,
+    }),
+    [calculations.annualFixedCosts]
+  );
 
-    return {
-      ...item,
-      percentage,
-      path,
-      offsetX,
-      offsetY,
+  const breakdownModes: CostBreakdownViewerMode[] = useMemo(() => {
+    const colors = {
+      fuel: "#b85c38",
+      oil: "#d47a4d",
+      tires: "#8f633c",
+      misc: "#d9a15d",
+      depreciation: "#6f8f72",
+      ownership: "#4f6d7a",
     };
-  });
 
-  const activeBreakdown =
-    activeBreakdownLabel !== null
-      ? pieSlices.find((slice) => slice.label === activeBreakdownLabel) ?? null
-      : null;
+    const buildItems = (
+      fuel: number,
+      oil: number,
+      tires: number,
+      misc: number,
+      depreciation: number,
+      ownership: number
+    ) =>
+      [
+        { label: "Fuel", value: fuel, color: colors.fuel },
+        { label: "Oil changes", value: oil, color: colors.oil },
+        { label: "Tires", value: tires, color: colors.tires },
+        { label: "Misc. maintenance", value: misc, color: colors.misc },
+        { label: "Depreciation", value: depreciation, color: colors.depreciation },
+        { label: "Ownership overhead", value: ownership, color: colors.ownership },
+      ].filter((item) => item.value > 0);
 
-  const handleBreakdownHover = (
-    label: string,
-    event: React.MouseEvent<SVGPathElement | HTMLElement>
-  ) => {
-    setActiveBreakdownLabel(label);
-    setTooltipPosition({
-      x: event.clientX + 18,
-      y: event.clientY + 18,
+    const recurringModeMeta: Record<
+      RecurringType,
+      { label: string; description: string; unitLabel: string }
+    > = {
+      day: {
+        label: "Day",
+        description:
+          "See how each category contributes to one day of driving using your recurring miles assumption.",
+        unitLabel: "per day",
+      },
+      week: {
+        label: "Week",
+        description:
+          "See how each category contributes to one week of driving based on your recurring miles setup.",
+        unitLabel: "per week",
+      },
+      month: {
+        label: "Month",
+        description:
+          "See how each category contributes to one month of driving using the annualized mileage assumption.",
+        unitLabel: "per month",
+      },
+      year: {
+        label: "Year",
+        description:
+          "See how each category contributes across a full year, including annual ownership costs.",
+        unitLabel: "per year",
+      },
+    };
+
+    const recurringModes = (["day", "week", "month", "year"] as RecurringType[]).map((key) => {
+      const miles = recurringMilesByPeriod[key];
+      const ownership = recurringOwnershipByPeriod[key];
+
+      return {
+        key,
+        label: recurringModeMeta[key].label,
+        description: recurringModeMeta[key].description,
+        unitLabel: recurringModeMeta[key].unitLabel,
+        total: calculations.recurringTrueCosts[key],
+        items: buildItems(
+          calculations.fuelCostPerMile * miles,
+          calculations.oilCostPerMile * miles,
+          calculations.tireCostPerMile * miles,
+          calculations.miscCostPerMile * miles,
+          calculations.depreciationCostPerMile * miles,
+          ownership
+        ),
+      };
     });
-  };
 
-  const handleBreakdownCardHover = (label: string) => {
-    setActiveBreakdownLabel(label);
-    setTooltipPosition(null);
-  };
+    return [
+      {
+        key: "mile",
+        label: "Per mile",
+        description:
+          "This is the baseline view of how much each category contributes to every mile driven.",
+        unitLabel: "per mile",
+        total: calculations.trueCostPerMile,
+        items: buildItems(
+          calculations.fuelCostPerMile,
+          calculations.oilCostPerMile,
+          calculations.tireCostPerMile,
+          calculations.miscCostPerMile,
+          calculations.depreciationCostPerMile,
+          calculations.fixedCostPerMile
+        ),
+      },
+      {
+        key: "trip",
+        label: "Trip",
+        description:
+          "This allocates the selected trip distance across fuel, maintenance, depreciation, and ownership overhead.",
+        unitLabel: `${values.tripDistance.toFixed(0)} mi trip`,
+        total: calculations.tripCost,
+        items: buildItems(
+          calculations.fuelCostPerMile * values.tripDistance,
+          calculations.oilCostPerMile * values.tripDistance,
+          calculations.tireCostPerMile * values.tripDistance,
+          calculations.miscCostPerMile * values.tripDistance,
+          calculations.depreciationCostPerMile * values.tripDistance,
+          calculations.fixedCostPerMile * values.tripDistance
+        ),
+      },
+      ...recurringModes,
+    ];
+  }, [
+    calculations.depreciationCostPerMile,
+    calculations.fixedCostPerMile,
+    calculations.fuelCostPerMile,
+    calculations.miscCostPerMile,
+    calculations.oilCostPerMile,
+    calculations.recurringTrueCosts,
+    calculations.tireCostPerMile,
+    calculations.tripCost,
+    calculations.trueCostPerMile,
+    recurringMilesByPeriod,
+    recurringOwnershipByPeriod,
+    values.tripDistance,
+  ]);
 
-  const handleBreakdownLeave = () => {
-    setActiveBreakdownLabel(null);
-    setTooltipPosition(null);
+  const openBreakdownModal = (mode: BreakdownMode, title: string) => {
+    setBreakdownModalMode(mode);
+    setBreakdownModalTitle(title);
+    breakdownModalInstanceRef.current?.open();
   };
 
   const summaryCards = [
@@ -1144,13 +1241,59 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             </div>
           </div>
         </div>
-        <div
+      <div
           className="modal-footer"
           style={{
             background: palette.panelBackground,
             borderTop: palette.border,
           }}
         />
+      </div>
+
+      <div id="car-cost-breakdown-modal" className="modal modal-fixed-footer" ref={breakdownModalRef}>
+        <div
+          className="modal-content"
+          style={{
+            background: palette.panelBackground,
+            color: palette.text,
+          }}
+        >
+          <CostBreakdownViewer
+            key={breakdownModalMode}
+            title={breakdownModalTitle}
+            subtitle="Use the interval controls to compare how the same costs allocate across a mile, trip, or recurring driving window."
+            modes={breakdownModes}
+            initialMode={breakdownModalMode}
+            palette={{
+              text: palette.text,
+              muted: palette.muted,
+              accent: palette.accent,
+              border: palette.border,
+              chartBase: palette.chartBase,
+              chartCenter: palette.chartCenter,
+              tooltipBackground: palette.tooltipBackground,
+              shadow: palette.shadow,
+              cardBackground: palette.cardBackground,
+            }}
+            cardStyle={cardStyle}
+            autoCycle={false}
+          />
+        </div>
+        <div
+          className="modal-footer"
+          style={{
+            background: palette.panelBackground,
+            borderTop: palette.border,
+          }}
+        >
+          <button
+            type="button"
+            className="modal-close waves-effect btn-flat"
+            style={{ color: palette.accentDark, fontWeight: 700, textTransform: "none" }}
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       <div
@@ -1584,7 +1727,36 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           <div className="col s12 xl6" style={{ marginBottom: "1rem" }}>
             <section style={{ ...cardStyle, padding: "1.5rem", height: "100%" }}>
-              <h3 style={{ marginTop: 0 }}>Trip estimate</h3>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.75rem",
+                  marginBottom: "0.35rem",
+                }}
+              >
+                <h3 style={{ margin: 0 }}>Trip estimate</h3>
+                <button
+                  type="button"
+                  className="waves-effect btn-flat"
+                  onClick={() => openBreakdownModal("trip", "Trip cost breakdown")}
+                  style={{
+                    color: palette.accentDark,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    padding: "0 0.5rem",
+                  }}
+                >
+                  <i
+                    className="material-icons left"
+                    style={{ marginRight: "0.3rem", fontSize: "1.1rem", lineHeight: "inherit" }}
+                  >
+                    open_in_full
+                  </i>
+                  See more
+                </button>
+              </div>
               <p style={{ color: palette.muted, lineHeight: 1.5 }}>
                 Multiply your true cost per mile by a route distance to estimate the
                 total cost of the trip.
@@ -1634,7 +1806,36 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
           <div className="col s12 xl6" style={{ marginBottom: "1rem" }}>
             <section style={{ ...cardStyle, padding: "1.5rem", height: "100%" }}>
-              <h3 style={{ marginTop: 0 }}>Recurring driving totals</h3>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "0.75rem",
+                  marginBottom: "0.35rem",
+                }}
+              >
+                <h3 style={{ margin: 0 }}>Recurring driving totals</h3>
+                <button
+                  type="button"
+                  className="waves-effect btn-flat"
+                  onClick={() => openBreakdownModal(recurringType, "Recurring cost breakdown")}
+                  style={{
+                    color: palette.accentDark,
+                    fontWeight: 700,
+                    textTransform: "none",
+                    padding: "0 0.5rem",
+                  }}
+                >
+                  <i
+                    className="material-icons left"
+                    style={{ marginRight: "0.3rem", fontSize: "1.1rem", lineHeight: "inherit" }}
+                  >
+                    open_in_full
+                  </i>
+                  See more
+                </button>
+              </div>
               <p style={{ color: palette.muted, lineHeight: 1.5 }}>
                 Enter miles by day, week, month, or year to see equivalent cost
                 across every timeframe.
@@ -1764,185 +1965,28 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           <div className="col s12" style={{ marginBottom: "1rem" }}>
             <section style={{ ...cardStyle, padding: "1.5rem" }}>
-              <h3 style={{ marginTop: 0 }}>True cost per mile breakdown</h3>
-              <p style={{ color: palette.muted, lineHeight: 1.5 }}>
-                This shows how much each category contributes to your true cost per mile,
-                including annual ownership overhead.
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "1.5rem",
-                  alignItems: "center",
+              <CostBreakdownViewer
+                title="Cost breakdown explorer"
+                subtitle="Compare how each category allocates across a mile, a trip, or your recurring driving windows. When you stop interacting, it cycles through the views automatically."
+                modes={breakdownModes}
+                initialMode="mile"
+                palette={{
+                  text: palette.text,
+                  muted: palette.muted,
+                  accent: palette.accent,
+                  border: palette.border,
+                  chartBase: palette.chartBase,
+                  chartCenter: palette.chartCenter,
+                  tooltipBackground: palette.tooltipBackground,
+                  shadow: palette.shadow,
+                  cardBackground: palette.cardBackground,
                 }}
-              >
-                <div
-                  style={{
-                    flex: "0 1 280px",
-                    width: "100%",
-                    maxWidth: "320px",
-                    margin: "0 auto",
-                    position: "relative",
-                  }}
-                >
-                  <svg viewBox="0 0 100 100" style={{ width: "100%", display: "block" }}>
-                    <circle cx="50" cy="50" r="44" fill={palette.chartBase} />
-                    {pieSlices.map((slice) => (
-                      <path
-                        key={slice.label}
-                        d={slice.path}
-                        fill={slice.color}
-                        transform={`translate(${slice.offsetX} ${slice.offsetY})`}
-                        style={{
-                          cursor: "pointer",
-                          transition: "transform 180ms ease, filter 180ms ease",
-                          filter:
-                            activeBreakdownLabel === slice.label
-                              ? "drop-shadow(0 0 6px rgba(0, 0, 0, 0.24))"
-                              : "none",
-                        }}
-                        onMouseEnter={(event) => handleBreakdownHover(slice.label, event)}
-                        onMouseMove={(event) => handleBreakdownHover(slice.label, event)}
-                        onMouseLeave={handleBreakdownLeave}
-                      />
-                    ))}
-                    <circle cx="50" cy="50" r="23" fill={palette.chartCenter} />
-                    <text
-                      x="50"
-                      y="47"
-                      textAnchor="middle"
-                      style={{ fontSize: "5px", fill: palette.muted, fontWeight: 600 }}
-                    >
-                      True cost
-                    </text>
-                    <text
-                      x="50"
-                      y="54"
-                      textAnchor="middle"
-                      style={{ fontSize: "7px", fill: palette.text, fontWeight: 700 }}
-                    >
-                      {formatCurrency(calculations.trueCostPerMile)}
-                    </text>
-                    <text
-                      x="50"
-                      y="60"
-                      textAnchor="middle"
-                      style={{ fontSize: "4.3px", fill: palette.muted }}
-                    >
-                      per mile
-                    </text>
-                  </svg>
-                </div>
-
-                <div style={{ flex: "1 1 320px" }}>
-                  <div className="row" style={{ marginBottom: 0 }}>
-                    {pieSlices.map((slice) => (
-                      <div key={slice.label} className="col s12 m6" style={{ marginBottom: "1rem" }}>
-                        <article
-                          style={{
-                            ...cardStyle,
-                            padding: "1rem 1.1rem",
-                            height: "100%",
-                            cursor: "pointer",
-                            transform:
-                              activeBreakdownLabel === slice.label ? "translateY(-2px)" : "none",
-                            boxShadow:
-                              activeBreakdownLabel === slice.label
-                                ? isDarkMode
-                                  ? "0 18px 38px rgba(0, 0, 0, 0.4)"
-                                  : "0 18px 38px rgba(91, 60, 34, 0.18)"
-                                : cardStyle.boxShadow,
-                            transition: "transform 180ms ease, box-shadow 180ms ease",
-                          }}
-                          onMouseMove={() => handleBreakdownCardHover(slice.label)}
-                          onMouseEnter={() => handleBreakdownCardHover(slice.label)}
-                          onMouseLeave={handleBreakdownLeave}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.7rem",
-                              marginBottom: "0.45rem",
-                            }}
-                          >
-                            <span
-                              style={{
-                                width: "14px",
-                                height: "14px",
-                                borderRadius: "999px",
-                                background: slice.color,
-                                flex: "0 0 auto",
-                              }}
-                            />
-                            <span style={{ fontWeight: 600 }}>{slice.label}</span>
-                          </div>
-                          <strong style={{ display: "block", fontSize: "1.4rem", lineHeight: 1.1 }}>
-                            {formatCurrency(slice.value)}
-                          </strong>
-                          <small
-                            style={{ display: "block", marginTop: "0.4rem", color: palette.muted }}
-                          >
-                            {formatPercent(slice.percentage * 100)} of true cost per mile
-                          </small>
-                        </article>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                cardStyle={cardStyle}
+              />
             </section>
           </div>
         </div>
       </div>
-      {activeBreakdown && tooltipPosition ? (
-        <div
-          style={{
-            position: "fixed",
-            left: tooltipPosition.x,
-            top: tooltipPosition.y,
-            minWidth: "220px",
-            maxWidth: "260px",
-            padding: "0.9rem 1rem",
-            borderRadius: "16px",
-            background: palette.tooltipBackground,
-            border: palette.border,
-            boxShadow: palette.shadow,
-            color: palette.text,
-            pointerEvents: "none",
-            zIndex: 1200,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.65rem",
-              marginBottom: "0.35rem",
-            }}
-          >
-            <span
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "999px",
-                background: activeBreakdown.color,
-                flex: "0 0 auto",
-              }}
-            />
-            <strong style={{ fontSize: "0.98rem", lineHeight: 1.2 }}>
-              {activeBreakdown.label}
-            </strong>
-          </div>
-          <div style={{ fontSize: "1.15rem", fontWeight: 700, lineHeight: 1.2 }}>
-            {formatCurrency(activeBreakdown.value)}
-          </div>
-          <small style={{ display: "block", marginTop: "0.3rem", color: palette.muted }}>
-            {formatPercent(activeBreakdown.percentage * 100)} of true cost per mile
-          </small>
-        </div>
-      ) : null}
     </div>
   );
 };
