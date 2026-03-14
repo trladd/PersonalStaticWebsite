@@ -2,6 +2,7 @@ import React from "react";
 import Numeronym from "../components/sideProjects/numeronym/Numeronym";
 import About from "../components/sideProjects/about/About";
 import SiteDebugTools from "../components/sideProjects/siteDebugTools/SiteDebugTools";
+import CarCost from "../components/sideProjects/carCost/CarCost";
 
 interface ComponentWithNavWrapperRefProps {
   navWrapperRef: React.RefObject<HTMLDivElement>;
@@ -112,6 +113,12 @@ const sideProjects: {
     link: "/sideProjects/siteDebugTools",
     label: "Site Debug Tools",
     component: SiteDebugTools as ComponentWithNavWrapperRef,
+  },
+  {
+    link: "/sideProjects/carCost",
+    label: "Car Cost Calculator",
+    icon: "directions_car",
+    component: CarCost as ComponentWithNavWrapperRef,
   },
 ];
 
