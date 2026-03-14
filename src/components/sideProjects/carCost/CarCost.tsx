@@ -1481,26 +1481,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         }}
                       >
                         <span>{fuelPriceLabel}</span>
-                        <span
-                          title={fuelPriceTooltip}
-                          aria-label={fuelPriceTooltip}
+                        <i
+                          className="material-icons tiny tooltipped"
+                          data-position="top"
+                          data-tooltip={fuelPriceTooltip}
                           style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: "1.1rem",
-                            height: "1.1rem",
-                            borderRadius: "999px",
-                            fontSize: "0.78rem",
-                            fontWeight: 700,
-                            color: "#ffffff",
-                            background: "var(--secondary-color)",
+                            color: "var(--secondary-color)",
                             cursor: "help",
-                            userSelect: "none",
                           }}
                         >
-                          i
-                        </span>
+                          info_outline
+                        </i>
                       </label>
                       <div style={inputContainerStyle}>
                         <span style={prefixStyle}>$</span>
@@ -1523,12 +1514,40 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       <label
                         htmlFor={field.name}
                         style={{
-                          display: "block",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.45rem",
                           fontWeight: 600,
                           marginBottom: "0.45rem",
                         }}
                       >
-                        {field.label}
+                        <span>{field.label}</span>
+                        {field.name === "depreciationInterval" ? (
+                          <i
+                            className="material-icons tiny tooltipped"
+                            data-position="top"
+                            data-tooltip={depreciationIntervalTooltip}
+                            style={{
+                              color: "var(--secondary-color)",
+                              cursor: "help",
+                            }}
+                          >
+                            info_outline
+                          </i>
+                        ) : null}
+                        {field.name === "annualParking" ? (
+                          <i
+                            className="material-icons tiny tooltipped"
+                            data-position="top"
+                            data-tooltip={parkingTooltip}
+                            style={{
+                              color: "var(--secondary-color)",
+                              cursor: "help",
+                            }}
+                          >
+                            info_outline
+                          </i>
+                        ) : null}
                       </label>
                       <div
                         style={inputContainerStyle}
