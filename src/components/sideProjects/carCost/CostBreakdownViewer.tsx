@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-export type BreakdownMode = "mile" | "trip" | "day" | "week" | "month" | "year";
+export type BreakdownMode =
+  | "mile"
+  | "trip"
+  | "day"
+  | "week"
+  | "month"
+  | "year"
+  | "overall";
 
 export type CostBreakdownViewerItem = {
   label: string;
@@ -41,7 +48,8 @@ type CostBreakdownViewerProps = {
   subtitleFontSize?: string;
 };
 
-const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+const formatCurrency = (value: number) =>
+  value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
 const buildPieSlice = (

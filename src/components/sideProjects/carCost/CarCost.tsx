@@ -8,6 +8,7 @@ import CostBreakdownViewer, {
 } from "./CostBreakdownViewer";
 import { InsightCardData } from "./InsightsCard";
 import InsightsSection from "./InsightsSection";
+import LoanPaydownDetails from "./LoanPaydownDetails";
 import insightsMetadata from "./insights.json";
 import vehicleTemplates from "./vehicleTemplates.json";
 
@@ -26,6 +27,7 @@ type CarCostValues = {
   miscMaintenanceCost: number;
   miscMaintenanceBasis: "miles" | "month" | "year";
   miscMaintenanceInterval: number;
+  depreciationBasis: "miles" | "years";
   purchasePrice: number;
   resaleValue: number;
   depreciationInterval: number;
@@ -36,7 +38,9 @@ type CarCostValues = {
   annualParking: number;
   annualInspection: number;
   annualRoadside: number;
+  loanDownPayment: number;
   loanApr: number;
+  loanMonthlyPayment: number;
   includeDepreciation: number;
   includeAnnualOwnership: number;
   includeFinancing: number;
@@ -115,6 +119,7 @@ const defaultValues: CarCostValues = {
   miscMaintenanceCost: 600,
   miscMaintenanceBasis: "miles",
   miscMaintenanceInterval: 15000,
+  depreciationBasis: "miles",
   purchasePrice: 32000,
   resaleValue: 18000,
   depreciationInterval: 100000,
@@ -125,7 +130,9 @@ const defaultValues: CarCostValues = {
   annualParking: 0,
   annualInspection: 0,
   annualRoadside: 100,
-  loanApr: 6.7,
+  loanDownPayment: 4000,
+  loanApr: 6.56,
+  loanMonthlyPayment: 748,
   includeDepreciation: 1,
   includeAnnualOwnership: 1,
   includeFinancing: 0,
@@ -153,7 +160,8 @@ const FUEL_TYPE_LABELS: Record<FuelType, string> = {
   regular: "Regular",
 };
 
-const DEFAULT_NEW_CAR_APR = 6.7;
+const DEFAULT_NEW_CAR_APR = 6.56;
+const DEFAULT_NEW_CAR_PAYMENT = 748;
 
 const getPlannerValues = (values: CarCostValues): PlannerValues => ({
   tripDistance: values.tripDistance,
@@ -235,11 +243,6 @@ const sections: {
         name: "depreciationInterval",
         step: "1",
       },
-      {
-        label: "APR (%)",
-        name: "loanApr",
-        step: "0.01",
-      },
     ],
   },
   {
@@ -304,7 +307,13 @@ const CAR_COST_STORAGE_KEY = "carCostState";
 const CAR_COST_CUSTOM_KEY = "carCostCustomVehicle";
 const STALE_STATE_MS = 60 * 60 * 1000;
 
-const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+const formatCurrency = (value: number) =>
+  value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+const formatNumber = (value: number, maximumFractionDigits = 0) =>
+  value.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
 const isToggleEnabled = (value: number) => value === 1;
 
 const cleanupModalArtifacts = () => {
@@ -342,6 +351,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             defaultValues.fuelEfficiency,
           miscMaintenanceBasis:
             template.values.miscMaintenanceBasis ?? defaultValues.miscMaintenanceBasis,
+          depreciationBasis:
+            template.values.depreciationBasis ?? defaultValues.depreciationBasis,
           fuelUnitPrice:
             DEFAULT_FUEL_PRICES[
               (template.values.fuelType ?? defaultValues.fuelType) as FuelType
@@ -349,6 +360,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           includeDepreciation: template.values.includeDepreciation ?? 1,
           includeAnnualOwnership: template.values.includeAnnualOwnership ?? 1,
           loanApr: template.values.loanApr ?? DEFAULT_NEW_CAR_APR,
+          loanDownPayment:
+            template.values.loanDownPayment ?? defaultValues.loanDownPayment,
+          loanMonthlyPayment:
+            template.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
           includeFinancing: template.values.includeFinancing ?? 0,
         },
       })),
@@ -402,6 +417,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const modalInstanceRef = useRef<M.Modal | null>(null);
   const breakdownModalRef = useRef<HTMLDivElement>(null);
   const breakdownModalInstanceRef = useRef<M.Modal | null>(null);
+  const loanDetailsModalRef = useRef<HTMLDivElement>(null);
+  const loanDetailsModalInstanceRef = useRef<M.Modal | null>(null);
 
   const palette = useMemo(
     () => ({
@@ -547,7 +564,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         M.Tooltip.getInstance(element)?.destroy();
       });
     };
-  }, [values.fuelType, values.fuelUnitPrice]);
+  }, [values.depreciationBasis, values.fuelType, values.fuelUnitPrice]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -667,6 +684,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               miscMaintenanceBasis:
                 parsedCustom.values.miscMaintenanceBasis ??
                 defaultValues.miscMaintenanceBasis,
+              depreciationBasis:
+                parsedCustom.values.depreciationBasis ??
+                defaultValues.depreciationBasis,
               fuelUnitPrice:
                 parsedCustom.values.fuelUnitPrice ??
                 DEFAULT_FUEL_PRICES[
@@ -674,6 +694,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     defaultValues.fuelType) as FuelType
                 ],
               loanApr: parsedCustom.values.loanApr ?? DEFAULT_NEW_CAR_APR,
+              loanDownPayment:
+                parsedCustom.values.loanDownPayment ?? defaultValues.loanDownPayment,
+              loanMonthlyPayment:
+                parsedCustom.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
               includeFinancing: parsedCustom.values.includeFinancing ?? 0,
             },
           } as CustomVehicle;
@@ -702,6 +726,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             miscMaintenanceBasis:
               parsedState.values.miscMaintenanceBasis ??
               defaultValues.miscMaintenanceBasis,
+            depreciationBasis:
+              parsedState.values.depreciationBasis ??
+              defaultValues.depreciationBasis,
             fuelUnitPrice:
               parsedState.values.fuelUnitPrice ??
               DEFAULT_FUEL_PRICES[
@@ -709,6 +736,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   defaultValues.fuelType) as FuelType
               ],
             loanApr: parsedState.values.loanApr ?? DEFAULT_NEW_CAR_APR,
+            loanDownPayment:
+              parsedState.values.loanDownPayment ?? defaultValues.loanDownPayment,
+            loanMonthlyPayment:
+              parsedState.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
             includeFinancing: parsedState.values.includeFinancing ?? 0,
           });
           setRecurringType(parsedState.recurringType);
@@ -773,6 +804,28 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     return () => {
       cleanupModalArtifacts();
       breakdownModalInstanceRef.current?.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loanDetailsModalRef.current) {
+      return;
+    }
+
+    loanDetailsModalInstanceRef.current = M.Modal.init(loanDetailsModalRef.current, {
+      dismissible: true,
+      preventScrolling: false,
+      onOpenStart: () => {
+        cleanupModalArtifacts();
+      },
+      onCloseEnd: () => {
+        cleanupModalArtifacts();
+      },
+    });
+
+    return () => {
+      cleanupModalArtifacts();
+      loanDetailsModalInstanceRef.current?.destroy();
     };
   }, []);
 
@@ -924,6 +977,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }));
   };
 
+  const handleDepreciationBasisChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const nextBasis = event.target.value as CarCostValues["depreciationBasis"];
+    setValues((current) => ({
+      ...current,
+      depreciationBasis: nextBasis,
+      depreciationInterval:
+        nextBasis === "miles"
+          ? current.depreciationInterval || 100000
+          : current.depreciationInterval || 5,
+    }));
+  };
+
   const handleCustomVehicleDraftChange =
     (field: keyof CustomVehicleDraft) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1022,12 +1089,6 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         : 0;
     const tireCostPerMile =
       values.tireInterval > 0 ? values.tireCost / values.tireInterval : 0;
-    const depreciationCostPerMile =
-      isToggleEnabled(values.includeDepreciation) &&
-      values.depreciationInterval > 0
-        ? Math.max(values.purchasePrice - values.resaleValue, 0) /
-          values.depreciationInterval
-        : 0;
 
     const annualMileageByType: Record<RecurringType, number> = {
       day: values.recurringMiles * 365,
@@ -1038,6 +1099,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     };
 
     const annualMileage = annualMileageByType[recurringType];
+    const ownershipYears =
+      values.depreciationBasis === "years"
+        ? values.depreciationInterval
+        : annualMileage > 0
+          ? values.depreciationInterval / annualMileage
+          : 0;
+    const ownershipMiles =
+      values.depreciationBasis === "miles"
+        ? values.depreciationInterval
+        : annualMileage * values.depreciationInterval;
+    const depreciationValueChange = values.purchasePrice - values.resaleValue;
+    const depreciationCostPerMile =
+      isToggleEnabled(values.includeDepreciation) && ownershipMiles > 0
+        ? depreciationValueChange / ownershipMiles
+        : 0;
     const miscCostPerMile =
       values.miscMaintenanceInterval > 0
         ? values.miscMaintenanceBasis === "miles"
@@ -1063,13 +1139,72 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         values.annualInspection +
         values.annualRoadside
       : 0;
-    const annualFinanceCost = isToggleEnabled(values.includeFinancing)
-      ? values.purchasePrice * (values.loanApr / 100)
+    const depreciationTotal = isToggleEnabled(values.includeDepreciation)
+      ? depreciationValueChange
       : 0;
+    const monthsOwned = Math.max(0, Math.round(ownershipYears * 12));
+    const financedAmount = Math.max(values.purchasePrice - values.loanDownPayment, 0);
+    const monthlyRate = values.loanApr / 100 / 12;
+    let remainingLoanBalance = financedAmount;
+    let totalLoanPaymentsMade = 0;
+    let totalInterestPaid = 0;
+    let payoffMonth: number | null = financedAmount > 0 ? null : 0;
+    const loanPaydownPoints: { month: number; balance: number; interestPaid: number }[] = [
+      { month: 0, balance: financedAmount, interestPaid: 0 },
+    ];
+
+    if (isToggleEnabled(values.includeFinancing) && financedAmount > 0) {
+      for (let month = 1; month <= monthsOwned; month += 1) {
+        const monthlyInterest = remainingLoanBalance * monthlyRate;
+        const scheduledPayment = values.loanMonthlyPayment;
+        const actualPayment = Math.min(
+          scheduledPayment,
+          remainingLoanBalance + monthlyInterest,
+        );
+
+        totalLoanPaymentsMade += actualPayment;
+        totalInterestPaid += monthlyInterest;
+        remainingLoanBalance = Math.max(
+          remainingLoanBalance + monthlyInterest - actualPayment,
+          0,
+        );
+        loanPaydownPoints.push({
+          month,
+          balance: remainingLoanBalance,
+          interestPaid: totalInterestPaid,
+        });
+
+        if (remainingLoanBalance <= 0.01) {
+          remainingLoanBalance = 0;
+          payoffMonth = month;
+          break;
+        }
+
+        if (scheduledPayment <= monthlyInterest) {
+          payoffMonth = null;
+        }
+      }
+    } else {
+      remainingLoanBalance = 0;
+    }
+
+    if (
+      isToggleEnabled(values.includeFinancing) &&
+      financedAmount > 0 &&
+      payoffMonth === null &&
+      loanPaydownPoints[loanPaydownPoints.length - 1]?.balance === 0
+    ) {
+      payoffMonth = loanPaydownPoints[loanPaydownPoints.length - 1].month;
+    }
+
+    const annualFinanceCost =
+      isToggleEnabled(values.includeFinancing) && ownershipYears > 0
+        ? totalInterestPaid / ownershipYears
+        : 0;
     const fixedCostPerMile =
       annualMileage > 0 ? annualFixedCosts / annualMileage : 0;
     const financeCostPerMile =
-      annualMileage > 0 ? annualFinanceCost / annualMileage : 0;
+      ownershipMiles > 0 ? totalInterestPaid / ownershipMiles : 0;
     const trueCostPerMile =
       variableCostPerMile + fixedCostPerMile + financeCostPerMile;
     const tripCost = selectedTripDistance * trueCostPerMile;
@@ -1086,6 +1221,27 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         recurringDrivingCosts.month + annualFixedCosts / 12 + annualFinanceCost / 12,
       year: recurringDrivingCosts.year + annualFixedCosts + annualFinanceCost,
     };
+    const equityAtSale = values.resaleValue - remainingLoanBalance;
+    const netVehicleCostAtSale = isToggleEnabled(values.includeFinancing)
+      ? values.loanDownPayment + totalLoanPaymentsMade - equityAtSale
+      : depreciationTotal;
+    const overallItems = {
+      fuel: fuelCostPerMile * ownershipMiles,
+      oil: oilCostPerMile * ownershipMiles,
+      tires: tireCostPerMile * ownershipMiles,
+      misc: miscCostPerMile * ownershipMiles,
+      depreciation: Math.max(depreciationTotal, 0),
+      ownership: annualFixedCosts * ownershipYears,
+      financing: Math.max(totalInterestPaid, 0),
+    };
+    const overallCost =
+      overallItems.fuel +
+      overallItems.oil +
+      overallItems.tires +
+      overallItems.misc +
+      overallItems.depreciation +
+      overallItems.ownership +
+      overallItems.financing;
 
     return {
       fuelCostPerMile,
@@ -1095,8 +1251,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       depreciationCostPerMile,
       variableCostPerMile,
       annualMileage,
+      ownershipYears,
+      ownershipMiles,
+      monthsOwned,
       annualFixedCosts,
       annualFinanceCost,
+      depreciationTotal,
+      financedAmount,
+      totalLoanPaymentsMade,
+      remainingLoanBalance,
+      totalInterestPaid,
+      payoffMonth,
+      loanPaydownPoints,
+      equityAtSale,
+      netVehicleCostAtSale,
       fixedCostPerMile,
       financeCostPerMile,
       trueCostPerMile,
@@ -1104,6 +1272,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       tripCost,
       recurringDrivingCosts,
       recurringTrueCosts,
+      overallItems,
+      overallCost,
     };
   }, [recurringType, tripType, values]);
 
@@ -1183,7 +1353,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       ].filter((item) => item.value > 0);
 
     const recurringModeMeta: Record<
-      "day" | "week" | "month" | "year",
+      "day" | "week" | "month" | "year" | "overall",
       { label: string; description: string; unitLabel: string }
     > = {
       day: {
@@ -1209,6 +1379,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         description:
           "See how each category contributes across a full year, including annual ownership costs.",
         unitLabel: "per year",
+      },
+      overall: {
+        label: "Overall",
+        description:
+          "See how each category adds up across your full ownership horizon using annual miles and your depreciation timeline.",
+        unitLabel: "total ownership",
       },
     };
 
@@ -1258,10 +1434,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       {
         key: "trip",
         label: "Trip",
-        description: `This allocates the selected trip distance of ${calculations.selectedTripDistance.toFixed(
-          0,
+        description: `This allocates the selected trip distance of ${formatNumber(
+          calculations.selectedTripDistance,
         )} miles across fuel, maintenance, depreciation, and ownership overhead.`,
-        unitLabel: `${calculations.selectedTripDistance.toFixed(0)} mi trip`,
+        unitLabel: `${formatNumber(calculations.selectedTripDistance)} mi trip`,
         total: calculations.tripCost,
         items: buildItems(
           calculations.fuelCostPerMile * calculations.selectedTripDistance,
@@ -1275,15 +1451,43 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         ),
       },
       ...recurringModes,
+      {
+        key: "overall",
+        label: recurringModeMeta.overall.label,
+        description: `This estimates total cost over about ${formatNumber(
+          calculations.ownershipYears,
+          1,
+        )} years and ${formatNumber(
+          calculations.ownershipMiles,
+        )} miles of ownership at ${formatNumber(
+          calculations.annualMileage,
+        )} miles per year driven.`,
+        unitLabel: recurringModeMeta.overall.unitLabel,
+        total: calculations.overallCost,
+        items: buildItems(
+          calculations.overallItems.fuel,
+          calculations.overallItems.oil,
+          calculations.overallItems.tires,
+          calculations.overallItems.misc,
+          calculations.overallItems.depreciation,
+          calculations.overallItems.ownership,
+          calculations.overallItems.financing,
+        ),
+      },
     ];
   }, [
     calculations.depreciationCostPerMile,
+    calculations.annualMileage,
     calculations.fixedCostPerMile,
     calculations.financeCostPerMile,
     calculations.fuelCostPerMile,
     calculations.miscCostPerMile,
     calculations.oilCostPerMile,
     calculations.recurringTrueCosts,
+    calculations.overallCost,
+    calculations.overallItems,
+    calculations.ownershipMiles,
+    calculations.ownershipYears,
     calculations.selectedTripDistance,
     calculations.tireCostPerMile,
     calculations.tripCost,
@@ -1311,6 +1515,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setBreakdownModalModes(visibleModes);
     setBreakdownInsightCategory(insightCategory);
     breakdownModalInstanceRef.current?.open();
+  };
+
+  const openLoanDetailsModal = () => {
+    cleanupModalArtifacts();
+    loanDetailsModalInstanceRef.current?.open();
   };
 
   const summaryCards = [
@@ -1371,7 +1580,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     values.fuelType === "electric" ? "kWh" : "gallon"
   }.`;
   const depreciationIntervalTooltip =
-    "Enter the number of miles over which you expect the vehicle to lose the value between purchase price and resale value. The calculator uses (purchase price - resale value) divided by this mileage interval to estimate depreciation cost per mile.";
+    values.depreciationBasis === "miles"
+      ? `Choose miles if you expect to get rid of the vehicle after about ${formatNumber(
+          values.depreciationInterval,
+        )} miles of ownership. Based on your annual miles, that implies about ${formatNumber(
+          calculations.ownershipYears,
+          1,
+        )} years of ownership.`
+      : `Choose years if you expect to keep the vehicle for about ${formatNumber(
+          values.depreciationInterval,
+          1,
+        )} years. Based on your annual miles, that implies about ${formatNumber(
+          calculations.ownershipMiles,
+        )} miles of ownership.`;
   const parkingTooltip =
     "Most people do not have this cost, but some do in dense urban settings. It is treated as part of annual ownership cost rather than a mileage-based expense.";
 
@@ -1893,6 +2114,68 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       </div>
 
       <div
+        id="car-cost-loan-details-modal"
+        className="modal modal-fixed-footer"
+        ref={loanDetailsModalRef}
+      >
+        <div
+          className="modal-content"
+          style={{
+            background: palette.panelBackground,
+            color: palette.text,
+          }}
+        >
+          <h4 style={{ marginTop: 0 }}>Financing details</h4>
+          <p style={{ color: palette.muted, lineHeight: 1.5 }}>
+            This view shows how the loan is paid down during the time you expect to own the
+            vehicle, including payments made, interest paid, and the remaining principal balance
+            at sale.
+          </p>
+          <LoanPaydownDetails
+            purchasePrice={values.purchasePrice}
+            downPayment={values.loanDownPayment}
+            financedAmount={calculations.financedAmount}
+            apr={values.loanApr}
+            monthlyPayment={values.loanMonthlyPayment}
+            monthsOwned={calculations.monthsOwned}
+            payoffMonth={calculations.payoffMonth}
+            remainingBalance={calculations.remainingLoanBalance}
+            totalInterestPaid={calculations.totalInterestPaid}
+            totalLoanPaymentsMade={calculations.totalLoanPaymentsMade}
+            points={calculations.loanPaydownPoints}
+            palette={{
+              text: palette.text,
+              muted: palette.muted,
+              accent: palette.accent,
+              border: palette.border,
+              chartBase: palette.chartBase,
+              cardBackground: palette.cardBackground,
+            }}
+            cardStyle={cardStyle}
+          />
+        </div>
+        <div
+          className="modal-footer"
+          style={{
+            background: palette.panelBackground,
+            borderTop: palette.border,
+          }}
+        >
+          <button
+            type="button"
+            className="modal-close waves-effect btn-flat"
+            style={{
+              color: palette.accentDark,
+              fontWeight: 700,
+              textTransform: "none",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      <div
         style={{
           background: palette.shellBackground,
           borderRadius: "32px",
@@ -2220,6 +2503,30 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         Include depreciation
                       </span>
                     </label>
+                    {isToggleEnabled(values.includeDepreciation) ? (
+                      <p
+                        style={{
+                          color: palette.muted,
+                          lineHeight: 1.45,
+                          fontSize: "0.92rem",
+                          margin: "0.7rem 0 0",
+                        }}
+                      >
+                        {values.depreciationBasis === "miles"
+                          ? `This assumes you will sell the vehicle after about ${formatNumber(
+                              values.depreciationInterval,
+                            )} miles of ownership, which works out to roughly ${formatNumber(
+                              calculations.ownershipYears,
+                              1,
+                            )} years at your current annual mileage.`
+                          : `This assumes you will keep the vehicle for about ${formatNumber(
+                              values.depreciationInterval,
+                              1,
+                            )} years, which works out to roughly ${formatNumber(
+                              calculations.ownershipMiles,
+                            )} miles at your current annual mileage.`}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {section.title === "Annual ownership costs" ? (
@@ -2364,118 +2671,59 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <div style={{ display: "grid", gap: "1rem" }}>
                   {section.items.map((field) => (
                     <div key={field.name}>
-                      {field.name !== "loanApr" ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: "0.75rem",
-                            fontWeight: 600,
-                            marginBottom: "0.45rem",
-                          }}
-                        >
-                          <span style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
-                            <span>
-                              {field.name === "miscMaintenanceInterval"
-                                ? values.miscMaintenanceBasis === "miles"
-                                  ? "Misc. maintenance interval (miles)"
-                                  : values.miscMaintenanceBasis === "month"
-                                    ? "Misc. maintenance interval (months)"
-                                    : "Misc. maintenance interval (years)"
-                                : field.label}
-                            </span>
-                            {field.name === "depreciationInterval" ? (
-                              <i
-                                className="material-icons tiny tooltipped"
-                                data-position="top"
-                                data-tooltip={depreciationIntervalTooltip}
-                                style={{
-                                  color: "var(--secondary-color)",
-                                  cursor: "help",
-                                }}
-                              >
-                                info_outline
-                              </i>
-                            ) : null}
-                            {field.name === "annualParking" ? (
-                              <i
-                                className="material-icons tiny tooltipped"
-                                data-position="top"
-                                data-tooltip={parkingTooltip}
-                                style={{
-                                  color: "var(--secondary-color)",
-                                  cursor: "help",
-                                }}
-                              >
-                                info_outline
-                              </i>
-                            ) : null}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "0.75rem",
+                          fontWeight: 600,
+                          marginBottom: "0.45rem",
+                        }}
+                      >
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                          <span>
+                            {field.name === "miscMaintenanceInterval"
+                              ? values.miscMaintenanceBasis === "miles"
+                                ? "Misc. maintenance interval (miles)"
+                                : values.miscMaintenanceBasis === "month"
+                                  ? "Misc. maintenance interval (months)"
+                                  : "Misc. maintenance interval (years)"
+                              : field.name === "depreciationInterval"
+                                ? values.depreciationBasis === "miles"
+                                  ? "Depreciation interval (miles)"
+                                  : "Ownership length (years)"
+                              : field.label}
                           </span>
-                        </div>
-                      ) : null}
-                      {field.name === "loanApr" ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.85rem",
-                            flexWrap: "wrap",
-                          }}
-                        >
-                          <label
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.45rem",
-                              cursor: "pointer",
-                              fontWeight: 500,
-                              color: palette.text,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isToggleEnabled(values.includeFinancing)}
-                              onChange={handleToggleChange("includeFinancing")}
-                            />
-                            <span>Vehicle is financed</span>
-                          </label>
-                          {isToggleEnabled(values.includeFinancing) ? (
-                            <div
+                          {field.name === "depreciationInterval" ? (
+                            <i
+                              className="material-icons tiny tooltipped"
+                              data-position="top"
+                              data-tooltip={depreciationIntervalTooltip}
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.6rem",
-                                flex: "1 1 240px",
-                                minWidth: 0,
+                                color: "var(--secondary-color)",
+                                cursor: "help",
                               }}
                             >
-                              <span
-                                style={{
-                                  color: palette.muted,
-                                  fontWeight: 600,
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                APR (%)
-                              </span>
-                              <div style={{ ...inputContainerStyle, flex: "1 1 auto" }}>
-                                <input
-                                  id={field.name}
-                                  type="number"
-                                  min="0"
-                                  step={field.step}
-                                  value={values[field.name]}
-                                  onChange={handleChange(field.name)}
-                                  onFocus={handleNumericInputFocus}
-                                  style={inputStyle}
-                                />
-                              </div>
-                            </div>
+                              info_outline
+                            </i>
                           ) : null}
-                        </div>
-                      ) : field.name === "miscMaintenanceInterval" ? (
+                          {field.name === "annualParking" ? (
+                            <i
+                              className="material-icons tiny tooltipped"
+                              data-position="top"
+                              data-tooltip={parkingTooltip}
+                              style={{
+                                color: "var(--secondary-color)",
+                                cursor: "help",
+                              }}
+                            >
+                              info_outline
+                            </i>
+                          ) : null}
+                        </span>
+                      </div>
+                      {field.name === "miscMaintenanceInterval" ? (
                         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "0.75rem" }}>
                           <div>
                             <label
@@ -2545,6 +2793,76 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             </div>
                           </div>
                         </div>
+                      ) : field.name === "depreciationInterval" ? (
+                        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "0.75rem" }}>
+                          <div>
+                            <label
+                              htmlFor="depreciationBasis"
+                              style={{
+                                display: "block",
+                                color: palette.muted,
+                                fontWeight: 500,
+                                marginBottom: "0.35rem",
+                                fontSize: "0.86rem",
+                              }}
+                            >
+                              Based on
+                            </label>
+                            <div style={{ ...inputContainerStyle, position: "relative" }}>
+                              <select
+                                id="depreciationBasis"
+                                className="browser-default"
+                                value={values.depreciationBasis}
+                                onChange={handleDepreciationBasisChange}
+                                style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                              >
+                                <option value="miles">Miles</option>
+                                <option value="years">Years owned</option>
+                              </select>
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  position: "absolute",
+                                  right: "1rem",
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
+                                  color: palette.muted,
+                                  fontSize: "0.85rem",
+                                  pointerEvents: "none",
+                                }}
+                              >
+                                ▼
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <label
+                              htmlFor={field.name}
+                              style={{
+                                display: "block",
+                                color: palette.muted,
+                                fontWeight: 500,
+                                marginBottom: "0.35rem",
+                                fontSize: "0.86rem",
+                              }}
+                            >
+                              {values.depreciationBasis === "miles" ? "Every" : "For"}
+                            </label>
+                            <div style={inputContainerStyle}>
+                              <input
+                                id={field.name}
+                                type="number"
+                                min="0"
+                                step={field.step}
+                                value={values[field.name]}
+                                onChange={handleChange(field.name)}
+                                onFocus={handleNumericInputFocus}
+                                disabled={!isToggleEnabled(values.includeDepreciation)}
+                                style={inputStyle}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       ) : (
                         <div style={inputContainerStyle}>
                           {field.prefix ? (
@@ -2568,6 +2886,148 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           />
                         </div>
                       )}
+                      {field.name === "purchasePrice" && section.title === "Vehicle cost" ? (
+                        <div
+                          style={{
+                            marginTop: "0.85rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.85rem",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.45rem",
+                              cursor: "pointer",
+                              fontWeight: 500,
+                              color: palette.text,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isToggleEnabled(values.includeFinancing)}
+                              onChange={handleToggleChange("includeFinancing")}
+                            />
+                            <span>Vehicle is financed</span>
+                          </label>
+                          {isToggleEnabled(values.includeFinancing) ? (
+                            <>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.6rem",
+                                  flex: "1 1 220px",
+                                  minWidth: 0,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    color: palette.muted,
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Down payment
+                                </span>
+                                <div style={{ ...inputContainerStyle, flex: "1 1 auto" }}>
+                                  <span style={prefixStyle}>$</span>
+                                  <input
+                                    id="loanDownPayment"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={values.loanDownPayment}
+                                    onChange={handleChange("loanDownPayment")}
+                                    onFocus={handleNumericInputFocus}
+                                    style={inputStyle}
+                                  />
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.6rem",
+                                  flex: "1 1 180px",
+                                  minWidth: 0,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    color: palette.muted,
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  APR (%)
+                                </span>
+                                <div style={{ ...inputContainerStyle, flex: "1 1 auto" }}>
+                                  <input
+                                    id="loanApr"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={values.loanApr}
+                                    onChange={handleChange("loanApr")}
+                                    onFocus={handleNumericInputFocus}
+                                    style={inputStyle}
+                                  />
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.6rem",
+                                  flex: "1 1 220px",
+                                  minWidth: 0,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    color: palette.muted,
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Monthly payment
+                                </span>
+                                <div style={{ ...inputContainerStyle, flex: "1 1 auto" }}>
+                                  <span style={prefixStyle}>$</span>
+                                  <input
+                                    id="loanMonthlyPayment"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={values.loanMonthlyPayment}
+                                    onChange={handleChange("loanMonthlyPayment")}
+                                    onFocus={handleNumericInputFocus}
+                                    style={inputStyle}
+                                  />
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  flex: "1 1 100%",
+                                  color: palette.muted,
+                                  fontSize: "0.9rem",
+                                  lineHeight: 1.45,
+                                }}
+                              >
+                                Amount financed:{" "}
+                                {formatCurrency(
+                                  Math.max(values.purchasePrice - values.loanDownPayment, 0),
+                                )}
+                              </div>
+                            </>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -2702,13 +3162,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     marginTop: "0.4rem",
                   }}
                 >
-                  {calculations.selectedTripDistance.toFixed(0)} miles at{" "}
+                  {formatNumber(calculations.selectedTripDistance)} miles at{" "}
                   {formatCurrency(calculations.trueCostPerMile)} per mile
                 </small>
                 <p style={{ margin: "0.6rem 0 0", color: palette.muted }}>
                   {tripType === "roundTrip"
-                    ? `Round trip uses your selected total distance of ${values.tripDistance.toFixed(0)} miles.`
-                    : `One-way distance is doubled to estimate the full there-and-back trip (${values.tripDistance.toFixed(0)} miles each way).`}
+                    ? `Round trip uses your selected total distance of ${formatNumber(values.tripDistance)} miles.`
+                    : `One-way distance is doubled to estimate the full there-and-back trip (${formatNumber(values.tripDistance)} miles each way).`}
                 </p>
                 <p style={{ margin: "0.35rem 0 0", color: palette.muted }}>
                   Variable-only trip cost:{" "}
@@ -2998,7 +3458,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       Annual miles assumed
                     </span>
                     <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
-                      {calculations.annualMileage.toFixed(0)}
+                      {formatNumber(calculations.annualMileage)}
                     </strong>
                   </article>
                 </div>
@@ -3012,7 +3472,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             <section style={{ ...cardStyle, padding: "1.5rem" }}>
               <CostBreakdownViewer
                 title="Cost breakdown explorer"
-                subtitle="Compare how each category allocates across a mile, a trip, or your recurring driving windows. When you stop interacting, it cycles through the views automatically."
+                subtitle="Compare how each category allocates across a mile, a trip, recurring driving windows, or your full ownership horizon. When you stop interacting, it cycles through the views automatically."
                 modes={breakdownModes}
                 initialMode="mile"
                 palette={{
@@ -3028,6 +3488,248 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 }}
                 cardStyle={cardStyle}
               />
+            </section>
+          </div>
+        </div>
+
+        <div className="row" style={{ marginTop: "0.25rem", marginBottom: 0 }}>
+          <div className="col s12" style={{ marginBottom: "1rem" }}>
+            <section style={{ ...cardStyle, padding: "1.5rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "1rem",
+                  flexWrap: "wrap",
+                  marginBottom: "1rem",
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0 }}>Overall ownership estimate</h3>
+                  <p style={{ color: palette.muted, margin: "0.35rem 0 0", lineHeight: 1.5 }}>
+                    Uses your annual miles and depreciation timeline to estimate total cost over
+                    the time you own the vehicle.
+                  </p>
+                </div>
+              </div>
+              <div className="row" style={{ marginBottom: 0 }}>
+                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                      Ownership length
+                    </span>
+                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                      {formatNumber(calculations.ownershipYears, 1)} years
+                    </strong>
+                  </article>
+                </div>
+                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                      Estimated ownership miles
+                    </span>
+                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                      {formatNumber(calculations.ownershipMiles)}
+                    </strong>
+                  </article>
+                </div>
+                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                      Net vehicle cost after sale
+                    </span>
+                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                      {formatCurrency(calculations.netVehicleCostAtSale)}
+                    </strong>
+                  </article>
+                </div>
+                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                      Total estimated ownership cost
+                    </span>
+                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                      {formatCurrency(calculations.overallCost)}
+                    </strong>
+                  </article>
+                </div>
+                {isToggleEnabled(values.includeFinancing) ? (
+                  <>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: "1rem 1.1rem",
+                          height: "100%",
+                          position: "relative",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="btn-flat"
+                          onClick={openLoanDetailsModal}
+                          style={{
+                            position: "absolute",
+                            top: "0.35rem",
+                            right: "0.35rem",
+                            color: palette.accentDark,
+                            minWidth: "unset",
+                            padding: "0 0.45rem",
+                            lineHeight: 1,
+                          }}
+                          aria-label="See financing details"
+                          title="See financing details"
+                        >
+                          <i
+                            className="material-icons"
+                            style={{ fontSize: "1rem", lineHeight: "inherit" }}
+                          >
+                            open_in_full
+                          </i>
+                        </button>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Total loan payments made
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(calculations.totalLoanPaymentsMade)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: "1rem 1.1rem",
+                          height: "100%",
+                          position: "relative",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="btn-flat"
+                          onClick={openLoanDetailsModal}
+                          style={{
+                            position: "absolute",
+                            top: "0.35rem",
+                            right: "0.35rem",
+                            color: palette.accentDark,
+                            minWidth: "unset",
+                            padding: "0 0.45rem",
+                            lineHeight: 1,
+                          }}
+                          aria-label="See interest details"
+                          title="See interest details"
+                        >
+                          <i
+                            className="material-icons"
+                            style={{ fontSize: "1rem", lineHeight: "inherit" }}
+                          >
+                            open_in_full
+                          </i>
+                        </button>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Interest paid while owned
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(calculations.totalInterestPaid)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Remaining balance at sale
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(calculations.remainingLoanBalance)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Expected sale price
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(values.resaleValue)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Equity at sale
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(calculations.equityAtSale)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Average cost per year
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(
+                            calculations.ownershipYears > 0
+                              ? calculations.overallCost / calculations.ownershipYears
+                              : 0,
+                          )}
+                        </strong>
+                      </article>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Purchase price
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(values.purchasePrice)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Expected sale price
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(values.resaleValue)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Value change at sale
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(calculations.depreciationTotal)}
+                        </strong>
+                      </article>
+                    </div>
+                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                          Average cost per year
+                        </span>
+                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                          {formatCurrency(
+                            calculations.ownershipYears > 0
+                              ? calculations.overallCost / calculations.ownershipYears
+                              : 0,
+                          )}
+                        </strong>
+                      </article>
+                    </div>
+                  </>
+                )}
+              </div>
             </section>
           </div>
         </div>
