@@ -49,7 +49,7 @@ type FuelType =
   | "lpg"
   | "electric";
 
-type RecurringType = "day" | "week" | "month" | "year";
+type RecurringType = "day" | "week" | "month" | "year" | "weekday";
 type TripType = "oneWay" | "roundTrip";
 type InsightCategory = "global" | "tripEstimate" | "recurringDrivingTotals";
 
@@ -115,7 +115,7 @@ const defaultValues: CarCostValues = {
   resaleValue: 18000,
   depreciationInterval: 60000,
   tripDistance: 250,
-  recurringMiles: 40,
+  recurringMiles: 15000,
   annualInsurance: 1800,
   annualRegistration: 180,
   annualParking: 0,
@@ -154,27 +154,42 @@ const getPlannerValues = (values: CarCostValues): PlannerValues => ({
 
 const applyPlannerValues = (
   baseValues: CarCostValues,
-  plannerValues: PlannerValues
+  plannerValues: PlannerValues,
 ): CarCostValues => ({
   ...baseValues,
   ...plannerValues,
 });
 
-const getDraftFromVehicle = (vehicle: CustomVehicle | null): CustomVehicleDraft => ({
+const getDraftFromVehicle = (
+  vehicle: CustomVehicle | null,
+): CustomVehicleDraft => ({
   year: vehicle ? String(vehicle.year || "") : "",
   make: vehicle?.make ?? "",
   model: vehicle?.model ?? "",
   fuelType: vehicle?.values.fuelType ?? "regular",
 });
 
-const sections: { title: string; description: string; items: FieldDefinition[] }[] = [
+const sections: {
+  title: string;
+  description: string;
+  items: FieldDefinition[];
+}[] = [
   {
     title: "Running costs",
     description:
       "Enter the costs and service intervals you want to spread across each mile.",
     items: [
-      { label: "Oil change cost", name: "oilChangeCost", step: "0.01", prefix: "$" },
-      { label: "Oil change interval (miles)", name: "oilChangeInterval", step: "1" },
+      {
+        label: "Oil change cost",
+        name: "oilChangeCost",
+        step: "0.01",
+        prefix: "$",
+      },
+      {
+        label: "Oil change interval (miles)",
+        name: "oilChangeInterval",
+        step: "1",
+      },
       { label: "Tire cost", name: "tireCost", step: "0.01", prefix: "$" },
       { label: "Tire interval (miles)", name: "tireInterval", step: "1" },
       {
@@ -195,8 +210,18 @@ const sections: { title: string; description: string; items: FieldDefinition[] }
     description:
       "Estimate how much value the vehicle loses over a given number of miles.",
     items: [
-      { label: "Purchase price", name: "purchasePrice", step: "0.01", prefix: "$" },
-      { label: "Expected resale value", name: "resaleValue", step: "0.01", prefix: "$" },
+      {
+        label: "Purchase price",
+        name: "purchasePrice",
+        step: "0.01",
+        prefix: "$",
+      },
+      {
+        label: "Expected resale value",
+        name: "resaleValue",
+        step: "0.01",
+        prefix: "$",
+      },
       {
         label: "Depreciation interval (miles)",
         name: "depreciationInterval",
@@ -209,14 +234,24 @@ const sections: { title: string; description: string; items: FieldDefinition[] }
     description:
       "Add fixed yearly costs that happen whether you drive a lot or a little.",
     items: [
-      { label: "Insurance per year", name: "annualInsurance", step: "0.01", prefix: "$" },
+      {
+        label: "Insurance per year",
+        name: "annualInsurance",
+        step: "0.01",
+        prefix: "$",
+      },
       {
         label: "Registration per year",
         name: "annualRegistration",
         step: "0.01",
         prefix: "$",
       },
-      { label: "Parking per year", name: "annualParking", step: "0.01", prefix: "$" },
+      {
+        label: "Parking per year",
+        name: "annualParking",
+        step: "0.01",
+        prefix: "$",
+      },
       {
         label: "Inspection / emissions per year",
         name: "annualInspection",
@@ -278,58 +313,74 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const { isDarkMode } = useContext(ThemeContext);
   const typedTemplates = useMemo(
     () =>
-      (vehicleTemplates as Array<VehicleTemplate & { values: Partial<CarCostValues> }>).map(
-        (template) => ({
-          ...template,
-          values: {
-            ...defaultValues,
-            ...template.values,
-            fuelType: template.values.fuelType ?? defaultValues.fuelType,
-            fuelEfficiency:
-              template.values.fuelEfficiency ?? (template.values as any).fuelMileage ?? defaultValues.fuelEfficiency,
-            fuelUnitPrice:
-              DEFAULT_FUEL_PRICES[
-                (template.values.fuelType ?? defaultValues.fuelType) as FuelType
-              ],
-            includeDepreciation: template.values.includeDepreciation ?? 1,
-            includeAnnualOwnership: template.values.includeAnnualOwnership ?? 1,
-          },
-        })
-      ),
-    []
+      (
+        vehicleTemplates as Array<
+          VehicleTemplate & { values: Partial<CarCostValues> }
+        >
+      ).map((template) => ({
+        ...template,
+        values: {
+          ...defaultValues,
+          ...template.values,
+          fuelType: template.values.fuelType ?? defaultValues.fuelType,
+          fuelEfficiency:
+            template.values.fuelEfficiency ??
+            (template.values as any).fuelMileage ??
+            defaultValues.fuelEfficiency,
+          fuelUnitPrice:
+            DEFAULT_FUEL_PRICES[
+              (template.values.fuelType ?? defaultValues.fuelType) as FuelType
+            ],
+          includeDepreciation: template.values.includeDepreciation ?? 1,
+          includeAnnualOwnership: template.values.includeAnnualOwnership ?? 1,
+        },
+      })),
+    [],
   );
   const [values, setValues] = useState<CarCostValues>(defaultValues);
-  const [recurringType, setRecurringType] = useState<RecurringType>("day");
+  const [recurringType, setRecurringType] = useState<RecurringType>("year");
   const [tripType, setTripType] = useState<TripType>("oneWay");
-  const [hasResolvedStartupChoice, setHasResolvedStartupChoice] = useState(false);
-  const [selectedSource, setSelectedSource] = useState<"default" | "template" | "custom">(
-    "default"
+  const [hasResolvedStartupChoice, setHasResolvedStartupChoice] =
+    useState(false);
+  const [selectedSource, setSelectedSource] = useState<
+    "default" | "template" | "custom"
+  >("default");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
   );
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [startupTemplateId, setStartupTemplateId] = useState<string>(
-    typedTemplates[0]?.id ?? ""
+    typedTemplates[0]?.id ?? "",
   );
-  const [savedCustomVehicle, setSavedCustomVehicle] = useState<CustomVehicle | null>(null);
-  const [customVehicleDraft, setCustomVehicleDraft] = useState<CustomVehicleDraft>({
-    year: "",
-    make: "",
-    model: "",
-    fuelType: "regular",
-  });
-  const [customVehicleTouched, setCustomVehicleTouched] = useState<Record<CustomVehicleField, boolean>>({
+  const [savedCustomVehicle, setSavedCustomVehicle] =
+    useState<CustomVehicle | null>(null);
+  const [customVehicleDraft, setCustomVehicleDraft] =
+    useState<CustomVehicleDraft>({
+      year: "",
+      make: "",
+      model: "",
+      fuelType: "regular",
+    });
+  const [customVehicleTouched, setCustomVehicleTouched] = useState<
+    Record<CustomVehicleField, boolean>
+  >({
     year: false,
     make: false,
     model: false,
   });
-  const [showCustomVehicleValidation, setShowCustomVehicleValidation] = useState(false);
+  const [showCustomVehicleValidation, setShowCustomVehicleValidation] =
+    useState(false);
   const [stickyTop, setStickyTop] = useState(72);
   const [isMobileView, setIsMobileView] = useState(false);
-  const [breakdownModalMode, setBreakdownModalMode] = useState<BreakdownMode>("mile");
-  const [breakdownModalTitle, setBreakdownModalTitle] = useState("Cost breakdown details");
-  const [breakdownModalModes, setBreakdownModalModes] = useState<BreakdownMode[]>(["mile", "trip"]);
-  const [breakdownInsightCategory, setBreakdownInsightCategory] = useState<InsightCategory | null>(
-    null
+  const [breakdownModalMode, setBreakdownModalMode] =
+    useState<BreakdownMode>("mile");
+  const [breakdownModalTitle, setBreakdownModalTitle] = useState(
+    "Cost breakdown details",
   );
+  const [breakdownModalModes, setBreakdownModalModes] = useState<
+    BreakdownMode[]
+  >(["mile", "trip"]);
+  const [breakdownInsightCategory, setBreakdownInsightCategory] =
+    useState<InsightCategory | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<M.Modal | null>(null);
   const breakdownModalRef = useRef<HTMLDivElement>(null);
@@ -340,17 +391,29 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       shellBackground: isDarkMode
         ? "radial-gradient(circle at top left, rgba(184, 92, 56, 0.18), transparent 24%), linear-gradient(180deg, #191511 0%, #110e0b 100%)"
         : "radial-gradient(circle at top left, rgba(184, 92, 56, 0.18), transparent 24%), linear-gradient(180deg, #f8f4ec 0%, #f2eadf 100%)",
-      cardBackground: isDarkMode ? "rgba(31, 25, 20, 0.96)" : "rgba(255, 252, 247, 0.96)",
-      panelBackground: isDarkMode ? "rgba(39, 32, 24, 0.92)" : "rgba(255, 252, 247, 0.98)",
-      subtlePanel: isDarkMode ? "rgba(44, 36, 27, 0.94)" : "rgba(255, 252, 247, 0.96)",
-      border: isDarkMode ? "1px solid rgba(202, 202, 202, 0.12)" : "1px solid rgba(77, 55, 34, 0.12)",
-      softBorder: isDarkMode ? "1px solid rgba(202, 202, 202, 0.16)" : "1px solid rgba(77, 55, 34, 0.15)",
+      cardBackground: isDarkMode
+        ? "rgba(31, 25, 20, 0.96)"
+        : "rgba(255, 252, 247, 0.96)",
+      panelBackground: isDarkMode
+        ? "rgba(39, 32, 24, 0.92)"
+        : "rgba(255, 252, 247, 0.98)",
+      subtlePanel: isDarkMode
+        ? "rgba(44, 36, 27, 0.94)"
+        : "rgba(255, 252, 247, 0.96)",
+      border: isDarkMode
+        ? "1px solid rgba(202, 202, 202, 0.12)"
+        : "1px solid rgba(77, 55, 34, 0.12)",
+      softBorder: isDarkMode
+        ? "1px solid rgba(202, 202, 202, 0.16)"
+        : "1px solid rgba(77, 55, 34, 0.15)",
       text: "var(--text-color)",
       muted: isDarkMode ? "rgba(202, 202, 202, 0.76)" : "#6b625b",
       accent: "#b85c38",
       accentDark: isDarkMode ? "#d79a7f" : "#7f351b",
       chartBase: isDarkMode ? "#2f261d" : "#f3e8da",
-      chartCenter: isDarkMode ? "rgba(26, 22, 18, 0.98)" : "rgba(255, 252, 247, 0.98)",
+      chartCenter: isDarkMode
+        ? "rgba(26, 22, 18, 0.98)"
+        : "rgba(255, 252, 247, 0.98)",
       summaryHighlight: "linear-gradient(135deg, #b85c38 0%, #d47a4d 100%)",
       yearlyHighlight: isDarkMode
         ? "linear-gradient(135deg, rgba(184, 92, 56, 0.34) 0%, rgba(212, 122, 77, 0.28) 100%)"
@@ -358,11 +421,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       resultHighlight: isDarkMode
         ? "linear-gradient(135deg, rgba(184, 92, 56, 0.26), rgba(212, 122, 77, 0.18))"
         : "linear-gradient(135deg, rgba(184, 92, 56, 0.12), rgba(212, 122, 77, 0.18))",
-      tooltipBackground: isDarkMode ? "rgba(31, 25, 20, 0.98)" : "rgba(255, 252, 247, 0.98)",
-      shadow: isDarkMode ? "0 24px 60px rgba(0, 0, 0, 0.34)" : "0 24px 60px rgba(91, 60, 34, 0.12)",
-      missionShadow: isDarkMode ? "0 14px 34px rgba(0, 0, 0, 0.28)" : "0 14px 34px rgba(91, 60, 34, 0.08)",
+      tooltipBackground: isDarkMode
+        ? "rgba(31, 25, 20, 0.98)"
+        : "rgba(255, 252, 247, 0.98)",
+      shadow: isDarkMode
+        ? "0 24px 60px rgba(0, 0, 0, 0.34)"
+        : "0 24px 60px rgba(91, 60, 34, 0.12)",
+      missionShadow: isDarkMode
+        ? "0 14px 34px rgba(0, 0, 0, 0.28)"
+        : "0 14px 34px rgba(91, 60, 34, 0.08)",
     }),
-    [isDarkMode]
+    [isDarkMode],
   );
 
   const cardStyle: React.CSSProperties = useMemo(
@@ -373,7 +442,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       boxShadow: palette.shadow,
       color: palette.text,
     }),
-    [palette]
+    [palette],
   );
 
   const inputContainerStyle: React.CSSProperties = useMemo(
@@ -386,7 +455,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       borderRadius: "14px",
       overflow: "hidden",
     }),
-    [palette]
+    [palette],
   );
 
   const invalidInputContainerStyle: React.CSSProperties = useMemo(
@@ -399,7 +468,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         ? "0 0 0 1px rgba(222, 114, 114, 0.14)"
         : "0 0 0 1px rgba(196, 73, 73, 0.08)",
     }),
-    [inputContainerStyle, isDarkMode]
+    [inputContainerStyle, isDarkMode],
   );
 
   const prefixStyle: React.CSSProperties = useMemo(
@@ -415,7 +484,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       borderRight: palette.softBorder,
       background: "rgba(0, 0, 0, 0.04)",
     }),
-    [palette]
+    [palette],
   );
 
   const selectStyle: React.CSSProperties = useMemo(
@@ -437,7 +506,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       WebkitAppearance: "none",
       MozAppearance: "none",
     }),
-    [palette]
+    [palette],
   );
 
   useEffect(() => {
@@ -445,7 +514,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   }, [values, recurringType, customVehicleDraft]);
 
   useEffect(() => {
-    const tooltipElements = document.querySelectorAll<HTMLElement>(".tooltipped");
+    const tooltipElements =
+      document.querySelectorAll<HTMLElement>(".tooltipped");
     tooltipElements.forEach((element) => {
       M.Tooltip.getInstance(element)?.destroy();
     });
@@ -469,15 +539,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       setValues((current) =>
         current.fuelUnitPrice === DEFAULT_FUEL_PRICES[current.fuelType]
           ? current
-          : { ...current, fuelUnitPrice: DEFAULT_FUEL_PRICES[current.fuelType] }
+          : {
+              ...current,
+              fuelUnitPrice: DEFAULT_FUEL_PRICES[current.fuelType],
+            },
       );
     };
 
     const fetchFuelPrice = async () => {
       try {
-        const response = await fetch("https://www.fueleconomy.gov/ws/rest/fuelprices", {
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          "https://www.fueleconomy.gov/ws/rest/fuelprices",
+          {
+            signal: controller.signal,
+          },
+        );
 
         if (!response.ok) {
           throw new Error("Fuel price lookup failed");
@@ -495,7 +571,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           premium: "premium",
           regular: "regular",
         };
-        const priceNode = xml.querySelector(nodeNameByFuelType[values.fuelType]);
+        const priceNode = xml.querySelector(
+          nodeNameByFuelType[values.fuelType],
+        );
         const parsedPrice = Number(priceNode?.textContent ?? "");
 
         if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
@@ -505,7 +583,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         setValues((current) =>
           current.fuelType === values.fuelType
             ? { ...current, fuelUnitPrice: parsedPrice }
-            : current
+            : current,
         );
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -572,7 +650,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               fuelUnitPrice:
                 parsedCustom.values.fuelUnitPrice ??
                 DEFAULT_FUEL_PRICES[
-                  (parsedCustom.values.fuelType ?? defaultValues.fuelType) as FuelType
+                  (parsedCustom.values.fuelType ??
+                    defaultValues.fuelType) as FuelType
                 ],
             },
           } as CustomVehicle;
@@ -601,14 +680,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             fuelUnitPrice:
               parsedState.values.fuelUnitPrice ??
               DEFAULT_FUEL_PRICES[
-                (parsedState.values.fuelType ?? defaultValues.fuelType) as FuelType
+                (parsedState.values.fuelType ??
+                  defaultValues.fuelType) as FuelType
               ],
           });
           setRecurringType(parsedState.recurringType);
           setTripType(parsedState.tripType ?? "oneWay");
           setSelectedSource(parsedState.selectedSource ?? "default");
           setSelectedTemplateId(parsedState.selectedTemplateId ?? null);
-          if (parsedState.selectedSource === "template" && parsedState.selectedTemplateId) {
+          if (
+            parsedState.selectedSource === "template" &&
+            parsedState.selectedTemplateId
+          ) {
             setStartupTemplateId(parsedState.selectedTemplateId);
           }
 
@@ -646,16 +729,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       return;
     }
 
-    breakdownModalInstanceRef.current = M.Modal.init(breakdownModalRef.current, {
-      dismissible: true,
-      preventScrolling: false,
-      onOpenStart: () => {
-        cleanupModalArtifacts();
+    breakdownModalInstanceRef.current = M.Modal.init(
+      breakdownModalRef.current,
+      {
+        dismissible: true,
+        preventScrolling: false,
+        onOpenStart: () => {
+          cleanupModalArtifacts();
+        },
+        onCloseEnd: () => {
+          cleanupModalArtifacts();
+        },
       },
-      onCloseEnd: () => {
-        cleanupModalArtifacts();
-      },
-    });
+    );
 
     return () => {
       cleanupModalArtifacts();
@@ -678,7 +764,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     };
 
     localStorage.setItem(CAR_COST_STORAGE_KEY, JSON.stringify(nextState));
-  }, [hasResolvedStartupChoice, recurringType, selectedSource, selectedTemplateId, tripType, values]);
+  }, [
+    hasResolvedStartupChoice,
+    recurringType,
+    selectedSource,
+    selectedTemplateId,
+    tripType,
+    values,
+  ]);
 
   const handleChange =
     (name: keyof CarCostValues) =>
@@ -699,7 +792,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       }));
     };
 
-  const handleNumericInputFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+  const handleNumericInputFocus = (
+    event: React.FocusEvent<HTMLInputElement>,
+  ) => {
     if (event.target.value === "0") {
       event.target.select();
     }
@@ -709,23 +804,33 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     source: "default" | "template" | "custom",
     nextValues: CarCostValues,
     nextRecurringType: RecurringType,
-    nextTemplateId: string | null
+    nextTemplateId: string | null,
   ) => {
     setSelectedSource(source);
     setSelectedTemplateId(nextTemplateId);
     setValues(nextValues);
     setRecurringType(nextRecurringType);
     if (source === "default") {
-      setCustomVehicleDraft({ year: "", make: "", model: "", fuelType: "regular" });
+      setCustomVehicleDraft({
+        year: "",
+        make: "",
+        model: "",
+        fuelType: "regular",
+      });
     }
     setHasResolvedStartupChoice(true);
     modalInstanceRef.current?.close();
   };
 
   const handleLoadStartupTemplate = () => {
-    const matchingTemplate = typedTemplates.find((template) => template.id === startupTemplateId);
+    const matchingTemplate = typedTemplates.find(
+      (template) => template.id === startupTemplateId,
+    );
     if (!matchingTemplate) {
-      M.toast({ html: "Choose a template to get started", displayLength: 2500 });
+      M.toast({
+        html: "Choose a template to get started",
+        displayLength: 2500,
+      });
       return;
     }
 
@@ -734,7 +839,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       "template",
       applyPlannerValues(matchingTemplate.values, plannerValues),
       recurringType,
-      matchingTemplate.id
+      matchingTemplate.id,
     );
   };
 
@@ -760,7 +865,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setValues(applyPlannerValues(template.values, plannerValues));
   };
 
-  const handleFuelTypeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleFuelTypeChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     const nextFuelType = event.target.value as FuelType;
     setValues((current) => ({
       ...current,
@@ -794,7 +901,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         ? "Enter a year."
         : !Number.isInteger(parsedCustomVehicleYear)
           ? "Year must be a whole number."
-          : parsedCustomVehicleYear < 1886 || parsedCustomVehicleYear > currentModelYear
+          : parsedCustomVehicleYear < 1886 ||
+              parsedCustomVehicleYear > currentModelYear
             ? `Year must be between 1886 and ${currentModelYear}.`
             : "",
     make: customVehicleDraft.make.trim().length === 0 ? "Enter a make." : "",
@@ -806,13 +914,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     customVehicleFieldErrors.model === "";
 
   const customVehicleValidationMessage =
-    customVehicleFieldErrors.year || customVehicleFieldErrors.make || customVehicleFieldErrors.model;
+    customVehicleFieldErrors.year ||
+    customVehicleFieldErrors.make ||
+    customVehicleFieldErrors.model;
 
   const handleStartWithOwnCar = () => {
     if (!isCustomVehicleValid) {
       setCustomVehicleTouched({ year: true, make: true, model: true });
       setShowCustomVehicleValidation(true);
-      M.toast({ html: "Enter a valid year, make, and model", displayLength: 2500 });
+      M.toast({
+        html: "Enter a valid year, make, and model",
+        displayLength: 2500,
+      });
       return;
     }
 
@@ -832,8 +945,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     };
 
     setSavedCustomVehicle(nextCustomVehicle);
-    localStorage.setItem(CAR_COST_CUSTOM_KEY, JSON.stringify(nextCustomVehicle));
-    applySelection("custom", nextCustomVehicle.values, "day", "custom");
+    localStorage.setItem(
+      CAR_COST_CUSTOM_KEY,
+      JSON.stringify(nextCustomVehicle),
+    );
+    applySelection("custom", nextCustomVehicle.values, "year", "custom");
     M.toast({ html: `Loaded ${nextCustomVehicle.title}`, displayLength: 2500 });
   };
 
@@ -849,9 +965,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     const tripMultiplier = tripType === "oneWay" ? 2 : 1;
     const selectedTripDistance = values.tripDistance * tripMultiplier;
     const fuelCostPerMile =
-      values.fuelEfficiency > 0 ? values.fuelUnitPrice / values.fuelEfficiency : 0;
+      values.fuelEfficiency > 0
+        ? values.fuelUnitPrice / values.fuelEfficiency
+        : 0;
     const oilCostPerMile =
-      values.oilChangeInterval > 0 ? values.oilChangeCost / values.oilChangeInterval : 0;
+      values.oilChangeInterval > 0
+        ? values.oilChangeCost / values.oilChangeInterval
+        : 0;
     const tireCostPerMile =
       values.tireInterval > 0 ? values.tireCost / values.tireInterval : 0;
     const miscCostPerMile =
@@ -859,7 +979,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         ? values.miscMaintenanceCost / values.miscMaintenanceInterval
         : 0;
     const depreciationCostPerMile =
-      isToggleEnabled(values.includeDepreciation) && values.depreciationInterval > 0
+      isToggleEnabled(values.includeDepreciation) &&
+      values.depreciationInterval > 0
         ? Math.max(values.purchasePrice - values.resaleValue, 0) /
           values.depreciationInterval
         : 0;
@@ -875,18 +996,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       week: values.recurringMiles * 52,
       month: values.recurringMiles * 12,
       year: values.recurringMiles,
+      weekday: values.recurringMiles * 5 * 52,
     };
 
     const annualMileage = annualMileageByType[recurringType];
-    const annualFixedCosts =
-      isToggleEnabled(values.includeAnnualOwnership)
-        ? values.annualInsurance +
-          values.annualRegistration +
-          values.annualParking +
-          values.annualInspection +
-          values.annualRoadside
-        : 0;
-    const fixedCostPerMile = annualMileage > 0 ? annualFixedCosts / annualMileage : 0;
+    const annualFixedCosts = isToggleEnabled(values.includeAnnualOwnership)
+      ? values.annualInsurance +
+        values.annualRegistration +
+        values.annualParking +
+        values.annualInspection +
+        values.annualRoadside
+      : 0;
+    const fixedCostPerMile =
+      annualMileage > 0 ? annualFixedCosts / annualMileage : 0;
     const trueCostPerMile = variableCostPerMile + fixedCostPerMile;
     const tripCost = selectedTripDistance * trueCostPerMile;
     const recurringDrivingCosts = {
@@ -926,8 +1048,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       week: calculations.annualMileage / 52,
       month: calculations.annualMileage / 12,
       year: calculations.annualMileage,
+      weekday: calculations.annualMileage / 260,
     }),
-    [calculations.annualMileage]
+    [calculations.annualMileage],
   );
 
   const recurringOwnershipByPeriod: Record<RecurringType, number> = useMemo(
@@ -936,8 +1059,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       week: calculations.annualFixedCosts / 52,
       month: calculations.annualFixedCosts / 12,
       year: calculations.annualFixedCosts,
+      weekday: calculations.annualFixedCosts / 260,
     }),
-    [calculations.annualFixedCosts]
+    [calculations.annualFixedCosts],
   );
 
   const breakdownModes: CostBreakdownViewerMode[] = useMemo(() => {
@@ -956,19 +1080,27 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       tires: number,
       misc: number,
       depreciation: number,
-      ownership: number
+      ownership: number,
     ) =>
       [
         { label: "Fuel", value: fuel, color: colors.fuel },
         { label: "Oil changes", value: oil, color: colors.oil },
         { label: "Tires", value: tires, color: colors.tires },
         { label: "Misc. maintenance", value: misc, color: colors.misc },
-        { label: "Depreciation", value: depreciation, color: colors.depreciation },
-        { label: "Ownership overhead", value: ownership, color: colors.ownership },
+        {
+          label: "Depreciation",
+          value: depreciation,
+          color: colors.depreciation,
+        },
+        {
+          label: "Ownership overhead",
+          value: ownership,
+          color: colors.ownership,
+        },
       ].filter((item) => item.value > 0);
 
     const recurringModeMeta: Record<
-      RecurringType,
+      "day" | "week" | "month" | "year",
       { label: string; description: string; unitLabel: string }
     > = {
       day: {
@@ -997,26 +1129,28 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       },
     };
 
-    const recurringModes = (["day", "week", "month", "year"] as RecurringType[]).map((key) => {
-      const miles = recurringMilesByPeriod[key];
-      const ownership = recurringOwnershipByPeriod[key];
+    const recurringModes = (["day", "week", "month", "year"] as const).map(
+      (key) => {
+        const miles = recurringMilesByPeriod[key];
+        const ownership = recurringOwnershipByPeriod[key];
 
-      return {
-        key,
-        label: recurringModeMeta[key].label,
-        description: recurringModeMeta[key].description,
-        unitLabel: recurringModeMeta[key].unitLabel,
-        total: calculations.recurringTrueCosts[key],
-        items: buildItems(
-          calculations.fuelCostPerMile * miles,
-          calculations.oilCostPerMile * miles,
-          calculations.tireCostPerMile * miles,
-          calculations.miscCostPerMile * miles,
-          calculations.depreciationCostPerMile * miles,
-          ownership
-        ),
-      };
-    });
+        return {
+          key,
+          label: recurringModeMeta[key].label,
+          description: recurringModeMeta[key].description,
+          unitLabel: recurringModeMeta[key].unitLabel,
+          total: calculations.recurringTrueCosts[key],
+          items: buildItems(
+            calculations.fuelCostPerMile * miles,
+            calculations.oilCostPerMile * miles,
+            calculations.tireCostPerMile * miles,
+            calculations.miscCostPerMile * miles,
+            calculations.depreciationCostPerMile * miles,
+            ownership,
+          ),
+        };
+      },
+    );
 
     return [
       {
@@ -1032,16 +1166,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           calculations.tireCostPerMile,
           calculations.miscCostPerMile,
           calculations.depreciationCostPerMile,
-          calculations.fixedCostPerMile
+          calculations.fixedCostPerMile,
         ),
       },
       {
         key: "trip",
         label: "Trip",
-        description:
-          `This allocates the selected trip distance of ${calculations.selectedTripDistance.toFixed(
-            0
-          )} miles across fuel, maintenance, depreciation, and ownership overhead.`,
+        description: `This allocates the selected trip distance of ${calculations.selectedTripDistance.toFixed(
+          0,
+        )} miles across fuel, maintenance, depreciation, and ownership overhead.`,
         unitLabel: `${calculations.selectedTripDistance.toFixed(0)} mi trip`,
         total: calculations.tripCost,
         items: buildItems(
@@ -1049,8 +1182,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           calculations.oilCostPerMile * calculations.selectedTripDistance,
           calculations.tireCostPerMile * calculations.selectedTripDistance,
           calculations.miscCostPerMile * calculations.selectedTripDistance,
-          calculations.depreciationCostPerMile * calculations.selectedTripDistance,
-          calculations.fixedCostPerMile * calculations.selectedTripDistance
+          calculations.depreciationCostPerMile *
+            calculations.selectedTripDistance,
+          calculations.fixedCostPerMile * calculations.selectedTripDistance,
         ),
       },
       ...recurringModes,
@@ -1071,15 +1205,16 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   ]);
 
   const filteredBreakdownModalModes = useMemo(
-    () => breakdownModes.filter((mode) => breakdownModalModes.includes(mode.key)),
-    [breakdownModalModes, breakdownModes]
+    () =>
+      breakdownModes.filter((mode) => breakdownModalModes.includes(mode.key)),
+    [breakdownModalModes, breakdownModes],
   );
 
   const openBreakdownModal = (
     mode: BreakdownMode,
     title: string,
     visibleModes: BreakdownMode[],
-    insightCategory: InsightCategory | null = null
+    insightCategory: InsightCategory | null = null,
   ) => {
     cleanupModalArtifacts();
     setBreakdownModalMode(mode);
@@ -1103,7 +1238,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     },
   ];
 
-  const primarySummaryCard = summaryCards.find((card) => card.highlight) ?? summaryCards[0];
+  const primarySummaryCard =
+    summaryCards.find((card) => card.highlight) ?? summaryCards[0];
   const secondarySummaryCards = summaryCards.filter((card) => !card.highlight);
 
   const templateOptions = [
@@ -1118,18 +1254,23 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const currentVehicleLabel =
     selectedSource === "custom"
-      ? savedCustomVehicle?.title ?? "Your vehicle"
+      ? (savedCustomVehicle?.title ?? "Your vehicle")
       : (() => {
           const matchingTemplate = typedTemplates.find(
-            (template) => template.id === selectedTemplateId
+            (template) => template.id === selectedTemplateId,
           );
           return matchingTemplate
             ? `${matchingTemplate.year} ${matchingTemplate.make} ${matchingTemplate.model}`
             : "Vehicle template";
         })();
 
+  const recurringBreakdownMode: BreakdownMode =
+    recurringType === "weekday" ? "day" : recurringType;
+
   const fuelEfficiencyLabel =
-    values.fuelType === "electric" ? "Efficiency (mi/kWh)" : "Fuel mileage (MPG)";
+    values.fuelType === "electric"
+      ? "Efficiency (mi/kWh)"
+      : "Fuel mileage (MPG)";
   const fuelPriceLabel =
     values.fuelType === "electric"
       ? "Electricity cost per kWh"
@@ -1172,7 +1313,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     boxShadow: "none",
   });
 
-  const insights: InsightCardData[] = (insightsMetadata as InsightDefinition[]).map((item) => {
+  const insights: InsightCardData[] = (
+    insightsMetadata as InsightDefinition[]
+  ).map((item) => {
     const difference = calculations.trueCostPerMile - item.benchmark;
     const isAbove = difference > 0;
 
@@ -1190,7 +1333,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   });
 
   const modalInsights = breakdownInsightCategory
-    ? insights.filter((insight) => insight.associatedCategories.includes(breakdownInsightCategory))
+    ? insights.filter((insight) =>
+        insight.associatedCategories.includes(breakdownInsightCategory),
+      )
     : [];
 
   return (
@@ -1229,21 +1374,43 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           }}
         >
           <h4>Choose how you want to get started</h4>
-          <p style={{ color: palette.muted, display: isMobileView ? "none" : "block" }}>
-            You can load a presaved template, or enter your own car and
-            begin with a fresh calculator state.
+          <p
+            style={{
+              color: palette.muted,
+              display: isMobileView ? "none" : "block",
+            }}
+          >
+            You can load a presaved template, or enter your own car and begin
+            with a fresh calculator state.
           </p>
           <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
             <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
-              <div style={{ ...cardStyle, padding: "1.25rem", height: "100%", background: palette.subtlePanel }}>
+              <div
+                style={{
+                  ...cardStyle,
+                  padding: "1.25rem",
+                  height: "100%",
+                  background: palette.subtlePanel,
+                }}
+              >
                 <h5 style={{ marginTop: 0 }}>Use a presaved template</h5>
-                <p style={{ color: palette.muted, fontSize: "0.9rem", lineHeight: 1.45 }}>
-                  Pick one of the built-in vehicles to see how the calculator behaves
-                  with realistic sample values.
+                <p
+                  style={{
+                    color: palette.muted,
+                    fontSize: "0.9rem",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Pick one of the built-in vehicles to see how the calculator
+                  behaves with realistic sample values.
                 </p>
                 <label
                   htmlFor="startupTemplate"
-                  style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                  style={{
+                    display: "block",
+                    fontWeight: 600,
+                    marginBottom: "0.45rem",
+                  }}
                 >
                   Example vehicle
                 </label>
@@ -1252,7 +1419,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     id="startupTemplate"
                     className="browser-default"
                     value={startupTemplateId}
-                    onChange={(event) => setStartupTemplateId(event.target.value)}
+                    onChange={(event) =>
+                      setStartupTemplateId(event.target.value)
+                    }
                     style={{ ...selectStyle, paddingRight: "2.75rem" }}
                   >
                     {typedTemplates.map((template) => (
@@ -1288,23 +1457,42 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             </div>
 
             <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
-              <div style={{ ...cardStyle, padding: "1.25rem", height: "100%", background: palette.subtlePanel }}>
+              <div
+                style={{
+                  ...cardStyle,
+                  padding: "1.25rem",
+                  height: "100%",
+                  background: palette.subtlePanel,
+                }}
+              >
                 <h5 style={{ marginTop: 0 }}>Check with my own car</h5>
-                <p style={{ color: palette.muted, fontSize: "0.9rem", lineHeight: 1.45 }}>
-                  Enter your vehicle details to begin with a fresh state tied to your
-                  own car.
+                <p
+                  style={{
+                    color: palette.muted,
+                    fontSize: "0.9rem",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Enter your vehicle details to begin with a fresh state tied to
+                  your own car.
                 </p>
                 <div className="row" style={{ marginBottom: 0 }}>
                   <div className="col s12">
                     <label
                       htmlFor="customVehicleYear"
-                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                      style={{
+                        display: "block",
+                        fontWeight: 600,
+                        marginBottom: "0.45rem",
+                      }}
                     >
                       Year
                     </label>
                     <div
                       style={
-                        showCustomVehicleValidation && customVehicleTouched.year && customVehicleFieldErrors.year
+                        showCustomVehicleValidation &&
+                        customVehicleTouched.year &&
+                        customVehicleFieldErrors.year
                           ? invalidInputContainerStyle
                           : inputContainerStyle
                       }
@@ -1327,7 +1515,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     {showCustomVehicleValidation &&
                     customVehicleTouched.year &&
                     customVehicleFieldErrors.year ? (
-                      <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                      <small
+                        style={{
+                          display: "block",
+                          color: "#c44949",
+                          marginTop: "0.35rem",
+                        }}
+                      >
                         {customVehicleFieldErrors.year}
                       </small>
                     ) : null}
@@ -1335,13 +1529,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   <div className="col s12 m6">
                     <label
                       htmlFor="customVehicleMake"
-                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                      style={{
+                        display: "block",
+                        fontWeight: 600,
+                        marginBottom: "0.45rem",
+                      }}
                     >
                       Make
                     </label>
                     <div
                       style={
-                        showCustomVehicleValidation && customVehicleTouched.make && customVehicleFieldErrors.make
+                        showCustomVehicleValidation &&
+                        customVehicleTouched.make &&
+                        customVehicleFieldErrors.make
                           ? invalidInputContainerStyle
                           : inputContainerStyle
                       }
@@ -1360,7 +1560,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     {showCustomVehicleValidation &&
                     customVehicleTouched.make &&
                     customVehicleFieldErrors.make ? (
-                      <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                      <small
+                        style={{
+                          display: "block",
+                          color: "#c44949",
+                          marginTop: "0.35rem",
+                        }}
+                      >
                         {customVehicleFieldErrors.make}
                       </small>
                     ) : null}
@@ -1368,13 +1574,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   <div className="col s12 m6">
                     <label
                       htmlFor="customVehicleModel"
-                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                      style={{
+                        display: "block",
+                        fontWeight: 600,
+                        marginBottom: "0.45rem",
+                      }}
                     >
                       Model
                     </label>
                     <div
                       style={
-                        showCustomVehicleValidation && customVehicleTouched.model && customVehicleFieldErrors.model
+                        showCustomVehicleValidation &&
+                        customVehicleTouched.model &&
+                        customVehicleFieldErrors.model
                           ? invalidInputContainerStyle
                           : inputContainerStyle
                       }
@@ -1393,7 +1605,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     {showCustomVehicleValidation &&
                     customVehicleTouched.model &&
                     customVehicleFieldErrors.model ? (
-                      <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                      <small
+                        style={{
+                          display: "block",
+                          color: "#c44949",
+                          marginTop: "0.35rem",
+                        }}
+                      >
                         {customVehicleFieldErrors.model}
                       </small>
                     ) : null}
@@ -1401,11 +1619,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   <div className="col s12">
                     <label
                       htmlFor="customVehicleFuelType"
-                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                      style={{
+                        display: "block",
+                        fontWeight: 600,
+                        marginBottom: "0.45rem",
+                      }}
                     >
                       Fuel type
                     </label>
-                    <div style={{ ...inputContainerStyle, position: "relative" }}>
+                    <div
+                      style={{ ...inputContainerStyle, position: "relative" }}
+                    >
                       <select
                         id="customVehicleFuelType"
                         className="browser-default"
@@ -1444,46 +1668,66 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     </div>
                   </div>
                 </div>
-                <p style={{ color: palette.muted, fontSize: "0.92rem", margin: "0.5rem 0 0" }}>
+                <p
+                  style={{
+                    color: palette.muted,
+                    fontSize: "0.92rem",
+                    margin: "0.5rem 0 0",
+                  }}
+                >
                   Year must be between 1886 and {currentModelYear}.
                 </p>
                 {showCustomVehicleValidation && !isCustomVehicleValid ? (
-                  <p style={{ color: "#c44949", fontSize: "0.88rem", margin: "0.5rem 0 0" }}>
+                  <p
+                    style={{
+                      color: "#c44949",
+                      fontSize: "0.88rem",
+                      margin: "0.5rem 0 0",
+                    }}
+                  >
                     {customVehicleValidationMessage}
                   </p>
                 ) : null}
                 <div
                   onMouseDown={() => {
                     if (!isCustomVehicleValid) {
-                      setCustomVehicleTouched({ year: true, make: true, model: true });
+                      setCustomVehicleTouched({
+                        year: true,
+                        make: true,
+                        model: true,
+                      });
                       setShowCustomVehicleValidation(true);
                     }
                   }}
                   onTouchStart={() => {
                     if (!isCustomVehicleValid) {
-                      setCustomVehicleTouched({ year: true, make: true, model: true });
+                      setCustomVehicleTouched({
+                        year: true,
+                        make: true,
+                        model: true,
+                      });
                       setShowCustomVehicleValidation(true);
                     }
                   }}
                 >
-                <button
-                  type="button"
-                  className="waves-effect waves-light btn primaryColor"
-                  onClick={handleStartWithOwnCar}
-                  disabled={!isCustomVehicleValid}
-                  style={{
-                    ...solidPrimaryButtonStyle,
-                    opacity: isCustomVehicleValid ? 1 : 0.65,
-                  }}
-                >
-                  Use my vehicle
-                </button>
+                  <button
+                    type="button"
+                    className="waves-effect waves-light btn primaryColor"
+                    onClick={handleStartWithOwnCar}
+                    disabled={!isCustomVehicleValid}
+                    style={{
+                      ...solidPrimaryButtonStyle,
+                      opacity: isCustomVehicleValid ? 1 : 0.65,
+                    }}
+                  >
+                    Use my vehicle
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      <div
+        <div
           className="modal-footer"
           style={{
             background: palette.panelBackground,
@@ -1492,7 +1736,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         />
       </div>
 
-      <div id="car-cost-breakdown-modal" className="modal modal-fixed-footer" ref={breakdownModalRef}>
+      <div
+        id="car-cost-breakdown-modal"
+        className="modal modal-fixed-footer"
+        ref={breakdownModalRef}
+      >
         <div
           className="modal-content"
           style={{
@@ -1543,7 +1791,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           <button
             type="button"
             className="modal-close waves-effect btn-flat"
-            style={{ color: palette.accentDark, fontWeight: 700, textTransform: "none" }}
+            style={{
+              color: palette.accentDark,
+              fontWeight: 700,
+              textTransform: "none",
+            }}
           >
             Close
           </button>
@@ -1590,14 +1842,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 >
                   Selected vehicle
                 </span>
-                <strong style={{ display: "block", fontSize: "1.15rem" }}>{currentVehicleLabel}</strong>
+                <strong style={{ display: "block", fontSize: "1.15rem" }}>
+                  {currentVehicleLabel}
+                </strong>
               </div>
             ) : null}
             <div style={{ flex: isMobileView ? "1 1 0" : "1 1 280px" }}>
               {!isMobileView ? (
                 <label
                   htmlFor="vehicleTemplateSwitcher"
-                  style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                  style={{
+                    display: "block",
+                    fontWeight: 600,
+                    marginBottom: "0.45rem",
+                  }}
                 >
                   Switch vehicle
                 </label>
@@ -1609,7 +1867,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   value={
                     selectedSource === "custom"
                       ? "custom"
-                      : selectedTemplateId ?? typedTemplates[0]?.id ?? ""
+                      : (selectedTemplateId ?? typedTemplates[0]?.id ?? "")
                   }
                   onChange={(event) => handleTemplateSwitch(event.target.value)}
                   style={{ ...selectStyle, paddingRight: "2.75rem" }}
@@ -1658,7 +1916,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               className="tooltipped"
               data-position="bottom"
               data-tooltip={`True cost per mile: ${formatCurrency(
-                calculations.trueCostPerMile
+                calculations.trueCostPerMile,
               )} per mile`}
             >
               <strong
@@ -1699,8 +1957,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               Estimate what your vehicle really costs per mile.
             </h2>
             <p style={{ color: palette.muted, lineHeight: 1.6 }}>
-              Plug in fuel, maintenance, tires, depreciation, and yearly ownership
-              costs to get a clearer picture of what driving really costs.
+              Plug in fuel, maintenance, tires, depreciation, and yearly
+              ownership costs to get a clearer picture of what driving really
+              costs.
             </p>
             <div
               style={{
@@ -1711,17 +1970,26 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 boxShadow: palette.missionShadow,
               }}
             >
-              <h3 style={{ marginTop: 0, fontSize: "1.2rem" }}>Why I built this</h3>
+              <h3 style={{ marginTop: 0, fontSize: "1.2rem" }}>
+                Why I built this
+              </h3>
               <p style={{ color: palette.muted, lineHeight: 1.65 }}>
                 I built this to help people understand the true cost of driving
-                their vehicle. Most people focus on fuel first, and while that is a
-                major part of the equation, it often does not tell the full story.
+                their vehicle. Most people focus on fuel first, and while that
+                is a major part of the equation, it often does not tell the full
+                story.
               </p>
-              <p style={{ color: palette.muted, lineHeight: 1.65, marginBottom: 0 }}>
+              <p
+                style={{
+                  color: palette.muted,
+                  lineHeight: 1.65,
+                  marginBottom: 0,
+                }}
+              >
                 That gap matters even more in the gig economy, where drivers may
-                overestimate their real profit, and for families deciding whether it
-                makes more sense to take their daily driver or rent a vehicle for a
-                longer trip.
+                overestimate their real profit, and for families deciding
+                whether it makes more sense to take their daily driver or rent a
+                vehicle for a longer trip.
               </p>
             </div>
           </div>
@@ -1787,7 +2055,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     >
                       {card.label}
                     </span>
-                    <strong style={{ display: "block", fontSize: "1.35rem", lineHeight: 1.05 }}>
+                    <strong
+                      style={{
+                        display: "block",
+                        fontSize: "1.35rem",
+                        lineHeight: 1.05,
+                      }}
+                    >
                       {formatCurrency(card.value)}
                     </strong>
                     <small
@@ -1809,14 +2083,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           {sections.map((section) => (
-            <div key={section.title} className="col s12 m6 xl4" style={{ marginBottom: "1rem" }}>
+            <div
+              key={section.title}
+              className="col s12 m6 xl4"
+              style={{ marginBottom: "1rem" }}
+            >
               <section
                 style={{
                   ...cardStyle,
                   padding: "1.5rem",
                   height: "100%",
                   opacity:
-                    section.title === "Depreciation" && !isToggleEnabled(values.includeDepreciation)
+                    section.title === "Depreciation" &&
+                    !isToggleEnabled(values.includeDepreciation)
                       ? 0.58
                       : section.title === "Annual ownership costs" &&
                           !isToggleEnabled(values.includeAnnualOwnership)
@@ -1825,7 +2104,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>{section.title}</h3>
-                <p style={{ color: palette.muted, lineHeight: 1.5 }}>{section.description}</p>
+                <p style={{ color: palette.muted, lineHeight: 1.5 }}>
+                  {section.description}
+                </p>
                 {section.title === "Depreciation" ? (
                   <div style={{ marginBottom: "1rem" }}>
                     <label
@@ -1841,7 +2122,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         checked={isToggleEnabled(values.includeDepreciation)}
                         onChange={handleToggleChange("includeDepreciation")}
                       />
-                      <span style={{ color: palette.text }}>Include depreciation</span>
+                      <span style={{ color: palette.text }}>
+                        Include depreciation
+                      </span>
                     </label>
                   </div>
                 ) : null}
@@ -1860,12 +2143,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         checked={isToggleEnabled(values.includeAnnualOwnership)}
                         onChange={handleToggleChange("includeAnnualOwnership")}
                       />
-                      <span style={{ color: palette.text }}>Include annual ownership costs</span>
+                      <span style={{ color: palette.text }}>
+                        Include annual ownership costs
+                      </span>
                     </label>
                   </div>
                 ) : null}
                 {section.title === "Running costs" ? (
-                  <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "1rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
                     <div>
                       <label
                         htmlFor="fuelType"
@@ -1877,7 +2168,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       >
                         Fuel type
                       </label>
-                      <div style={{ ...inputContainerStyle, position: "relative" }}>
+                      <div
+                        style={{ ...inputContainerStyle, position: "relative" }}
+                      >
                         <select
                           id="fuelType"
                           className="browser-default"
@@ -2015,13 +2308,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           </i>
                         ) : null}
                       </label>
-                      <div
-                        style={inputContainerStyle}
-                      >
+                      <div style={inputContainerStyle}>
                         {field.prefix ? (
-                          <span style={prefixStyle}>
-                            {field.prefix}
-                          </span>
+                          <span style={prefixStyle}>{field.prefix}</span>
                         ) : null}
                         <input
                           id={field.name}
@@ -2050,7 +2339,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           <div className="col s12 xl6" style={{ marginBottom: "1rem" }}>
-            <section style={{ ...cardStyle, padding: "1.5rem", height: "100%" }}>
+            <section
+              style={{ ...cardStyle, padding: "1.5rem", height: "100%" }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -2069,7 +2360,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       "trip",
                       "Trip cost breakdown",
                       ["mile", "trip"],
-                      "tripEstimate"
+                      "tripEstimate",
                     )
                   }
                   style={{
@@ -2081,7 +2372,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 >
                   <i
                     className="material-icons left"
-                    style={{ marginRight: "0.3rem", fontSize: "1.1rem", lineHeight: "inherit" }}
+                    style={{
+                      marginRight: "0.3rem",
+                      fontSize: "1.1rem",
+                      lineHeight: "inherit",
+                    }}
                   >
                     open_in_full
                   </i>
@@ -2089,10 +2384,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 </button>
               </div>
               <p style={{ color: palette.muted, lineHeight: 1.5 }}>
-                Multiply your true cost per mile by a route distance to estimate the
-                total cost of the trip.
+                Multiply your true cost per mile by a route distance to estimate
+                the total cost of the trip.
               </p>
-              <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0.65rem",
+                  flexWrap: "wrap",
+                  marginBottom: "1rem",
+                }}
+              >
                 <button
                   type="button"
                   className="btn-flat"
@@ -2112,15 +2414,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               </div>
               <label
                 htmlFor="tripDistance"
-                style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                style={{
+                  display: "block",
+                  fontWeight: 600,
+                  marginBottom: "0.45rem",
+                }}
               >
                 {tripType === "roundTrip"
                   ? "Round trip distance (miles)"
                   : "One-way trip distance (miles)"}
               </label>
-              <div
-                style={inputContainerStyle}
-              >
+              <div style={inputContainerStyle}>
                 <input
                   id="tripDistance"
                   type="number"
@@ -2140,23 +2444,38 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   background: palette.resultHighlight,
                 }}
               >
-                <span style={{ display: "block", color: palette.muted }}>Total trip cost</span>
-                <strong style={{ display: "block", fontSize: "2rem", lineHeight: 1.1 }}>
+                <span style={{ display: "block", color: palette.muted }}>
+                  Total trip cost
+                </span>
+                <strong
+                  style={{
+                    display: "block",
+                    fontSize: "2rem",
+                    lineHeight: 1.1,
+                  }}
+                >
                   {formatCurrency(calculations.tripCost)}
                 </strong>
-                <small style={{ display: "block", color: palette.muted, marginTop: "0.4rem" }}>
+                <small
+                  style={{
+                    display: "block",
+                    color: palette.muted,
+                    marginTop: "0.4rem",
+                  }}
+                >
                   {calculations.selectedTripDistance.toFixed(0)} miles at{" "}
                   {formatCurrency(calculations.trueCostPerMile)} per mile
                 </small>
                 <p style={{ margin: "0.6rem 0 0", color: palette.muted }}>
                   {tripType === "roundTrip"
                     ? `Round trip uses your selected total distance of ${values.tripDistance.toFixed(0)} miles.`
-                    : `One-way distance is doubled to estimate the full out-and-back trip (${values.tripDistance.toFixed(0)} miles each way).`}
+                    : `One-way distance is doubled to estimate the full there-and-back trip (${values.tripDistance.toFixed(0)} miles each way).`}
                 </p>
                 <p style={{ margin: "0.35rem 0 0", color: palette.muted }}>
                   Variable-only trip cost:{" "}
                   {formatCurrency(
-                    calculations.selectedTripDistance * calculations.variableCostPerMile
+                    calculations.selectedTripDistance *
+                      calculations.variableCostPerMile,
                   )}
                 </p>
               </div>
@@ -2164,7 +2483,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           </div>
 
           <div className="col s12 xl6" style={{ marginBottom: "1rem" }}>
-            <section style={{ ...cardStyle, padding: "1.5rem", height: "100%" }}>
+            <section
+              style={{ ...cardStyle, padding: "1.5rem", height: "100%" }}
+            >
               <div
                 style={{
                   display: "flex",
@@ -2180,10 +2501,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   className="btn-flat"
                   onClick={() =>
                     openBreakdownModal(
-                      recurringType,
+                      recurringBreakdownMode,
                       "Recurring cost breakdown",
                       ["mile", "day", "week", "month", "year"],
-                      "recurringDrivingTotals"
+                      "recurringDrivingTotals",
                     )
                   }
                   style={{
@@ -2195,7 +2516,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 >
                   <i
                     className="material-icons left"
-                    style={{ marginRight: "0.3rem", fontSize: "1.1rem", lineHeight: "inherit" }}
+                    style={{
+                      marginRight: "0.3rem",
+                      fontSize: "1.1rem",
+                      lineHeight: "inherit",
+                    }}
                   >
                     open_in_full
                   </i>
@@ -2216,13 +2541,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <div style={{ flex: "1 1 220px" }}>
                   <label
                     htmlFor="recurringMiles"
-                    style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                    style={{
+                      display: "block",
+                      fontWeight: 600,
+                      marginBottom: "0.45rem",
+                    }}
                   >
                     Miles
                   </label>
-                  <div
-                    style={inputContainerStyle}
-                  >
+                  <div style={inputContainerStyle}>
                     <input
                       id="recurringMiles"
                       type="number"
@@ -2238,7 +2565,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <div style={{ flex: "1 1 220px" }}>
                   <label
                     htmlFor="recurringType"
-                    style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                    style={{
+                      display: "block",
+                      fontWeight: 600,
+                      marginBottom: "0.45rem",
+                    }}
                   >
                     Based on
                   </label>
@@ -2247,10 +2578,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       id="recurringType"
                       className="browser-default"
                       value={recurringType}
-                      onChange={(event) => setRecurringType(event.target.value as RecurringType)}
+                      onChange={(event) =>
+                        setRecurringType(event.target.value as RecurringType)
+                      }
                       style={{ ...selectStyle, paddingRight: "2.75rem" }}
                     >
                       <option value="day">Miles per day</option>
+                      <option value="weekday">Miles per weekday</option>
                       <option value="week">Miles per week</option>
                       <option value="month">Miles per month</option>
                       <option value="year">Miles per year</option>
@@ -2273,9 +2607,16 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 </div>
               </div>
 
-              <div className="row" style={{ marginTop: "1.25rem", marginBottom: 0 }}>
-                {(["day", "week", "month", "year"] as RecurringType[]).map((key) => (
-                  <div key={key} className="col s12 m6" style={{ marginBottom: "1rem" }}>
+              <div
+                className="row"
+                style={{ marginTop: "1.25rem", marginBottom: 0 }}
+              >
+                {(["day", "week", "month", "year"] as const).map((key) => (
+                  <div
+                    key={key}
+                    className="col s12 m6"
+                    style={{ marginBottom: "1rem" }}
+                  >
                     <article
                       style={{
                         ...cardStyle,
@@ -2296,7 +2637,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             key,
                             `Recurring ${key} cost breakdown`,
                             ["mile", "day", "week", "month", "year"],
-                            "recurringDrivingTotals"
+                            "recurringDrivingTotals",
                           )
                         }
                         style={{
@@ -2318,26 +2659,54 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           open_in_full
                         </i>
                       </button>
-                      <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                      <span
+                        style={{
+                          display: "block",
+                          color: palette.muted,
+                          marginBottom: "0.4rem",
+                        }}
+                      >
                         Per {key}
                       </span>
                       <strong style={{ fontSize: "1.6rem", lineHeight: 1 }}>
                         {formatCurrency(calculations.recurringTrueCosts[key])}
                       </strong>
                       <small
-                        style={{ display: "block", marginTop: "0.45rem", color: palette.muted }}
+                        style={{
+                          display: "block",
+                          marginTop: "0.45rem",
+                          color: palette.muted,
+                        }}
                       >
-                        Driving: {formatCurrency(calculations.recurringDrivingCosts[key])}
+                        Driving:{" "}
+                        {formatCurrency(
+                          calculations.recurringDrivingCosts[key],
+                        )}
                       </small>
                     </article>
                   </div>
                 ))}
               </div>
 
-              <div className="row" style={{ marginTop: "1rem", marginBottom: 0 }}>
+              <div
+                className="row"
+                style={{ marginTop: "1rem", marginBottom: 0 }}
+              >
                 <div className="col s12 m6" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                  <article
+                    style={{
+                      ...cardStyle,
+                      padding: "1rem 1.1rem",
+                      height: "100%",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: palette.muted,
+                        marginBottom: "0.4rem",
+                      }}
+                    >
                       Annual fixed ownership costs
                     </span>
                     <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
@@ -2346,8 +2715,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   </article>
                 </div>
                 <div className="col s12 m6" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                  <article
+                    style={{
+                      ...cardStyle,
+                      padding: "1rem 1.1rem",
+                      height: "100%",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: palette.muted,
+                        marginBottom: "0.4rem",
+                      }}
+                    >
                       Annual miles assumed
                     </span>
                     <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
