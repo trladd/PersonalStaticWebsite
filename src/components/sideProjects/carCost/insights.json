@@ -1,0 +1,77 @@
+[
+  {
+    "id": "irs-business-mileage-rate",
+    "label": "IRS business mileage rate",
+    "benchmark": 0.725,
+    "context": "Business reimbursement benchmark",
+    "tooltip": "IRS business mileage rates are designed as an all-in reimbursement benchmark for using a personal vehicle for business. It is a useful reference point, but your actual vehicle cost can still land above or below it.",
+    "methodology": "This benchmark uses the official IRS 2026 business standard mileage rate of 72.5 cents per mile.",
+    "sourceLabel": "IRS mileage rate announcement",
+    "sourceUrl": "https://www.irs.gov/newsroom/irs-sets-2026-business-standard-mileage-rate-at-725-cents-per-mile-up-25-cents",
+    "associatedCategories": ["global", "tripEstimate", "recurringDrivingTotals"]
+  },
+  {
+    "id": "aaa-average-new-car-cost",
+    "label": "AAA average new-car cost",
+    "benchmark": 0.77,
+    "context": "New-vehicle ownership benchmark",
+    "tooltip": "AAA's annual driving-cost studies estimate the average all-in ownership and operating cost for newer vehicles. This is a broad national benchmark rather than a model-specific number.",
+    "methodology": "This benchmark uses AAA reporting summarized at roughly 77 cents per mile for a typical newer vehicle.",
+    "sourceLabel": "AAA driving-cost summary",
+    "sourceUrl": "https://www.autoweek.com/news/a66331575/aaa-new-vehicle-ownership-costs-drop/",
+    "associatedCategories": ["global", "recurringDrivingTotals"]
+  },
+  {
+    "id": "uber-gross-earnings",
+    "label": "Uber gross earnings benchmark",
+    "benchmark": 0.9,
+    "context": "Gig earnings benchmark",
+    "tooltip": "This is a rough gross earnings benchmark, not take-home profit. Actual Uber results can vary significantly by market, demand, incentives, time of day, and how much unpaid deadhead driving is involved.",
+    "methodology": "This benchmark is a rounded planning reference derived from Gridwise reporting on Uber driver earnings. It is intended as a directional gross-revenue comparison, not a guaranteed pay rate.",
+    "sourceLabel": "Gridwise Uber earnings guide",
+    "sourceUrl": "https://gridwise.io/blog/uber-driver-pay/how-much-do-uber-drivers-make/",
+    "associatedCategories": ["global", "recurringDrivingTotals"]
+  },
+  {
+    "id": "doordash-gross-earnings",
+    "label": "DoorDash gross earnings benchmark",
+    "benchmark": 0.92,
+    "context": "Delivery earnings benchmark",
+    "tooltip": "This is a rough gross delivery benchmark before fuel, maintenance, taxes, and downtime. DoorDash results vary a lot based on zone density, batching, tip patterns, and the day or hour you drive.",
+    "methodology": "This benchmark is a rounded planning reference derived from Gridwise reporting on DoorDash driver earnings. It is meant as gross-revenue context before vehicle costs and taxes.",
+    "sourceLabel": "Gridwise DoorDash earnings guide",
+    "sourceUrl": "https://gridwise.io/blog/doordash-driver/how-much-do-doordash-drivers-make-2/",
+    "associatedCategories": ["global", "recurringDrivingTotals"]
+  },
+  {
+    "id": "economy-rental",
+    "label": "Economy rental benchmark",
+    "benchmark": 0.26,
+    "context": "Trip rental comparison",
+    "tooltip": "This one is an inference, not an official per-mile rate. It is based on a reputable average daily economy rental price benchmark translated to cents per mile using an assumed 250-mile driving day, so use it as directional context only.",
+    "methodology": "This uses a published average daily economy rental price and converts it to an estimated per-mile figure using an assumed 250-mile driving day.",
+    "sourceLabel": "Fidelity rental pricing overview",
+    "sourceUrl": "https://www.fidelity.com/learning-center/life-events/average-cost-of-rental-car",
+    "associatedCategories": ["global", "tripEstimate"]
+  },
+  {
+    "id": "full-size-suv-rental",
+    "label": "Full-size SUV rental benchmark",
+    "benchmark": 0.44,
+    "context": "SUV rental comparison",
+    "tooltip": "This is also an inferred benchmark rather than an official per-mile number. It translates a published average daily full-size SUV rental price into cents per mile using an assumed 250-mile driving day, so it is best used as directional context.",
+    "methodology": "This uses a published average daily full-size SUV rental price and converts it to an estimated per-mile figure using an assumed 250-mile driving day.",
+    "sourceLabel": "Fidelity rental pricing overview",
+    "sourceUrl": "https://www.fidelity.com/learning-center/life-events/average-cost-of-rental-car",
+    "associatedCategories": ["global", "tripEstimate"]
+  },
+  {
+    "id": "break-even-gig-target",
+    "label": "Break-even gig target",
+    "benchmark": 1.15,
+    "context": "Planning target",
+    "tooltip": "This is a practical planning target rather than an official industry rate. The idea is that revenue should clear your vehicle cost by enough margin to still leave room for your labor, taxes, and idle time.",
+    "methodology": "This is an internal planning benchmark used by the calculator to illustrate a healthier gross target that leaves room for labor, idle time, and taxes after vehicle costs.",
+    "associatedCategories": ["global", "recurringDrivingTotals"]
+  }
+]

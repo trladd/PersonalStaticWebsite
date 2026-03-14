@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import M from "materialize-css";
 
 export type InsightCardData = {
+  id: string;
   label: string;
   benchmark: number;
   context: string;
@@ -11,6 +12,8 @@ export type InsightCardData = {
   methodology: string;
   sourceLabel?: string;
   sourceUrl?: string;
+  currentRate: number;
+  associatedCategories: string[];
 };
 
 type InsightsCardProps = {
@@ -100,18 +103,6 @@ const InsightsCard: React.FC<InsightsCardProps> = ({
           {insight.context}
         </small>
         <div style={{ display: "flex", gap: "0.9rem", flexWrap: "wrap", marginTop: "0.8rem" }}>
-          {insight.sourceUrl ? (
-            <a
-              href={insight.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: "var(--secondary-color)", fontWeight: 600 }}
-            >
-              Source
-            </a>
-          ) : (
-            <span style={{ color: mutedColor }}>Internal reference</span>
-          )}
           <button
             type="button"
             className="btn-flat"
@@ -134,6 +125,10 @@ const InsightsCard: React.FC<InsightsCardProps> = ({
       <div className="modal" ref={modalRef}>
         <div className="modal-content">
           <h4 style={{ marginTop: 0 }}>{insight.label}</h4>
+          <p style={{ lineHeight: 1.6 }}>
+            Your vehicle is currently estimated at <strong>{formatCurrency(insight.currentRate)}</strong>{" "}
+            per mile, which means it is <strong>{insight.headline}</strong>.
+          </p>
           <p style={{ lineHeight: 1.6 }}>{insight.tooltip}</p>
           <p style={{ lineHeight: 1.6, marginBottom: "0.75rem" }}>
             <strong>How we gathered it:</strong> {insight.methodology}

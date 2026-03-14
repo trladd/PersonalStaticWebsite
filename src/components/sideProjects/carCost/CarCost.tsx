@@ -5,7 +5,9 @@ import CostBreakdownViewer, {
   BreakdownMode,
   CostBreakdownViewerMode,
 } from "./CostBreakdownViewer";
-import InsightsCard, { InsightCardData } from "./InsightsCard";
+import { InsightCardData } from "./InsightsCard";
+import InsightsSection from "./InsightsSection";
+import insightsMetadata from "./insights.json";
 import vehicleTemplates from "./vehicleTemplates.json";
 
 interface CarCostProps {
@@ -48,6 +50,7 @@ type FuelType =
 
 type RecurringType = "day" | "week" | "month" | "year";
 type TripType = "oneWay" | "roundTrip";
+type InsightCategory = "global" | "tripEstimate" | "recurringDrivingTotals";
 
 type FieldDefinition = {
   label: string;
@@ -83,6 +86,17 @@ type CustomVehicleDraft = {
 };
 
 type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;
+type InsightDefinition = {
+  id: string;
+  label: string;
+  benchmark: number;
+  context: string;
+  tooltip: string;
+  methodology: string;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  associatedCategories: InsightCategory[];
+};
 
 const defaultValues: CarCostValues = {
   fuelType: "regular",
@@ -297,6 +311,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const [breakdownModalMode, setBreakdownModalMode] = useState<BreakdownMode>("mile");
   const [breakdownModalTitle, setBreakdownModalTitle] = useState("Cost breakdown details");
   const [breakdownModalModes, setBreakdownModalModes] = useState<BreakdownMode[]>(["mile", "trip"]);
+  const [breakdownInsightCategory, setBreakdownInsightCategory] = useState<InsightCategory | null>(
+    null
+  );
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<M.Modal | null>(null);
   const breakdownModalRef = useRef<HTMLDivElement>(null);
@@ -1006,12 +1023,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const openBreakdownModal = (
     mode: BreakdownMode,
     title: string,
-    visibleModes: BreakdownMode[]
+    visibleModes: BreakdownMode[],
+    insightCategory: InsightCategory | null = null
   ) => {
     cleanupModalArtifacts();
     setBreakdownModalMode(mode);
     setBreakdownModalTitle(title);
     setBreakdownModalModes(visibleModes);
+    setBreakdownInsightCategory(insightCategory);
     breakdownModalInstanceRef.current?.open();
   };
 
@@ -1095,94 +1114,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     boxShadow: "none",
   });
 
-  const insights: InsightCardData[] = [
-    {
-      label: "IRS business mileage rate",
-      benchmark: 0.725,
-      context: "2026 federal business reimbursement benchmark",
-      tooltip:
-        "IRS business mileage rates are designed as an all-in reimbursement benchmark for using a personal vehicle for business. It is a useful reference point, but your actual vehicle cost can still land above or below it.",
-      methodology:
-        "This benchmark uses the official IRS 2026 business standard mileage rate of 72.5 cents per mile.",
-      sourceLabel: "IRS mileage rate announcement",
-      sourceUrl:
-        "https://www.irs.gov/newsroom/irs-sets-2026-business-standard-mileage-rate-at-725-cents-per-mile-up-25-cents",
-    },
-    {
-      label: "AAA average new-car cost",
-      benchmark: 0.77,
-      context: "Typical all-in cost per mile for a new vehicle",
-      tooltip:
-        "AAA's annual driving-cost studies estimate the average all-in ownership and operating cost for newer vehicles. This is a broad national benchmark rather than a model-specific number.",
-      methodology:
-        "This benchmark uses AAA reporting summarized at roughly 77 cents per mile for a typical newer vehicle.",
-      sourceLabel: "AAA driving-cost summary",
-      sourceUrl: "https://www.autoweek.com/news/a66331575/aaa-new-vehicle-ownership-costs-drop/",
-    },
-    {
-      label: "Uber gross earnings benchmark",
-      benchmark: 0.90,
-      context: "Rough gross revenue benchmark before your expenses",
-      tooltip:
-        "This is a rough gross earnings benchmark, not take-home profit. Actual Uber results can vary significantly by market, demand, incentives, time of day, and how much unpaid deadhead driving is involved.",
-      methodology:
-        "This benchmark is a rounded planning reference derived from Gridwise reporting on Uber driver earnings. It is intended as a directional gross-revenue comparison, not a guaranteed pay rate.",
-      sourceLabel: "Gridwise Uber earnings guide",
-      sourceUrl: "https://gridwise.io/blog/uber-driver-pay/how-much-do-uber-drivers-make/",
-    },
-    {
-      label: "DoorDash gross earnings benchmark",
-      benchmark: 0.92,
-      context: "Rough gross delivery revenue benchmark before expenses",
-      tooltip:
-        "This is a rough gross delivery benchmark before fuel, maintenance, taxes, and downtime. DoorDash results vary a lot based on zone density, batching, tip patterns, and the day or hour you drive.",
-      methodology:
-        "This benchmark is a rounded planning reference derived from Gridwise reporting on DoorDash driver earnings. It is meant as gross-revenue context before vehicle costs and taxes.",
-      sourceLabel: "Gridwise DoorDash earnings guide",
-      sourceUrl:
-        "https://gridwise.io/blog/doordash-driver/how-much-do-doordash-drivers-make-2/",
-    },
-    {
-      label: "Economy rental benchmark",
-      benchmark: 0.26,
-      context: "Inferred from average daily economy rental pricing",
-      tooltip:
-        "This one is an inference, not an official per-mile rate. It is based on a reputable average daily economy rental price benchmark translated to cents per mile using an assumed 250-mile driving day, so use it as directional context only.",
-      methodology:
-        "This uses a published average daily economy rental price and converts it to an estimated per-mile figure using an assumed 250-mile driving day.",
-      sourceLabel: "Fidelity rental pricing overview",
-      sourceUrl:
-        "https://www.fidelity.com/learning-center/life-events/average-cost-of-rental-car",
-    },
-    {
-      label: "Full-size SUV rental benchmark",
-      benchmark: 0.44,
-      context: "Inferred from average full-size SUV rental pricing",
-      tooltip:
-        "This is also an inferred benchmark rather than an official per-mile number. It translates a published average daily full-size SUV rental price into cents per mile using an assumed 250-mile driving day, so it is best used as directional context.",
-      methodology:
-        "This uses a published average daily full-size SUV rental price and converts it to an estimated per-mile figure using an assumed 250-mile driving day.",
-      sourceLabel: "Fidelity rental pricing overview",
-      sourceUrl:
-        "https://www.fidelity.com/learning-center/life-events/average-cost-of-rental-car",
-    },
-    {
-      label: "Break-even gig target",
-      benchmark: 1.15,
-      context: "Example target that leaves room for labor and taxes",
-      tooltip:
-        "This is a practical planning target rather than an official industry rate. The idea is that revenue should clear your vehicle cost by enough margin to still leave room for your labor, taxes, and idle time.",
-      methodology:
-        "This is an internal planning benchmark used by the calculator to illustrate a healthier gross target that leaves room for labor, idle time, and taxes after vehicle costs.",
-    },
-  ].map((item) => {
+  const insights: InsightCardData[] = (insightsMetadata as InsightDefinition[]).map((item) => {
     const difference = calculations.trueCostPerMile - item.benchmark;
     const isAbove = difference > 0;
 
     return {
       ...item,
-      difference,
       isAbove,
+      currentRate: calculations.trueCostPerMile,
       headline:
         difference === 0
           ? `Right in line with ${item.label.toLowerCase()}`
@@ -1191,6 +1130,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             } ${item.label.toLowerCase()}`,
     };
   });
+
+  const modalInsights = breakdownInsightCategory
+    ? insights.filter((insight) => insight.associatedCategories.includes(breakdownInsightCategory))
+    : [];
 
   return (
     <div className="container flow-text" style={{ paddingBottom: "3rem" }}>
@@ -1444,6 +1387,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             autoCycle={false}
             subtitleFontSize="0.92rem"
           />
+          {modalInsights.length > 0 ? (
+            <div style={{ marginTop: "1.5rem" }}>
+              <InsightsSection
+                insights={modalInsights}
+                cardStyle={cardStyle}
+                isDarkMode={isDarkMode}
+                mutedColor={palette.muted}
+                title="Related insights"
+              />
+            </div>
+          ) : null}
         </div>
         <div
           className="modal-footer"
@@ -1907,7 +1861,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   type="button"
                   className="btn-flat"
                   onClick={() =>
-                    openBreakdownModal("trip", "Trip cost breakdown", ["mile", "trip"])
+                    openBreakdownModal(
+                      "trip",
+                      "Trip cost breakdown",
+                      ["mile", "trip"],
+                      "tripEstimate"
+                    )
                   }
                   style={{
                     color: palette.accentDark,
@@ -2016,7 +1975,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     openBreakdownModal(
                       recurringType,
                       "Recurring cost breakdown",
-                      ["mile", "day", "week", "month", "year"]
+                      ["mile", "day", "week", "month", "year"],
+                      "recurringDrivingTotals"
                     )
                   }
                   style={{
@@ -2127,7 +2087,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           openBreakdownModal(
                             key,
                             `Recurring ${key} cost breakdown`,
-                            ["mile", "day", "week", "month", "year"]
+                            ["mile", "day", "week", "month", "year"],
+                            "recurringDrivingTotals"
                           )
                         }
                         style={{
@@ -2219,23 +2180,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           <div className="col s12" style={{ marginBottom: "1rem" }}>
             <section style={{ ...cardStyle, padding: "1.5rem" }}>
-              <h3 style={{ marginTop: 0 }}>Insights</h3>
-              <p style={{ color: palette.muted, lineHeight: 1.5 }}>
-                These benchmarks help frame whether your vehicle is inexpensive or expensive
-                to operate compared with common reimbursement and gig-work reference points.
-              </p>
-              <div className="row" style={{ marginBottom: 0 }}>
-                {insights.map((insight) => (
-                  <div key={insight.label} className="col s12 m6 xl4" style={{ marginBottom: "1rem" }}>
-                    <InsightsCard
-                      insight={insight}
-                      cardStyle={cardStyle}
-                      isDarkMode={isDarkMode}
-                      mutedColor={palette.muted}
-                    />
-                  </div>
-                ))}
-              </div>
+              <InsightsSection
+                insights={insights}
+                cardStyle={cardStyle}
+                isDarkMode={isDarkMode}
+                mutedColor={palette.muted}
+                title="Insights"
+                description="These benchmarks help frame whether your vehicle is inexpensive or expensive to operate compared with common reimbursement, rental, and gig-work reference points."
+              />
             </section>
           </div>
         </div>
