@@ -160,6 +160,13 @@ const applyPlannerValues = (
   ...plannerValues,
 });
 
+const getDraftFromVehicle = (vehicle: CustomVehicle | null): CustomVehicleDraft => ({
+  year: vehicle ? String(vehicle.year || "") : "",
+  make: vehicle?.make ?? "",
+  model: vehicle?.model ?? "",
+  fuelType: vehicle?.values.fuelType ?? "regular",
+});
+
 const sections: { title: string; description: string; items: FieldDefinition[] }[] = [
   {
     title: "Running costs",
@@ -570,12 +577,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             },
           } as CustomVehicle;
           setSavedCustomVehicle(normalizedCustomVehicle);
-          setCustomVehicleDraft({
-            year: String(normalizedCustomVehicle.year || ""),
-            make: normalizedCustomVehicle.make || "",
-            model: normalizedCustomVehicle.model || "",
-            fuelType: normalizedCustomVehicle.values.fuelType || "regular",
-          });
+          setCustomVehicleDraft(getDraftFromVehicle(normalizedCustomVehicle));
         } else {
           localStorage.removeItem(CAR_COST_CUSTOM_KEY);
         }
@@ -837,14 +839,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const handleOpenOwnCarModal = () => {
     cleanupModalArtifacts();
-    setCustomVehicleDraft({ year: "", make: "", model: "", fuelType: "regular" });
+    setCustomVehicleDraft(getDraftFromVehicle(savedCustomVehicle));
     setCustomVehicleTouched({ year: false, make: false, model: false });
     setShowCustomVehicleValidation(false);
     modalInstanceRef.current?.open();
   };
 
   const calculations = useMemo(() => {
-    const tripMultiplier = tripType === "roundTrip" ? 2 : 1;
+    const tripMultiplier = tripType === "oneWay" ? 2 : 1;
     const selectedTripDistance = values.tripDistance * tripMultiplier;
     const fuelCostPerMile =
       values.fuelEfficiency > 0 ? values.fuelUnitPrice / values.fuelEfficiency : 0;
@@ -1105,13 +1107,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const secondarySummaryCards = summaryCards.filter((card) => !card.highlight);
 
   const templateOptions = [
+    ...(savedCustomVehicle
+      ? [{ id: "custom", title: `My vehicle: ${savedCustomVehicle.title}` }]
+      : []),
     ...typedTemplates.map((template) => ({
       id: template.id,
       title: `${template.year} ${template.make} ${template.model}`,
     })),
-    ...(savedCustomVehicle
-      ? [{ id: "custom", title: `${savedCustomVehicle.title} (Saved custom)` }]
-      : []),
   ];
 
   const currentVehicleLabel =
@@ -2112,7 +2114,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 htmlFor="tripDistance"
                 style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
               >
-                Trip distance (miles)
+                {tripType === "roundTrip"
+                  ? "Round trip distance (miles)"
+                  : "One-way trip distance (miles)"}
               </label>
               <div
                 style={inputContainerStyle}
@@ -2146,8 +2150,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 </small>
                 <p style={{ margin: "0.6rem 0 0", color: palette.muted }}>
                   {tripType === "roundTrip"
-                    ? `Round trip uses your selected distance twice (${values.tripDistance.toFixed(0)} miles each way).`
-                    : `One-way trip uses your selected distance of ${values.tripDistance.toFixed(0)} miles.`}
+                    ? `Round trip uses your selected total distance of ${values.tripDistance.toFixed(0)} miles.`
+                    : `One-way distance is doubled to estimate the full out-and-back trip (${values.tripDistance.toFixed(0)} miles each way).`}
                 </p>
                 <p style={{ margin: "0.35rem 0 0", color: palette.muted }}>
                   Variable-only trip cost:{" "}
