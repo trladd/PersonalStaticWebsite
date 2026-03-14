@@ -151,6 +151,9 @@ const inputStyle: React.CSSProperties = {
   height: "3rem",
   background: "transparent",
   color: "var(--text-color)",
+  fontSize: "1rem",
+  lineHeight: 1.4,
+  fontFamily: "inherit",
 };
 
 const stackedCardStyle: React.CSSProperties = {
@@ -187,6 +190,8 @@ const CarCost: React.FC<CarCostProps> = () => {
   const [values, setValues] = useState<CarCostValues>(defaultValues);
   const [recurringType, setRecurringType] = useState<RecurringType>("day");
   const [hasResolvedRestore, setHasResolvedRestore] = useState(false);
+  const [activeBreakdownLabel, setActiveBreakdownLabel] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<M.Modal | null>(null);
   const pendingSavedStateRef = useRef<PersistedCarCostState | null>(null);
@@ -214,6 +219,7 @@ const CarCost: React.FC<CarCostProps> = () => {
       resultHighlight: isDarkMode
         ? "linear-gradient(135deg, rgba(184, 92, 56, 0.26), rgba(212, 122, 77, 0.18))"
         : "linear-gradient(135deg, rgba(184, 92, 56, 0.12), rgba(212, 122, 77, 0.18))",
+      tooltipBackground: isDarkMode ? "rgba(31, 25, 20, 0.98)" : "rgba(255, 252, 247, 0.98)",
       shadow: isDarkMode ? "0 24px 60px rgba(0, 0, 0, 0.34)" : "0 24px 60px rgba(91, 60, 34, 0.12)",
       missionShadow: isDarkMode ? "0 14px 34px rgba(0, 0, 0, 0.28)" : "0 14px 34px rgba(91, 60, 34, 0.08)",
     }),
@@ -227,6 +233,57 @@ const CarCost: React.FC<CarCostProps> = () => {
       borderRadius: "24px",
       boxShadow: palette.shadow,
       color: palette.text,
+    }),
+    [palette]
+  );
+
+  const inputContainerStyle: React.CSSProperties = useMemo(
+    () => ({
+      display: "flex",
+      alignItems: "center",
+      minHeight: "3rem",
+      background: palette.subtlePanel,
+      border: palette.softBorder,
+      borderRadius: "14px",
+      overflow: "hidden",
+    }),
+    [palette]
+  );
+
+  const prefixStyle: React.CSSProperties = useMemo(
+    () => ({
+      display: "flex",
+      alignItems: "center",
+      alignSelf: "stretch",
+      padding: "0 0.85rem",
+      color: palette.muted,
+      fontWeight: 600,
+      fontSize: "1rem",
+      lineHeight: 1,
+      borderRight: palette.softBorder,
+      background: "rgba(0, 0, 0, 0.04)",
+    }),
+    [palette]
+  );
+
+  const selectStyle: React.CSSProperties = useMemo(
+    () => ({
+      width: "100%",
+      height: "3rem",
+      minHeight: "3rem",
+      border: "none",
+      outline: "none",
+      borderRadius: "14px",
+      padding: "0 1rem",
+      background: "transparent",
+      color: palette.text,
+      fontSize: "1rem",
+      lineHeight: 1.4,
+      fontFamily: "inherit",
+      cursor: "pointer",
+      appearance: "none",
+      WebkitAppearance: "none",
+      MozAppearance: "none",
     }),
     [palette]
   );
@@ -408,14 +465,42 @@ const CarCost: React.FC<CarCostProps> = () => {
     const percentage =
       calculations.trueCostPerMile > 0 ? item.value / calculations.trueCostPerMile : 0;
     const path = buildPieSlice(percentage, cumulativePercentage, 44);
+    const midpointPercentage = cumulativePercentage + percentage / 2;
+    const midAngle = midpointPercentage * Math.PI * 2 - Math.PI / 2;
+    const offsetDistance = activeBreakdownLabel === item.label ? 5 : 0;
+    const offsetX = Math.cos(midAngle) * offsetDistance;
+    const offsetY = Math.sin(midAngle) * offsetDistance;
     cumulativePercentage += percentage;
 
     return {
       ...item,
       percentage,
       path,
+      offsetX,
+      offsetY,
     };
   });
+
+  const activeBreakdown =
+    activeBreakdownLabel !== null
+      ? pieSlices.find((slice) => slice.label === activeBreakdownLabel) ?? null
+      : null;
+
+  const handleBreakdownHover = (
+    label: string,
+    event: React.MouseEvent<SVGPathElement | HTMLElement>
+  ) => {
+    setActiveBreakdownLabel(label);
+    setTooltipPosition({
+      x: event.clientX + 18,
+      y: event.clientY + 18,
+    });
+  };
+
+  const handleBreakdownLeave = () => {
+    setActiveBreakdownLabel(null);
+    setTooltipPosition(null);
+  };
 
   const summaryCards = [
     { label: "Fuel", value: calculations.fuelCostPerMile },
@@ -593,18 +678,10 @@ const CarCost: React.FC<CarCostProps> = () => {
                         {field.label}
                       </label>
                       <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          background: palette.subtlePanel,
-                          border: palette.softBorder,
-                          borderRadius: "14px",
-                          overflow: "hidden",
-                          paddingLeft: field.prefix ? "0.9rem" : 0,
-                        }}
+                        style={inputContainerStyle}
                       >
                         {field.prefix ? (
-                          <span style={{ color: palette.muted, fontWeight: 600 }}>
+                          <span style={prefixStyle}>
                             {field.prefix}
                           </span>
                         ) : null}
@@ -641,12 +718,7 @@ const CarCost: React.FC<CarCostProps> = () => {
                 Trip distance (miles)
               </label>
               <div
-                style={{
-                  background: palette.subtlePanel,
-                  border: palette.softBorder,
-                  borderRadius: "14px",
-                  overflow: "hidden",
-                }}
+                style={inputContainerStyle}
               >
                 <input
                   id="tripDistance"
@@ -704,12 +776,7 @@ const CarCost: React.FC<CarCostProps> = () => {
                     Miles
                   </label>
                   <div
-                    style={{
-                      background: palette.subtlePanel,
-                      border: palette.softBorder,
-                      borderRadius: "14px",
-                      overflow: "hidden",
-                    }}
+                    style={inputContainerStyle}
                   >
                     <input
                       id="recurringMiles"
@@ -729,26 +796,34 @@ const CarCost: React.FC<CarCostProps> = () => {
                   >
                     Based on
                   </label>
-                  <select
-                    id="recurringType"
-                    className="browser-default"
-                    value={recurringType}
-                    onChange={(event) => setRecurringType(event.target.value as RecurringType)}
-                    style={{
-                      width: "100%",
-                      height: "3rem",
-                      border: palette.softBorder,
-                      borderRadius: "14px",
-                      padding: "0 1rem",
-                      background: palette.subtlePanel,
-                      color: palette.text,
-                    }}
-                  >
-                    <option value="day">Miles per day</option>
-                    <option value="week">Miles per week</option>
-                    <option value="month">Miles per month</option>
-                    <option value="year">Miles per year</option>
-                  </select>
+                  <div style={{ ...inputContainerStyle, position: "relative" }}>
+                    <select
+                      id="recurringType"
+                      className="browser-default"
+                      value={recurringType}
+                      onChange={(event) => setRecurringType(event.target.value as RecurringType)}
+                      style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                    >
+                      <option value="day">Miles per day</option>
+                      <option value="week">Miles per week</option>
+                      <option value="month">Miles per month</option>
+                      <option value="year">Miles per year</option>
+                    </select>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        right: "1rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: palette.muted,
+                        fontSize: "0.85rem",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      ▼
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -830,12 +905,29 @@ const CarCost: React.FC<CarCostProps> = () => {
                     width: "100%",
                     maxWidth: "320px",
                     margin: "0 auto",
+                    position: "relative",
                   }}
                 >
                   <svg viewBox="0 0 100 100" style={{ width: "100%", display: "block" }}>
                     <circle cx="50" cy="50" r="44" fill={palette.chartBase} />
                     {pieSlices.map((slice) => (
-                      <path key={slice.label} d={slice.path} fill={slice.color} />
+                      <path
+                        key={slice.label}
+                        d={slice.path}
+                        fill={slice.color}
+                        transform={`translate(${slice.offsetX} ${slice.offsetY})`}
+                        style={{
+                          cursor: "pointer",
+                          transition: "transform 180ms ease, filter 180ms ease",
+                          filter:
+                            activeBreakdownLabel === slice.label
+                              ? "drop-shadow(0 0 6px rgba(0, 0, 0, 0.24))"
+                              : "none",
+                        }}
+                        onMouseEnter={(event) => handleBreakdownHover(slice.label, event)}
+                        onMouseMove={(event) => handleBreakdownHover(slice.label, event)}
+                        onMouseLeave={handleBreakdownLeave}
+                      />
                     ))}
                     <circle cx="50" cy="50" r="23" fill={palette.chartCenter} />
                     <text
@@ -869,7 +961,26 @@ const CarCost: React.FC<CarCostProps> = () => {
                   <div className="row" style={{ marginBottom: 0 }}>
                     {pieSlices.map((slice) => (
                       <div key={slice.label} className="col s12 m6" style={{ marginBottom: "1rem" }}>
-                        <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
+                        <article
+                          style={{
+                            ...cardStyle,
+                            padding: "1rem 1.1rem",
+                            height: "100%",
+                            cursor: "pointer",
+                            transform:
+                              activeBreakdownLabel === slice.label ? "translateY(-2px)" : "none",
+                            boxShadow:
+                              activeBreakdownLabel === slice.label
+                                ? isDarkMode
+                                  ? "0 18px 38px rgba(0, 0, 0, 0.4)"
+                                  : "0 18px 38px rgba(91, 60, 34, 0.18)"
+                                : cardStyle.boxShadow,
+                            transition: "transform 180ms ease, box-shadow 180ms ease",
+                          }}
+                          onMouseMove={(event) => handleBreakdownHover(slice.label, event)}
+                          onMouseEnter={(event) => handleBreakdownHover(slice.label, event)}
+                          onMouseLeave={handleBreakdownLeave}
+                        >
                           <div
                             style={{
                               display: "flex",
@@ -907,6 +1018,53 @@ const CarCost: React.FC<CarCostProps> = () => {
           </div>
         </div>
       </div>
+      {activeBreakdown && tooltipPosition ? (
+        <div
+          style={{
+            position: "fixed",
+            left: tooltipPosition.x,
+            top: tooltipPosition.y,
+            minWidth: "220px",
+            maxWidth: "260px",
+            padding: "0.9rem 1rem",
+            borderRadius: "16px",
+            background: palette.tooltipBackground,
+            border: palette.border,
+            boxShadow: palette.shadow,
+            color: palette.text,
+            pointerEvents: "none",
+            zIndex: 1200,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.65rem",
+              marginBottom: "0.35rem",
+            }}
+          >
+            <span
+              style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "999px",
+                background: activeBreakdown.color,
+                flex: "0 0 auto",
+              }}
+            />
+            <strong style={{ fontSize: "0.98rem", lineHeight: 1.2 }}>
+              {activeBreakdown.label}
+            </strong>
+          </div>
+          <div style={{ fontSize: "1.15rem", fontWeight: 700, lineHeight: 1.2 }}>
+            {formatCurrency(activeBreakdown.value)}
+          </div>
+          <small style={{ display: "block", marginTop: "0.3rem", color: palette.muted }}>
+            {formatPercent(activeBreakdown.percentage * 100)} of true cost per mile
+          </small>
+        </div>
+      ) : null}
     </div>
   );
 };
