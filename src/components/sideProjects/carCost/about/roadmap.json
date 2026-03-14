@@ -69,12 +69,27 @@
       "status": "Done",
       "title": "Move insights to metadata-driven JSON with category-based filtering for related modals",
       "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Add a small true-cost-per-mile pill to the sticky header",
+      "points": 2
+    },
+    {
+      "status": "Done",
+      "title": "Fix custom-vehicle validation feedback and mobile placeholder styling",
+      "points": 3
     }
   ],
   "backlog": [
     {
       "status": "Todo",
       "title": "Add major-version-aware saved state handling so users are notified when data is outdated and it can be migrated or cleared safely",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Add a guided step-by-step experience similar to a tax-prep flow using modal-based prompts",
       "points": 8
     },
     {
@@ -86,11 +101,6 @@
       "status": "Todo",
       "title": "Add internationalization for English, Spanish, and French across North and South American audiences",
       "points": 8
-    },
-    {
-      "status": "Todo",
-      "title": "Add a small true-cost-per-mile pill to the sticky header",
-      "points": 2
     },
     {
       "status": "Todo",
@@ -121,16 +131,6 @@
       "status": "Todo",
       "title": "Fix remaining mobile-friendly bugs",
       "points": 5
-    },
-    {
-      "status": "Todo",
-      "title": "Fix the mobile modal bug where input placeholders do not display correctly",
-      "points": 2
-    },
-    {
-      "status": "Todo",
-      "title": "Fix custom-vehicle input validation so an error message explains why \"Calculate with this vehicle\" is disabled",
-      "points": 2
     },
     {
       "status": "Todo",

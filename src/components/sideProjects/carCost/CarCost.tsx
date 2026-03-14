@@ -1221,7 +1221,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           }}
         >
           <h4>Choose how you want to get started</h4>
-          <p style={{ color: palette.muted }}>
+          <p style={{ color: palette.muted, display: isMobileView ? "none" : "block" }}>
             You can load a presaved template, or enter your own car and
             begin with a fresh calculator state.
           </p>
@@ -1634,8 +1634,34 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 onClick={handleOpenOwnCarModal}
                 style={solidSecondaryButtonStyle}
               >
-                {isMobileView ? "Use my own" : "Use one of my cars"}
+                {isMobileView ? "Use my own" : "Start over"}
               </button>
+            </div>
+            <div
+              style={{
+                flex: "0 0 auto",
+                padding: "0.32rem 0.65rem",
+                borderRadius: "999px",
+                background: palette.resultHighlight,
+                border: palette.softBorder,
+                minWidth: "unset",
+              }}
+              className="tooltipped"
+              data-position="bottom"
+              data-tooltip={`True cost per mile: ${formatCurrency(
+                calculations.trueCostPerMile
+              )} per mile`}
+            >
+              <strong
+                style={{
+                  fontSize: "0.84rem",
+                  lineHeight: 1,
+                  display: "block",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {formatCurrency(calculations.trueCostPerMile)}/mi
+              </strong>
             </div>
           </div>
         </div>
