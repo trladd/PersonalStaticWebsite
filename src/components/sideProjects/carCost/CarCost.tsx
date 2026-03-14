@@ -515,7 +515,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
     modalInstanceRef.current = M.Modal.init(modalRef.current, {
       dismissible: false,
-      preventScrolling: false,
+      preventScrolling: true,
       onOpenStart: () => {
         cleanupModalArtifacts();
       },
@@ -1166,14 +1166,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         >
           <h4>Choose how you want to get started</h4>
           <p style={{ color: palette.muted }}>
-            You can load a realistic starter example, or enter your own car and
+            You can load a presaved template, or enter your own car and
             begin with a fresh calculator state.
           </p>
           <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
             <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
               <div style={{ ...cardStyle, padding: "1.25rem", height: "100%", background: palette.subtlePanel }}>
-                <h5 style={{ marginTop: 0 }}>Use a starter example</h5>
-                <p style={{ color: palette.muted }}>
+                <h5 style={{ marginTop: 0 }}>Use a presaved template</h5>
+                <p style={{ color: palette.muted, fontSize: "0.9rem", lineHeight: 1.45 }}>
                   Pick one of the built-in vehicles to see how the calculator behaves
                   with realistic sample values.
                 </p>
@@ -1218,7 +1218,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   onClick={handleLoadStartupTemplate}
                   style={solidPrimaryButtonStyle}
                 >
-                  Load example
+                  Use this vehicle
                 </button>
               </div>
             </div>
@@ -1226,7 +1226,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
               <div style={{ ...cardStyle, padding: "1.25rem", height: "100%", background: palette.subtlePanel }}>
                 <h5 style={{ marginTop: 0 }}>Check with my own car</h5>
-                <p style={{ color: palette.muted }}>
+                <p style={{ color: palette.muted, fontSize: "0.9rem", lineHeight: 1.45 }}>
                   Enter your vehicle details to begin with a fresh state tied to your
                   own car.
                 </p>
@@ -1347,7 +1347,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     opacity: isCustomVehicleValid ? 1 : 0.65,
                   }}
                 >
-                  Calculate with this vehicle
+                  Use my vehicle
                 </button>
               </div>
             </div>
