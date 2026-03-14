@@ -277,6 +277,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const [isMobileView, setIsMobileView] = useState(false);
   const [breakdownModalMode, setBreakdownModalMode] = useState<BreakdownMode>("mile");
   const [breakdownModalTitle, setBreakdownModalTitle] = useState("Cost breakdown details");
+  const [breakdownModalModes, setBreakdownModalModes] = useState<BreakdownMode[]>(["mile", "trip"]);
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<M.Modal | null>(null);
   const breakdownModalRef = useRef<HTMLDivElement>(null);
@@ -968,9 +969,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     values.tripDistance,
   ]);
 
-  const openBreakdownModal = (mode: BreakdownMode, title: string) => {
+  const filteredBreakdownModalModes = useMemo(
+    () => breakdownModes.filter((mode) => breakdownModalModes.includes(mode.key)),
+    [breakdownModalModes, breakdownModes]
+  );
+
+  const openBreakdownModal = (
+    mode: BreakdownMode,
+    title: string,
+    visibleModes: BreakdownMode[]
+  ) => {
     setBreakdownModalMode(mode);
     setBreakdownModalTitle(title);
+    setBreakdownModalModes(visibleModes);
     breakdownModalInstanceRef.current?.open();
   };
 
@@ -1259,10 +1270,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           }}
         >
           <CostBreakdownViewer
-            key={breakdownModalMode}
+            key={`${breakdownModalMode}-${breakdownModalModes.join("-")}`}
             title={breakdownModalTitle}
             subtitle="Use the interval controls to compare how the same costs allocate across a mile, trip, or recurring driving window."
-            modes={breakdownModes}
+            modes={filteredBreakdownModalModes}
             initialMode={breakdownModalMode}
             palette={{
               text: palette.text,
@@ -1277,6 +1288,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             }}
             cardStyle={cardStyle}
             autoCycle={false}
+            subtitleFontSize="0.92rem"
           />
         </div>
         <div
@@ -1740,7 +1752,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <button
                   type="button"
                   className="waves-effect btn-flat"
-                  onClick={() => openBreakdownModal("trip", "Trip cost breakdown")}
+                  onClick={() =>
+                    openBreakdownModal("trip", "Trip cost breakdown", ["mile", "trip"])
+                  }
                   style={{
                     color: palette.accentDark,
                     fontWeight: 700,
@@ -1819,7 +1833,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <button
                   type="button"
                   className="waves-effect btn-flat"
-                  onClick={() => openBreakdownModal(recurringType, "Recurring cost breakdown")}
+                  onClick={() =>
+                    openBreakdownModal(
+                      recurringType,
+                      "Recurring cost breakdown",
+                      ["mile", "day", "week", "month", "year"]
+                    )
+                  }
                   style={{
                     color: palette.accentDark,
                     fontWeight: 700,
@@ -1912,6 +1932,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     <article
                       style={{
                         ...cardStyle,
+                        position: "relative",
                         padding: "1rem 1.1rem",
                         height: "100%",
                         background:
@@ -1920,6 +1941,35 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             : palette.cardBackground,
                       }}
                     >
+                      <button
+                        type="button"
+                        className="waves-effect btn-flat"
+                        onClick={() =>
+                          openBreakdownModal(
+                            key,
+                            `Recurring ${key} cost breakdown`,
+                            ["mile", "day", "week", "month", "year"]
+                          )
+                        }
+                        style={{
+                          position: "absolute",
+                          top: "0.35rem",
+                          right: "0.35rem",
+                          color: palette.accentDark,
+                          minWidth: "unset",
+                          padding: "0 0.45rem",
+                          lineHeight: 1,
+                        }}
+                        aria-label={`See ${key} breakdown details`}
+                        title={`See ${key} breakdown details`}
+                      >
+                        <i
+                          className="material-icons"
+                          style={{ fontSize: "1rem", lineHeight: "inherit" }}
+                        >
+                          open_in_full
+                        </i>
+                      </button>
                       <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
                         Per {key}
                       </span>

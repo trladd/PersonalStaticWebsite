@@ -38,6 +38,7 @@ type CostBreakdownViewerProps = {
   cardStyle: React.CSSProperties;
   autoCycle?: boolean;
   showModeTabs?: boolean;
+  subtitleFontSize?: string;
 };
 
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
@@ -72,6 +73,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
   cardStyle,
   autoCycle = true,
   showModeTabs = true,
+  subtitleFontSize = "1rem",
 }) => {
   const [selectedModeKey, setSelectedModeKey] = useState<BreakdownMode>(
     initialMode ?? modes[0]?.key ?? "mile"
@@ -80,6 +82,11 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const [isInteracting, setIsInteracting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isAutoCycleEnabled, setIsAutoCycleEnabled] = useState(autoCycle);
+
+  useEffect(() => {
+    setIsAutoCycleEnabled(autoCycle);
+  }, [autoCycle]);
 
   useEffect(() => {
     if (!modes.some((mode) => mode.key === selectedModeKey) && modes[0]) {
@@ -100,7 +107,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
   }, [selectedModeKey]);
 
   useEffect(() => {
-    if (!autoCycle || isInteracting || modes.length <= 1) {
+    if (!autoCycle || !isAutoCycleEnabled || isInteracting || modes.length <= 1) {
       return;
     }
 
@@ -115,7 +122,14 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
     }, 3000);
 
     return () => window.clearInterval(interval);
-  }, [autoCycle, isInteracting, modes]);
+  }, [autoCycle, isAutoCycleEnabled, isInteracting, modes]);
+
+  const handleModeSelect = (mode: BreakdownMode) => {
+    setSelectedModeKey(mode);
+    if (autoCycle) {
+      setIsAutoCycleEnabled(false);
+    }
+  };
 
   const currentMode = useMemo(
     () => modes.find((mode) => mode.key === selectedModeKey) ?? modes[0],
@@ -201,7 +215,16 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
       >
         <div style={{ flex: "1 1 320px" }}>
           <h3 style={{ marginTop: 0, marginBottom: "0.4rem" }}>{title}</h3>
-          <p style={{ color: palette.muted, lineHeight: 1.5, margin: 0 }}>{subtitle}</p>
+          <p
+            style={{
+              color: palette.muted,
+              lineHeight: 1.5,
+              margin: 0,
+              fontSize: subtitleFontSize,
+            }}
+          >
+            {subtitle}
+          </p>
         </div>
         {showModeTabs ? (
           <div
@@ -212,6 +235,33 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
               alignItems: "center",
             }}
           >
+            {autoCycle && !isAutoCycleEnabled ? (
+              <button
+                type="button"
+                className="waves-effect btn-flat"
+                onClick={() => setIsAutoCycleEnabled(true)}
+                style={{
+                  borderRadius: "999px",
+                  border: palette.border,
+                  background: "transparent",
+                  color: palette.text,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  minWidth: "unset",
+                  padding: "0 0.85rem",
+                  boxShadow: "none",
+                }}
+                aria-label="Resume auto cycle"
+                title="Resume auto cycle"
+              >
+                <i
+                  className="material-icons"
+                  style={{ fontSize: "1rem", lineHeight: "inherit", verticalAlign: "middle" }}
+                >
+                  play_arrow
+                </i>
+              </button>
+            ) : null}
             {modes.map((mode) => {
               const isActive = mode.key === currentMode.key;
               return (
@@ -219,7 +269,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
                   key={mode.key}
                   type="button"
                   className="waves-effect btn-flat"
-                  onClick={() => setSelectedModeKey(mode.key)}
+                  onClick={() => handleModeSelect(mode.key)}
                   style={{
                     borderRadius: "999px",
                     border: isActive ? "none" : palette.border,
