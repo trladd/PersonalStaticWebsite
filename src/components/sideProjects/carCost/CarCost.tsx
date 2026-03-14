@@ -8,8 +8,9 @@ interface CarCostProps {
 }
 
 type CarCostValues = {
-  fuelMileage: number;
-  fuelCostPerGallon: number;
+  fuelType: FuelType;
+  fuelEfficiency: number;
+  fuelUnitPrice: number;
   oilChangeCost: number;
   oilChangeInterval: number;
   tireCost: number;
@@ -29,6 +30,16 @@ type CarCostValues = {
   includeDepreciation: number;
   includeAnnualOwnership: number;
 };
+
+type FuelType =
+  | "regular"
+  | "midgrade"
+  | "premium"
+  | "diesel"
+  | "e85"
+  | "cng"
+  | "lpg"
+  | "electric";
 
 type RecurringType = "day" | "week" | "month" | "year";
 
@@ -60,24 +71,22 @@ type VehicleTemplate = {
   model: string;
   title: string;
   values: CarCostValues;
-  recurringType: RecurringType;
 };
-
-type CustomVehicle = VehicleTemplate & {
-  id: "custom";
-};
+type CustomVehicle = VehicleTemplate & { id: "custom" };
 
 type CustomVehicleDraft = {
   year: string;
   make: string;
   model: string;
+  fuelType: FuelType;
 };
 
 type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;
 
 const defaultValues: CarCostValues = {
-  fuelMileage: 25,
-  fuelCostPerGallon: 3.5,
+  fuelType: "regular",
+  fuelEfficiency: 25,
+  fuelUnitPrice: 3.49,
   oilChangeCost: 75,
   oilChangeInterval: 5000,
   tireCost: 900,
@@ -96,6 +105,28 @@ const defaultValues: CarCostValues = {
   annualRoadside: 120,
   includeDepreciation: 1,
   includeAnnualOwnership: 1,
+};
+
+const DEFAULT_FUEL_PRICES: Record<FuelType, number> = {
+  cng: 2.96,
+  diesel: 3.71,
+  e85: 2.63,
+  electric: 0.15,
+  lpg: 3.42,
+  midgrade: 3.5,
+  premium: 3.86,
+  regular: 2.92,
+};
+
+const FUEL_TYPE_LABELS: Record<FuelType, string> = {
+  cng: "CNG",
+  diesel: "Diesel",
+  e85: "E85",
+  electric: "Electric",
+  lpg: "LPG",
+  midgrade: "Midgrade",
+  premium: "Premium",
+  regular: "Regular",
 };
 
 const getPlannerValues = (values: CarCostValues): PlannerValues => ({
@@ -117,13 +148,6 @@ const sections: { title: string; description: string; items: FieldDefinition[] }
     description:
       "Enter the costs and service intervals you want to spread across each mile.",
     items: [
-      { label: "Fuel mileage (MPG)", name: "fuelMileage", step: "0.1" },
-      {
-        label: "Fuel cost per gallon",
-        name: "fuelCostPerGallon",
-        step: "0.01",
-        prefix: "$",
-      },
       { label: "Oil change cost", name: "oilChangeCost", step: "0.01", prefix: "$" },
       { label: "Oil change interval (miles)", name: "oilChangeInterval", step: "1" },
       { label: "Tire cost", name: "tireCost", step: "0.01", prefix: "$" },
@@ -234,7 +258,28 @@ const isToggleEnabled = (value: number) => value === 1;
 
 const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const { isDarkMode } = useContext(ThemeContext);
-  const typedTemplates = vehicleTemplates as VehicleTemplate[];
+  const typedTemplates = useMemo(
+    () =>
+      (vehicleTemplates as Array<VehicleTemplate & { values: Partial<CarCostValues> }>).map(
+        (template) => ({
+          ...template,
+          values: {
+            ...defaultValues,
+            ...template.values,
+            fuelType: template.values.fuelType ?? defaultValues.fuelType,
+            fuelEfficiency:
+              template.values.fuelEfficiency ?? (template.values as any).fuelMileage ?? defaultValues.fuelEfficiency,
+            fuelUnitPrice:
+              DEFAULT_FUEL_PRICES[
+                (template.values.fuelType ?? defaultValues.fuelType) as FuelType
+              ],
+            includeDepreciation: template.values.includeDepreciation ?? 1,
+            includeAnnualOwnership: template.values.includeAnnualOwnership ?? 1,
+          },
+        })
+      ),
+    []
+  );
   const [values, setValues] = useState<CarCostValues>(defaultValues);
   const [recurringType, setRecurringType] = useState<RecurringType>("day");
   const [hasResolvedStartupChoice, setHasResolvedStartupChoice] = useState(false);
@@ -250,6 +295,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     year: "",
     make: "",
     model: "",
+    fuelType: "regular",
   });
   const [stickyTop, setStickyTop] = useState(72);
   const [isMobileView, setIsMobileView] = useState(false);
@@ -355,6 +401,83 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   }, [values, recurringType, customVehicleDraft]);
 
   useEffect(() => {
+    const tooltipElements = document.querySelectorAll(".tooltipped");
+    tooltipElements.forEach((element) => {
+      M.Tooltip.getInstance(element)?.destroy();
+    });
+    M.Tooltip.init(tooltipElements, {
+      enterDelay: 120,
+      exitDelay: 0,
+      position: "top",
+    });
+
+    return () => {
+      tooltipElements.forEach((element) => {
+        M.Tooltip.getInstance(element)?.destroy();
+      });
+    };
+  }, [values.fuelType, values.fuelUnitPrice]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const applyFallbackPrice = () => {
+      setValues((current) =>
+        current.fuelUnitPrice === DEFAULT_FUEL_PRICES[current.fuelType]
+          ? current
+          : { ...current, fuelUnitPrice: DEFAULT_FUEL_PRICES[current.fuelType] }
+      );
+    };
+
+    const fetchFuelPrice = async () => {
+      try {
+        const response = await fetch("https://www.fueleconomy.gov/ws/rest/fuelprices", {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error("Fuel price lookup failed");
+        }
+
+        const xmlText = await response.text();
+        const xml = new window.DOMParser().parseFromString(xmlText, "text/xml");
+        const nodeNameByFuelType: Record<FuelType, string> = {
+          cng: "cng",
+          diesel: "diesel",
+          e85: "e85",
+          electric: "electric",
+          lpg: "lpg",
+          midgrade: "midgrade",
+          premium: "premium",
+          regular: "regular",
+        };
+        const priceNode = xml.querySelector(nodeNameByFuelType[values.fuelType]);
+        const parsedPrice = Number(priceNode?.textContent ?? "");
+
+        if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+          throw new Error("Fuel price unavailable");
+        }
+
+        setValues((current) =>
+          current.fuelType === values.fuelType
+            ? { ...current, fuelUnitPrice: parsedPrice }
+            : current
+        );
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          applyFallbackPrice();
+        }
+      }
+    };
+
+    fetchFuelPrice();
+
+    return () => {
+      controller.abort();
+    };
+  }, [values.fuelType]);
+
+  useEffect(() => {
     const updateStickyTop = () => {
       const nextTop = (navWrapperRef?.current?.offsetHeight ?? 56) + 8;
       setStickyTop(nextTop);
@@ -390,11 +513,29 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       try {
         const parsedCustom = JSON.parse(savedCustom) as CustomVehicle;
         if (parsedCustom?.title && parsedCustom?.values) {
-          setSavedCustomVehicle(parsedCustom);
+          const normalizedCustomVehicle = {
+            ...parsedCustom,
+            values: {
+              ...defaultValues,
+              ...parsedCustom.values,
+              fuelType: parsedCustom.values.fuelType ?? defaultValues.fuelType,
+              fuelEfficiency:
+                parsedCustom.values.fuelEfficiency ??
+                (parsedCustom.values as any).fuelMileage ??
+                defaultValues.fuelEfficiency,
+              fuelUnitPrice:
+                parsedCustom.values.fuelUnitPrice ??
+                DEFAULT_FUEL_PRICES[
+                  (parsedCustom.values.fuelType ?? defaultValues.fuelType) as FuelType
+                ],
+            },
+          } as CustomVehicle;
+          setSavedCustomVehicle(normalizedCustomVehicle);
           setCustomVehicleDraft({
-            year: String(parsedCustom.year || ""),
-            make: parsedCustom.make || "",
-            model: parsedCustom.model || "",
+            year: String(normalizedCustomVehicle.year || ""),
+            make: normalizedCustomVehicle.make || "",
+            model: normalizedCustomVehicle.model || "",
+            fuelType: normalizedCustomVehicle.values.fuelType || "regular",
           });
         } else {
           localStorage.removeItem(CAR_COST_CUSTOM_KEY);
@@ -408,7 +549,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       try {
         const parsedState = JSON.parse(savedState) as PersistedCarCostState;
         if (parsedState?.values && parsedState?.recurringType) {
-          setValues(parsedState.values);
+          setValues({
+            ...defaultValues,
+            ...parsedState.values,
+            fuelType: parsedState.values.fuelType ?? defaultValues.fuelType,
+            fuelEfficiency:
+              parsedState.values.fuelEfficiency ??
+              (parsedState.values as any).fuelMileage ??
+              defaultValues.fuelEfficiency,
+            fuelUnitPrice:
+              parsedState.values.fuelUnitPrice ??
+              DEFAULT_FUEL_PRICES[
+                (parsedState.values.fuelType ?? defaultValues.fuelType) as FuelType
+              ],
+          });
           setRecurringType(parsedState.recurringType);
           setSelectedSource(parsedState.selectedSource ?? "default");
           setSelectedTemplateId(parsedState.selectedTemplateId ?? null);
@@ -492,7 +646,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setValues(nextValues);
     setRecurringType(nextRecurringType);
     if (source === "default") {
-      setCustomVehicleDraft({ year: "", make: "", model: "" });
+      setCustomVehicleDraft({ year: "", make: "", model: "", fuelType: "regular" });
     }
     setHasResolvedStartupChoice(true);
     modalInstanceRef.current?.close();
@@ -536,6 +690,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setValues(applyPlannerValues(template.values, plannerValues));
   };
 
+  const handleFuelTypeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextFuelType = event.target.value as FuelType;
+    setValues((current) => ({
+      ...current,
+      fuelType: nextFuelType,
+      fuelUnitPrice: DEFAULT_FUEL_PRICES[nextFuelType],
+    }));
+  };
+
   const handleCustomVehicleDraftChange =
     (field: keyof CustomVehicleDraft) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -568,24 +731,27 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       make: trimmedMake,
       model: trimmedModel,
       title: `${parsedCustomVehicleYear} ${trimmedMake} ${trimmedModel}`,
-      values: defaultValues,
-      recurringType: "day",
+      values: {
+        ...defaultValues,
+        fuelType: customVehicleDraft.fuelType,
+        fuelUnitPrice: DEFAULT_FUEL_PRICES[customVehicleDraft.fuelType],
+      },
     };
 
     setSavedCustomVehicle(nextCustomVehicle);
     localStorage.setItem(CAR_COST_CUSTOM_KEY, JSON.stringify(nextCustomVehicle));
-    applySelection("custom", defaultValues, "day", "custom");
+    applySelection("custom", nextCustomVehicle.values, "day", "custom");
     M.toast({ html: `Loaded ${nextCustomVehicle.title}`, displayLength: 2500 });
   };
 
   const handleOpenOwnCarModal = () => {
-    setCustomVehicleDraft({ year: "", make: "", model: "" });
+    setCustomVehicleDraft({ year: "", make: "", model: "", fuelType: "regular" });
     modalInstanceRef.current?.open();
   };
 
   const calculations = useMemo(() => {
     const fuelCostPerMile =
-      values.fuelMileage > 0 ? values.fuelCostPerGallon / values.fuelMileage : 0;
+      values.fuelEfficiency > 0 ? values.fuelUnitPrice / values.fuelEfficiency : 0;
     const oilCostPerMile =
       values.oilChangeInterval > 0 ? values.oilChangeCost / values.oilChangeInterval : 0;
     const tireCostPerMile =
@@ -747,6 +913,22 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             : "Vehicle template";
         })();
 
+  const fuelEfficiencyLabel =
+    values.fuelType === "electric" ? "Efficiency (mi/kWh)" : "Fuel mileage (MPG)";
+  const fuelPriceLabel =
+    values.fuelType === "electric"
+      ? "Electricity cost per kWh"
+      : `${FUEL_TYPE_LABELS[values.fuelType]} cost per gallon`;
+  const fuelPriceTooltip = `Fuel price was set from current ${FUEL_TYPE_LABELS[
+    values.fuelType
+  ].toLowerCase()} pricing at ${formatCurrency(values.fuelUnitPrice)} per ${
+    values.fuelType === "electric" ? "kWh" : "gallon"
+  }.`;
+  const depreciationIntervalTooltip =
+    "Enter the number of miles over which you expect the vehicle to lose the value between purchase price and resale value. The calculator uses (purchase price - resale value) divided by this mileage interval to estimate depreciation cost per mile.";
+  const parkingTooltip =
+    "Most people do not have this cost, but some do in dense urban settings. It is treated as part of annual ownership cost rather than a mileage-based expense.";
+
   const solidPrimaryButtonStyle: React.CSSProperties = {
     marginTop: "1rem",
     backgroundColor: "var(--primary-color)",
@@ -895,6 +1077,51 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         placeholder="Camry"
                         style={inputStyle}
                       />
+                    </div>
+                  </div>
+                  <div className="col s12">
+                    <label
+                      htmlFor="customVehicleFuelType"
+                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                    >
+                      Fuel type
+                    </label>
+                    <div style={{ ...inputContainerStyle, position: "relative" }}>
+                      <select
+                        id="customVehicleFuelType"
+                        className="browser-default"
+                        value={customVehicleDraft.fuelType}
+                        onChange={(event) =>
+                          setCustomVehicleDraft((current) => ({
+                            ...current,
+                            fuelType: event.target.value as FuelType,
+                          }))
+                        }
+                        style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                      >
+                        <option value="regular">Regular</option>
+                        <option value="midgrade">Midgrade</option>
+                        <option value="premium">Premium</option>
+                        <option value="diesel">Diesel</option>
+                        <option value="e85">E85</option>
+                        <option value="cng">CNG</option>
+                        <option value="lpg">LPG</option>
+                        <option value="electric">Electric</option>
+                      </select>
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          right: "1rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: palette.muted,
+                          fontSize: "0.85rem",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        ▼
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1171,6 +1398,123 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       />
                       <span style={{ color: palette.text }}>Include annual ownership costs</span>
                     </label>
+                  </div>
+                ) : null}
+                {section.title === "Running costs" ? (
+                  <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
+                    <div>
+                      <label
+                        htmlFor="fuelType"
+                        style={{
+                          display: "block",
+                          fontWeight: 600,
+                          marginBottom: "0.45rem",
+                        }}
+                      >
+                        Fuel type
+                      </label>
+                      <div style={{ ...inputContainerStyle, position: "relative" }}>
+                        <select
+                          id="fuelType"
+                          className="browser-default"
+                          value={values.fuelType}
+                          onChange={handleFuelTypeChange}
+                          style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                        >
+                          <option value="regular">Regular</option>
+                          <option value="midgrade">Midgrade</option>
+                          <option value="premium">Premium</option>
+                          <option value="diesel">Diesel</option>
+                          <option value="e85">E85</option>
+                          <option value="cng">CNG</option>
+                          <option value="lpg">LPG</option>
+                          <option value="electric">Electric</option>
+                        </select>
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            position: "absolute",
+                            right: "1rem",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: palette.muted,
+                            fontSize: "0.85rem",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          ▼
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="fuelEfficiency"
+                        style={{
+                          display: "block",
+                          fontWeight: 600,
+                          marginBottom: "0.45rem",
+                        }}
+                      >
+                        {fuelEfficiencyLabel}
+                      </label>
+                      <div style={inputContainerStyle}>
+                        <input
+                          id="fuelEfficiency"
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={values.fuelEfficiency}
+                          onChange={handleChange("fuelEfficiency")}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="fuelUnitPrice"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.45rem",
+                          fontWeight: 600,
+                          marginBottom: "0.45rem",
+                        }}
+                      >
+                        <span>{fuelPriceLabel}</span>
+                        <span
+                          title={fuelPriceTooltip}
+                          aria-label={fuelPriceTooltip}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "1.1rem",
+                            height: "1.1rem",
+                            borderRadius: "999px",
+                            fontSize: "0.78rem",
+                            fontWeight: 700,
+                            color: "#ffffff",
+                            background: "var(--secondary-color)",
+                            cursor: "help",
+                            userSelect: "none",
+                          }}
+                        >
+                          i
+                        </span>
+                      </label>
+                      <div style={inputContainerStyle}>
+                        <span style={prefixStyle}>$</span>
+                        <input
+                          id="fuelUnitPrice"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={values.fuelUnitPrice}
+                          onChange={handleChange("fuelUnitPrice")}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ) : null}
                 <div style={{ display: "grid", gap: "1rem" }}>

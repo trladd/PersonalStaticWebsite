@@ -6,8 +6,8 @@
     "model": "WRX Limited 2.0 6MT",
     "title": "2018 Subaru WRX Limited 2.0 6MT",
     "values": {
-      "fuelMileage": 23,
-      "fuelCostPerGallon": 3.85,
+      "fuelType": "premium",
+      "fuelEfficiency": 23,
       "oilChangeCost": 85,
       "oilChangeInterval": 5000,
       "tireCost": 1200,
@@ -23,9 +23,10 @@
       "annualRegistration": 180,
       "annualParking": 0,
       "annualInspection": 50,
-      "annualRoadside": 120
-    },
-    "recurringType": "day"
+      "annualRoadside": 120,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   },
   {
     "id": "2013-f150-supercrew-5-platinum-4x4",
@@ -34,8 +35,8 @@
     "model": "F-150 SuperCrew 5.0 Platinum 4x4",
     "title": "2013 F-150 SuperCrew 5.0 Platinum 4x4",
     "values": {
-      "fuelMileage": 16,
-      "fuelCostPerGallon": 3.6,
+      "fuelType": "regular",
+      "fuelEfficiency": 16,
       "oilChangeCost": 95,
       "oilChangeInterval": 5000,
       "tireCost": 1400,
@@ -51,9 +52,10 @@
       "annualRegistration": 220,
       "annualParking": 0,
       "annualInspection": 75,
-      "annualRoadside": 120
-    },
-    "recurringType": "day"
+      "annualRoadside": 120,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   },
   {
     "id": "2013-gmc-acadia-denali",
@@ -62,8 +64,8 @@
     "model": "Acadia Denali",
     "title": "2013 GMC Acadia Denali",
     "values": {
-      "fuelMileage": 19,
-      "fuelCostPerGallon": 3.55,
+      "fuelType": "regular",
+      "fuelEfficiency": 19,
       "oilChangeCost": 80,
       "oilChangeInterval": 6500,
       "tireCost": 1100,
@@ -79,9 +81,10 @@
       "annualRegistration": 180,
       "annualParking": 0,
       "annualInspection": 50,
-      "annualRoadside": 120
-    },
-    "recurringType": "day"
+      "annualRoadside": 120,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   },
   {
     "id": "2025-toyota-camry",
@@ -90,8 +93,8 @@
     "model": "Camry",
     "title": "2025 Toyota Camry",
     "values": {
-      "fuelMileage": 34,
-      "fuelCostPerGallon": 3.45,
+      "fuelType": "regular",
+      "fuelEfficiency": 34,
       "oilChangeCost": 75,
       "oilChangeInterval": 10000,
       "tireCost": 900,
@@ -107,9 +110,10 @@
       "annualRegistration": 200,
       "annualParking": 0,
       "annualInspection": 75,
-      "annualRoadside": 100
-    },
-    "recurringType": "day"
+      "annualRoadside": 100,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   },
   {
     "id": "bugatti-veyron",
@@ -118,8 +122,8 @@
     "model": "Veyron",
     "title": "Bugatti Veyron",
     "values": {
-      "fuelMileage": 10,
-      "fuelCostPerGallon": 5.8,
+      "fuelType": "premium",
+      "fuelEfficiency": 10,
       "oilChangeCost": 1200,
       "oilChangeInterval": 10000,
       "tireCost": 42000,
@@ -135,9 +139,10 @@
       "annualRegistration": 1200,
       "annualParking": 3000,
       "annualInspection": 200,
-      "annualRoadside": 500
-    },
-    "recurringType": "day"
+      "annualRoadside": 500,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   },
   {
     "id": "chevrolet-corvette-c8",
@@ -146,8 +151,8 @@
     "model": "Corvette C8",
     "title": "Chevrolet Corvette C8",
     "values": {
-      "fuelMileage": 20,
-      "fuelCostPerGallon": 4.2,
+      "fuelType": "premium",
+      "fuelEfficiency": 20,
       "oilChangeCost": 140,
       "oilChangeInterval": 7500,
       "tireCost": 1800,
@@ -163,9 +168,10 @@
       "annualRegistration": 350,
       "annualParking": 0,
       "annualInspection": 90,
-      "annualRoadside": 150
-    },
-    "recurringType": "day"
+      "annualRoadside": 150,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   },
   {
     "id": "toyota-prius",
@@ -174,8 +180,8 @@
     "model": "Prius",
     "title": "Toyota Prius",
     "values": {
-      "fuelMileage": 52,
-      "fuelCostPerGallon": 3.35,
+      "fuelType": "regular",
+      "fuelEfficiency": 52,
       "oilChangeCost": 70,
       "oilChangeInterval": 10000,
       "tireCost": 800,
@@ -191,9 +197,10 @@
       "annualRegistration": 160,
       "annualParking": 0,
       "annualInspection": 60,
-      "annualRoadside": 100
-    },
-    "recurringType": "day"
+      "annualRoadside": 100,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   },
   {
     "id": "jeep-grand-wagoneer",
@@ -202,8 +209,8 @@
     "model": "Grand Wagoneer",
     "title": "Grand Wagoneer",
     "values": {
-      "fuelMileage": 15,
-      "fuelCostPerGallon": 3.7,
+      "fuelType": "premium",
+      "fuelEfficiency": 15,
       "oilChangeCost": 110,
       "oilChangeInterval": 7500,
       "tireCost": 1600,
@@ -219,8 +226,154 @@
       "annualRegistration": 400,
       "annualParking": 0,
       "annualInspection": 90,
-      "annualRoadside": 150
-    },
-    "recurringType": "day"
+      "annualRoadside": 150,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
+  },
+  {
+    "id": "2024-tesla-model-3-rwd",
+    "year": 2024,
+    "make": "Tesla",
+    "model": "Model 3 RWD",
+    "title": "2024 Tesla Model 3 RWD",
+    "values": {
+      "fuelType": "electric",
+      "fuelEfficiency": 4.1,
+      "oilChangeCost": 0,
+      "oilChangeInterval": 10000,
+      "tireCost": 1050,
+      "tireInterval": 40000,
+      "miscMaintenanceCost": 300,
+      "miscMaintenanceInterval": 15000,
+      "purchasePrice": 39990,
+      "resaleValue": 29500,
+      "depreciationInterval": 80000,
+      "tripDistance": 250,
+      "recurringMiles": 40,
+      "annualInsurance": 2200,
+      "annualRegistration": 260,
+      "annualParking": 0,
+      "annualInspection": 0,
+      "annualRoadside": 120,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
+  },
+  {
+    "id": "2024-tesla-model-y-long-range",
+    "year": 2024,
+    "make": "Tesla",
+    "model": "Model Y Long Range",
+    "title": "2024 Tesla Model Y Long Range",
+    "values": {
+      "fuelType": "electric",
+      "fuelEfficiency": 3.6,
+      "oilChangeCost": 0,
+      "oilChangeInterval": 10000,
+      "tireCost": 1250,
+      "tireInterval": 38000,
+      "miscMaintenanceCost": 350,
+      "miscMaintenanceInterval": 15000,
+      "purchasePrice": 48990,
+      "resaleValue": 36500,
+      "depreciationInterval": 80000,
+      "tripDistance": 250,
+      "recurringMiles": 40,
+      "annualInsurance": 2400,
+      "annualRegistration": 290,
+      "annualParking": 0,
+      "annualInspection": 0,
+      "annualRoadside": 120,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
+  },
+  {
+    "id": "2024-ford-f150-lightning-xlt",
+    "year": 2024,
+    "make": "Ford",
+    "model": "F-150 Lightning XLT",
+    "title": "2024 Ford F-150 Lightning XLT",
+    "values": {
+      "fuelType": "electric",
+      "fuelEfficiency": 2.3,
+      "oilChangeCost": 0,
+      "oilChangeInterval": 10000,
+      "tireCost": 1400,
+      "tireInterval": 40000,
+      "miscMaintenanceCost": 420,
+      "miscMaintenanceInterval": 15000,
+      "purchasePrice": 64995,
+      "resaleValue": 47000,
+      "depreciationInterval": 75000,
+      "tripDistance": 250,
+      "recurringMiles": 40,
+      "annualInsurance": 2100,
+      "annualRegistration": 280,
+      "annualParking": 0,
+      "annualInspection": 0,
+      "annualRoadside": 120,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
+  },
+  {
+    "id": "2024-rivian-r1t-dual-standard",
+    "year": 2024,
+    "make": "Rivian",
+    "model": "R1T Dual Standard",
+    "title": "2024 Rivian R1T Dual Standard",
+    "values": {
+      "fuelType": "electric",
+      "fuelEfficiency": 2.1,
+      "oilChangeCost": 0,
+      "oilChangeInterval": 10000,
+      "tireCost": 1800,
+      "tireInterval": 35000,
+      "miscMaintenanceCost": 500,
+      "miscMaintenanceInterval": 15000,
+      "purchasePrice": 69900,
+      "resaleValue": 52000,
+      "depreciationInterval": 70000,
+      "tripDistance": 250,
+      "recurringMiles": 35,
+      "annualInsurance": 2500,
+      "annualRegistration": 320,
+      "annualParking": 0,
+      "annualInspection": 0,
+      "annualRoadside": 150,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
+  },
+  {
+    "id": "2024-rivian-r1s-dual-standard",
+    "year": 2024,
+    "make": "Rivian",
+    "model": "R1S Dual Standard",
+    "title": "2024 Rivian R1S Dual Standard",
+    "values": {
+      "fuelType": "electric",
+      "fuelEfficiency": 2,
+      "oilChangeCost": 0,
+      "oilChangeInterval": 10000,
+      "tireCost": 1850,
+      "tireInterval": 35000,
+      "miscMaintenanceCost": 520,
+      "miscMaintenanceInterval": 15000,
+      "purchasePrice": 75900,
+      "resaleValue": 56000,
+      "depreciationInterval": 70000,
+      "tripDistance": 250,
+      "recurringMiles": 35,
+      "annualInsurance": 2600,
+      "annualRegistration": 330,
+      "annualParking": 0,
+      "annualInspection": 0,
+      "annualRoadside": 150,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
   }
 ]
