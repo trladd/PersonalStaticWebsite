@@ -1048,6 +1048,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     },
   ];
 
+  const primarySummaryCard = summaryCards.find((card) => card.highlight) ?? summaryCards[0];
+  const secondarySummaryCards = summaryCards.filter((card) => !card.highlight);
+
   const templateOptions = [
     ...typedTemplates.map((template) => ({
       id: template.id,
@@ -1567,42 +1570,83 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           </div>
 
           <div className="col s12 l5" style={{ marginBottom: "1rem" }}>
-            {summaryCards.map((card) => (
-              <article
-                key={card.label}
+            <article
+              style={{
+                ...cardStyle,
+                ...stackedCardStyle,
+                padding: "1.05rem 1.2rem",
+                color: "#fff",
+                background: palette.summaryHighlight,
+              }}
+            >
+              <span
                 style={{
-                  ...cardStyle,
-                  ...stackedCardStyle,
-                  padding: "1rem 1.2rem",
-                  color: card.highlight ? "#fff" : palette.text,
-                  background: card.highlight
-                    ? palette.summaryHighlight
-                    : palette.cardBackground,
+                  display: "block",
+                  color: "rgba(255,255,255,0.82)",
+                  marginBottom: "0.3rem",
                 }}
               >
-                <span
-                  style={{
-                    display: "block",
-                    color: card.highlight ? "rgba(255,255,255,0.82)" : palette.muted,
-                    marginBottom: "0.35rem",
-                  }}
-                >
-                  {card.label}
-                </span>
-                <strong style={{ fontSize: "1.9rem", lineHeight: 1 }}>
-                  {formatCurrency(card.value)}
-                </strong>
-                <small
-                  style={{
-                    display: "block",
-                    marginTop: "0.35rem",
-                    color: card.highlight ? "rgba(255,255,255,0.82)" : palette.muted,
-                  }}
-                >
-                  per mile
-                </small>
-              </article>
-            ))}
+                {primarySummaryCard.label}
+              </span>
+              <strong style={{ fontSize: "2.1rem", lineHeight: 1 }}>
+                {formatCurrency(primarySummaryCard.value)}
+              </strong>
+              <small
+                style={{
+                  display: "block",
+                  marginTop: "0.3rem",
+                  color: "rgba(255,255,255,0.82)",
+                }}
+              >
+                per mile
+              </small>
+            </article>
+
+            {!isMobileView ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: "0.8rem",
+                }}
+              >
+                {secondarySummaryCards.map((card) => (
+                  <article
+                    key={card.label}
+                    style={{
+                      ...cardStyle,
+                      padding: "0.85rem 0.95rem",
+                      minHeight: "96px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        color: palette.muted,
+                        marginBottom: "0.25rem",
+                        fontSize: "0.88rem",
+                        lineHeight: 1.25,
+                      }}
+                    >
+                      {card.label}
+                    </span>
+                    <strong style={{ display: "block", fontSize: "1.35rem", lineHeight: 1.05 }}>
+                      {formatCurrency(card.value)}
+                    </strong>
+                    <small
+                      style={{
+                        display: "block",
+                        marginTop: "0.22rem",
+                        color: palette.muted,
+                        fontSize: "0.82rem",
+                      }}
+                    >
+                      per mile
+                    </small>
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
