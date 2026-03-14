@@ -697,6 +697,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       }));
     };
 
+  const handleNumericInputFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    if (event.target.value === "0") {
+      event.target.select();
+    }
+  };
+
   const applySelection = (
     source: "default" | "template" | "custom",
     nextValues: CarCostValues,
@@ -1310,6 +1316,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         value={customVehicleDraft.year}
                         onChange={handleCustomVehicleDraftChange("year")}
                         onBlur={handleCustomVehicleFieldBlur("year")}
+                        onFocus={handleNumericInputFocus}
                         placeholder="2020"
                         style={inputStyle}
                         className="car-cost-placeholder"
@@ -1920,6 +1927,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           step="0.1"
                           value={values.fuelEfficiency}
                           onChange={handleChange("fuelEfficiency")}
+                          onFocus={handleNumericInputFocus}
                           style={inputStyle}
                         />
                       </div>
@@ -1957,6 +1965,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           step="0.01"
                           value={values.fuelUnitPrice}
                           onChange={handleChange("fuelUnitPrice")}
+                          onFocus={handleNumericInputFocus}
                           style={inputStyle}
                         />
                       </div>
@@ -2019,6 +2028,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           step={field.step}
                           value={values[field.name]}
                           onChange={handleChange(field.name)}
+                          onFocus={handleNumericInputFocus}
                           disabled={
                             (section.title === "Depreciation" &&
                               !isToggleEnabled(values.includeDepreciation)) ||
@@ -2114,6 +2124,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   step="1"
                   value={values.tripDistance}
                   onChange={handleChange("tripDistance")}
+                  onFocus={handleNumericInputFocus}
                   style={inputStyle}
                 />
               </div>
@@ -2215,6 +2226,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       step="1"
                       value={values.recurringMiles}
                       onChange={handleChange("recurringMiles")}
+                      onFocus={handleNumericInputFocus}
                       style={inputStyle}
                     />
                   </div>
