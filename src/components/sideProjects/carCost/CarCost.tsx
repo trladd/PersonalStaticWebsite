@@ -5,6 +5,7 @@ import CostBreakdownViewer, {
   BreakdownMode,
   CostBreakdownViewerMode,
 } from "./CostBreakdownViewer";
+import InsightsCard, { InsightCardData } from "./InsightsCard";
 import vehicleTemplates from "./vehicleTemplates.json";
 
 interface CarCostProps {
@@ -46,6 +47,7 @@ type FuelType =
   | "electric";
 
 type RecurringType = "day" | "week" | "month" | "year";
+type TripType = "oneWay" | "roundTrip";
 
 type FieldDefinition = {
   label: string;
@@ -59,6 +61,7 @@ type PersistedCarCostState = {
   selectedTemplateId: string | null;
   values: CarCostValues;
   recurringType: RecurringType;
+  tripType: TripType;
   updatedAt: string;
 };
 
@@ -273,6 +276,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   );
   const [values, setValues] = useState<CarCostValues>(defaultValues);
   const [recurringType, setRecurringType] = useState<RecurringType>("day");
+  const [tripType, setTripType] = useState<TripType>("oneWay");
   const [hasResolvedStartupChoice, setHasResolvedStartupChoice] = useState(false);
   const [selectedSource, setSelectedSource] = useState<"default" | "template" | "custom">(
     "default"
@@ -395,7 +399,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   }, [values, recurringType, customVehicleDraft]);
 
   useEffect(() => {
-    const tooltipElements = document.querySelectorAll(".tooltipped");
+    const tooltipElements = document.querySelectorAll<HTMLElement>(".tooltipped");
     tooltipElements.forEach((element) => {
       M.Tooltip.getInstance(element)?.destroy();
     });
@@ -560,6 +564,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               ],
           });
           setRecurringType(parsedState.recurringType);
+          setTripType(parsedState.tripType ?? "oneWay");
           setSelectedSource(parsedState.selectedSource ?? "default");
           setSelectedTemplateId(parsedState.selectedTemplateId ?? null);
           if (parsedState.selectedSource === "template" && parsedState.selectedTemplateId) {
@@ -627,11 +632,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       selectedTemplateId,
       values,
       recurringType,
+      tripType,
       updatedAt: new Date().toISOString(),
     };
 
     localStorage.setItem(CAR_COST_STORAGE_KEY, JSON.stringify(nextState));
-  }, [hasResolvedStartupChoice, recurringType, selectedSource, selectedTemplateId, values]);
+  }, [hasResolvedStartupChoice, recurringType, selectedSource, selectedTemplateId, tripType, values]);
 
   const handleChange =
     (name: keyof CarCostValues) =>
@@ -768,6 +774,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   };
 
   const calculations = useMemo(() => {
+    const tripMultiplier = tripType === "roundTrip" ? 2 : 1;
+    const selectedTripDistance = values.tripDistance * tripMultiplier;
     const fuelCostPerMile =
       values.fuelEfficiency > 0 ? values.fuelUnitPrice / values.fuelEfficiency : 0;
     const oilCostPerMile =
@@ -808,7 +816,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         : 0;
     const fixedCostPerMile = annualMileage > 0 ? annualFixedCosts / annualMileage : 0;
     const trueCostPerMile = variableCostPerMile + fixedCostPerMile;
-    const tripCost = values.tripDistance * trueCostPerMile;
+    const tripCost = selectedTripDistance * trueCostPerMile;
     const recurringDrivingCosts = {
       day: (annualMileage * variableCostPerMile) / 365,
       week: (annualMileage * variableCostPerMile) / 52,
@@ -833,11 +841,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       annualFixedCosts,
       fixedCostPerMile,
       trueCostPerMile,
+      selectedTripDistance,
       tripCost,
       recurringDrivingCosts,
       recurringTrueCosts,
     };
-  }, [recurringType, values]);
+  }, [recurringType, tripType, values]);
 
   const recurringMilesByPeriod: Record<RecurringType, number> = useMemo(
     () => ({
@@ -958,16 +967,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         key: "trip",
         label: "Trip",
         description:
-          "This allocates the selected trip distance across fuel, maintenance, depreciation, and ownership overhead.",
-        unitLabel: `${values.tripDistance.toFixed(0)} mi trip`,
+          `This allocates the selected trip distance of ${calculations.selectedTripDistance.toFixed(
+            0
+          )} miles across fuel, maintenance, depreciation, and ownership overhead.`,
+        unitLabel: `${calculations.selectedTripDistance.toFixed(0)} mi trip`,
         total: calculations.tripCost,
         items: buildItems(
-          calculations.fuelCostPerMile * values.tripDistance,
-          calculations.oilCostPerMile * values.tripDistance,
-          calculations.tireCostPerMile * values.tripDistance,
-          calculations.miscCostPerMile * values.tripDistance,
-          calculations.depreciationCostPerMile * values.tripDistance,
-          calculations.fixedCostPerMile * values.tripDistance
+          calculations.fuelCostPerMile * calculations.selectedTripDistance,
+          calculations.oilCostPerMile * calculations.selectedTripDistance,
+          calculations.tireCostPerMile * calculations.selectedTripDistance,
+          calculations.miscCostPerMile * calculations.selectedTripDistance,
+          calculations.depreciationCostPerMile * calculations.selectedTripDistance,
+          calculations.fixedCostPerMile * calculations.selectedTripDistance
         ),
       },
       ...recurringModes,
@@ -979,12 +990,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     calculations.miscCostPerMile,
     calculations.oilCostPerMile,
     calculations.recurringTrueCosts,
+    calculations.selectedTripDistance,
     calculations.tireCostPerMile,
     calculations.tripCost,
     calculations.trueCostPerMile,
     recurringMilesByPeriod,
     recurringOwnershipByPeriod,
-    values.tripDistance,
   ]);
 
   const filteredBreakdownModalModes = useMemo(
@@ -1072,8 +1083,132 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     whiteSpace: "nowrap",
   };
 
+  const tripTypeButtonStyle = (isActive: boolean): React.CSSProperties => ({
+    borderRadius: "999px",
+    border: isActive ? "none" : palette.softBorder,
+    background: isActive ? palette.accent : "transparent",
+    color: isActive ? "#ffffff" : palette.text,
+    textTransform: "none",
+    fontWeight: 600,
+    minWidth: "unset",
+    padding: "0 1rem",
+    boxShadow: "none",
+  });
+
+  const insights: InsightCardData[] = [
+    {
+      label: "IRS business mileage rate",
+      benchmark: 0.725,
+      context: "2026 federal business reimbursement benchmark",
+      tooltip:
+        "IRS business mileage rates are designed as an all-in reimbursement benchmark for using a personal vehicle for business. It is a useful reference point, but your actual vehicle cost can still land above or below it.",
+      methodology:
+        "This benchmark uses the official IRS 2026 business standard mileage rate of 72.5 cents per mile.",
+      sourceLabel: "IRS mileage rate announcement",
+      sourceUrl:
+        "https://www.irs.gov/newsroom/irs-sets-2026-business-standard-mileage-rate-at-725-cents-per-mile-up-25-cents",
+    },
+    {
+      label: "AAA average new-car cost",
+      benchmark: 0.77,
+      context: "Typical all-in cost per mile for a new vehicle",
+      tooltip:
+        "AAA's annual driving-cost studies estimate the average all-in ownership and operating cost for newer vehicles. This is a broad national benchmark rather than a model-specific number.",
+      methodology:
+        "This benchmark uses AAA reporting summarized at roughly 77 cents per mile for a typical newer vehicle.",
+      sourceLabel: "AAA driving-cost summary",
+      sourceUrl: "https://www.autoweek.com/news/a66331575/aaa-new-vehicle-ownership-costs-drop/",
+    },
+    {
+      label: "Uber gross earnings benchmark",
+      benchmark: 0.90,
+      context: "Rough gross revenue benchmark before your expenses",
+      tooltip:
+        "This is a rough gross earnings benchmark, not take-home profit. Actual Uber results can vary significantly by market, demand, incentives, time of day, and how much unpaid deadhead driving is involved.",
+      methodology:
+        "This benchmark is a rounded planning reference derived from Gridwise reporting on Uber driver earnings. It is intended as a directional gross-revenue comparison, not a guaranteed pay rate.",
+      sourceLabel: "Gridwise Uber earnings guide",
+      sourceUrl: "https://gridwise.io/blog/uber-driver-pay/how-much-do-uber-drivers-make/",
+    },
+    {
+      label: "DoorDash gross earnings benchmark",
+      benchmark: 0.92,
+      context: "Rough gross delivery revenue benchmark before expenses",
+      tooltip:
+        "This is a rough gross delivery benchmark before fuel, maintenance, taxes, and downtime. DoorDash results vary a lot based on zone density, batching, tip patterns, and the day or hour you drive.",
+      methodology:
+        "This benchmark is a rounded planning reference derived from Gridwise reporting on DoorDash driver earnings. It is meant as gross-revenue context before vehicle costs and taxes.",
+      sourceLabel: "Gridwise DoorDash earnings guide",
+      sourceUrl:
+        "https://gridwise.io/blog/doordash-driver/how-much-do-doordash-drivers-make-2/",
+    },
+    {
+      label: "Economy rental benchmark",
+      benchmark: 0.26,
+      context: "Inferred from average daily economy rental pricing",
+      tooltip:
+        "This one is an inference, not an official per-mile rate. It is based on a reputable average daily economy rental price benchmark translated to cents per mile using an assumed 250-mile driving day, so use it as directional context only.",
+      methodology:
+        "This uses a published average daily economy rental price and converts it to an estimated per-mile figure using an assumed 250-mile driving day.",
+      sourceLabel: "Fidelity rental pricing overview",
+      sourceUrl:
+        "https://www.fidelity.com/learning-center/life-events/average-cost-of-rental-car",
+    },
+    {
+      label: "Full-size SUV rental benchmark",
+      benchmark: 0.44,
+      context: "Inferred from average full-size SUV rental pricing",
+      tooltip:
+        "This is also an inferred benchmark rather than an official per-mile number. It translates a published average daily full-size SUV rental price into cents per mile using an assumed 250-mile driving day, so it is best used as directional context.",
+      methodology:
+        "This uses a published average daily full-size SUV rental price and converts it to an estimated per-mile figure using an assumed 250-mile driving day.",
+      sourceLabel: "Fidelity rental pricing overview",
+      sourceUrl:
+        "https://www.fidelity.com/learning-center/life-events/average-cost-of-rental-car",
+    },
+    {
+      label: "Break-even gig target",
+      benchmark: 1.15,
+      context: "Example target that leaves room for labor and taxes",
+      tooltip:
+        "This is a practical planning target rather than an official industry rate. The idea is that revenue should clear your vehicle cost by enough margin to still leave room for your labor, taxes, and idle time.",
+      methodology:
+        "This is an internal planning benchmark used by the calculator to illustrate a healthier gross target that leaves room for labor, idle time, and taxes after vehicle costs.",
+    },
+  ].map((item) => {
+    const difference = calculations.trueCostPerMile - item.benchmark;
+    const isAbove = difference > 0;
+
+    return {
+      ...item,
+      difference,
+      isAbove,
+      headline:
+        difference === 0
+          ? `Right in line with ${item.label.toLowerCase()}`
+          : `${formatCurrency(Math.abs(difference))} per mile ${
+              isAbove ? "above" : "below"
+            } ${item.label.toLowerCase()}`,
+    };
+  });
+
   return (
     <div className="container flow-text" style={{ paddingBottom: "3rem" }}>
+      <style>
+        {`
+          .material-tooltip {
+            max-width: 320px;
+            white-space: normal;
+            line-height: 1.45;
+            padding: 12px 14px;
+          }
+
+          .material-tooltip .tooltip-content {
+            white-space: normal;
+            overflow-wrap: anywhere;
+          }
+        `}
+      </style>
       <div id="car-cost-restore-modal" className="modal" ref={modalRef}>
         <div
           className="modal-content"
@@ -1794,6 +1929,24 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 Multiply your true cost per mile by a route distance to estimate the
                 total cost of the trip.
               </p>
+              <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+                <button
+                  type="button"
+                  className="btn-flat"
+                  onClick={() => setTripType("oneWay")}
+                  style={tripTypeButtonStyle(tripType === "oneWay")}
+                >
+                  One way
+                </button>
+                <button
+                  type="button"
+                  className="btn-flat"
+                  onClick={() => setTripType("roundTrip")}
+                  style={tripTypeButtonStyle(tripType === "roundTrip")}
+                >
+                  Round trip
+                </button>
+              </div>
               <label
                 htmlFor="tripDistance"
                 style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
@@ -1826,12 +1979,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   {formatCurrency(calculations.tripCost)}
                 </strong>
                 <small style={{ display: "block", color: palette.muted, marginTop: "0.4rem" }}>
-                  {values.tripDistance.toFixed(0)} miles at{" "}
+                  {calculations.selectedTripDistance.toFixed(0)} miles at{" "}
                   {formatCurrency(calculations.trueCostPerMile)} per mile
                 </small>
                 <p style={{ margin: "0.6rem 0 0", color: palette.muted }}>
+                  {tripType === "roundTrip"
+                    ? `Round trip uses your selected distance twice (${values.tripDistance.toFixed(0)} miles each way).`
+                    : `One-way trip uses your selected distance of ${values.tripDistance.toFixed(0)} miles.`}
+                </p>
+                <p style={{ margin: "0.35rem 0 0", color: palette.muted }}>
                   Variable-only trip cost:{" "}
-                  {formatCurrency(values.tripDistance * calculations.variableCostPerMile)}
+                  {formatCurrency(
+                    calculations.selectedTripDistance * calculations.variableCostPerMile
+                  )}
                 </p>
               </div>
             </section>
@@ -2052,6 +2212,30 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 }}
                 cardStyle={cardStyle}
               />
+            </section>
+          </div>
+        </div>
+
+        <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
+          <div className="col s12" style={{ marginBottom: "1rem" }}>
+            <section style={{ ...cardStyle, padding: "1.5rem" }}>
+              <h3 style={{ marginTop: 0 }}>Insights</h3>
+              <p style={{ color: palette.muted, lineHeight: 1.5 }}>
+                These benchmarks help frame whether your vehicle is inexpensive or expensive
+                to operate compared with common reimbursement and gig-work reference points.
+              </p>
+              <div className="row" style={{ marginBottom: 0 }}>
+                {insights.map((insight) => (
+                  <div key={insight.label} className="col s12 m6 xl4" style={{ marginBottom: "1rem" }}>
+                    <InsightsCard
+                      insight={insight}
+                      cardStyle={cardStyle}
+                      isDarkMode={isDarkMode}
+                      mutedColor={palette.muted}
+                    />
+                  </div>
+                ))}
+              </div>
             </section>
           </div>
         </div>
