@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import M from "materialize-css";
 import { ThemeContext } from "../../../utility/ThemeContext";
+import vehicleTemplates from "./vehicleTemplates.json";
 
 interface CarCostProps {
   navWrapperRef?: React.RefObject<HTMLDivElement>;
@@ -25,6 +26,8 @@ type CarCostValues = {
   annualParking: number;
   annualInspection: number;
   annualRoadside: number;
+  includeDepreciation: number;
+  includeAnnualOwnership: number;
 };
 
 type RecurringType = "day" | "week" | "month" | "year";
@@ -43,9 +46,34 @@ type CostBreakdownItem = {
 };
 
 type PersistedCarCostState = {
+  selectedSource: "default" | "template" | "custom";
+  selectedTemplateId: string | null;
+  values: CarCostValues;
+  recurringType: RecurringType;
+  updatedAt: string;
+};
+
+type VehicleTemplate = {
+  id: string;
+  year: number;
+  make: string;
+  model: string;
+  title: string;
   values: CarCostValues;
   recurringType: RecurringType;
 };
+
+type CustomVehicle = VehicleTemplate & {
+  id: "custom";
+};
+
+type CustomVehicleDraft = {
+  year: string;
+  make: string;
+  model: string;
+};
+
+type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;
 
 const defaultValues: CarCostValues = {
   fuelMileage: 25,
@@ -66,7 +94,22 @@ const defaultValues: CarCostValues = {
   annualParking: 0,
   annualInspection: 75,
   annualRoadside: 120,
+  includeDepreciation: 1,
+  includeAnnualOwnership: 1,
 };
+
+const getPlannerValues = (values: CarCostValues): PlannerValues => ({
+  tripDistance: values.tripDistance,
+  recurringMiles: values.recurringMiles,
+});
+
+const applyPlannerValues = (
+  baseValues: CarCostValues,
+  plannerValues: PlannerValues
+): CarCostValues => ({
+  ...baseValues,
+  ...plannerValues,
+});
 
 const sections: { title: string; description: string; items: FieldDefinition[] }[] = [
   {
@@ -161,6 +204,8 @@ const stackedCardStyle: React.CSSProperties = {
 };
 
 const CAR_COST_STORAGE_KEY = "carCostState";
+const CAR_COST_CUSTOM_KEY = "carCostCustomVehicle";
+const STALE_STATE_MS = 60 * 60 * 1000;
 
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 const formatPercent = (value: number) => `${value.toFixed(1)}%`;
@@ -185,16 +230,33 @@ const buildPieSlice = (
   return `M 50 50 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
 };
 
-const CarCost: React.FC<CarCostProps> = () => {
+const isToggleEnabled = (value: number) => value === 1;
+
+const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const { isDarkMode } = useContext(ThemeContext);
+  const typedTemplates = vehicleTemplates as VehicleTemplate[];
   const [values, setValues] = useState<CarCostValues>(defaultValues);
   const [recurringType, setRecurringType] = useState<RecurringType>("day");
-  const [hasResolvedRestore, setHasResolvedRestore] = useState(false);
+  const [hasResolvedStartupChoice, setHasResolvedStartupChoice] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<"default" | "template" | "custom">(
+    "default"
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [startupTemplateId, setStartupTemplateId] = useState<string>(
+    typedTemplates[0]?.id ?? ""
+  );
+  const [savedCustomVehicle, setSavedCustomVehicle] = useState<CustomVehicle | null>(null);
+  const [customVehicleDraft, setCustomVehicleDraft] = useState<CustomVehicleDraft>({
+    year: "",
+    make: "",
+    model: "",
+  });
+  const [stickyTop, setStickyTop] = useState(72);
+  const [isMobileView, setIsMobileView] = useState(false);
   const [activeBreakdownLabel, setActiveBreakdownLabel] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const modalInstanceRef = useRef<M.Modal | null>(null);
-  const pendingSavedStateRef = useRef<PersistedCarCostState | null>(null);
 
   const palette = useMemo(
     () => ({
@@ -290,7 +352,22 @@ const CarCost: React.FC<CarCostProps> = () => {
 
   useEffect(() => {
     M.updateTextFields();
-  }, [values, recurringType]);
+  }, [values, recurringType, customVehicleDraft]);
+
+  useEffect(() => {
+    const updateStickyTop = () => {
+      const nextTop = (navWrapperRef?.current?.offsetHeight ?? 56) + 8;
+      setStickyTop(nextTop);
+      setIsMobileView(window.innerWidth < 700);
+    };
+
+    updateStickyTop();
+    window.addEventListener("resize", updateStickyTop);
+
+    return () => {
+      window.removeEventListener("resize", updateStickyTop);
+    };
+  }, [navWrapperRef]);
 
   useEffect(() => {
     if (!modalRef.current) {
@@ -307,26 +384,59 @@ const CarCost: React.FC<CarCostProps> = () => {
     });
 
     const savedState = localStorage.getItem(CAR_COST_STORAGE_KEY);
+    const savedCustom = localStorage.getItem(CAR_COST_CUSTOM_KEY);
 
-    if (!savedState) {
-      setHasResolvedRestore(true);
-      return () => {
-        modalInstanceRef.current?.destroy();
-      };
+    if (savedCustom) {
+      try {
+        const parsedCustom = JSON.parse(savedCustom) as CustomVehicle;
+        if (parsedCustom?.title && parsedCustom?.values) {
+          setSavedCustomVehicle(parsedCustom);
+          setCustomVehicleDraft({
+            year: String(parsedCustom.year || ""),
+            make: parsedCustom.make || "",
+            model: parsedCustom.model || "",
+          });
+        } else {
+          localStorage.removeItem(CAR_COST_CUSTOM_KEY);
+        }
+      } catch (error) {
+        localStorage.removeItem(CAR_COST_CUSTOM_KEY);
+      }
     }
 
-    try {
-      const parsedState = JSON.parse(savedState) as PersistedCarCostState;
-      if (parsedState?.values && parsedState?.recurringType) {
-        pendingSavedStateRef.current = parsedState;
-        modalInstanceRef.current.open();
-      } else {
+    if (savedState) {
+      try {
+        const parsedState = JSON.parse(savedState) as PersistedCarCostState;
+        if (parsedState?.values && parsedState?.recurringType) {
+          setValues(parsedState.values);
+          setRecurringType(parsedState.recurringType);
+          setSelectedSource(parsedState.selectedSource ?? "default");
+          setSelectedTemplateId(parsedState.selectedTemplateId ?? null);
+          if (parsedState.selectedSource === "template" && parsedState.selectedTemplateId) {
+            setStartupTemplateId(parsedState.selectedTemplateId);
+          }
+
+          const savedAt = parsedState.updatedAt
+            ? new Date(parsedState.updatedAt).getTime()
+            : Number.NaN;
+          const isRecentSession =
+            Number.isFinite(savedAt) && Date.now() - savedAt <= STALE_STATE_MS;
+
+          setHasResolvedStartupChoice(true);
+
+          if (!isRecentSession) {
+            modalInstanceRef.current.open();
+          }
+        } else {
+          localStorage.removeItem(CAR_COST_STORAGE_KEY);
+          modalInstanceRef.current.open();
+        }
+      } catch (error) {
         localStorage.removeItem(CAR_COST_STORAGE_KEY);
-        setHasResolvedRestore(true);
+        modalInstanceRef.current.open();
       }
-    } catch (error) {
-      localStorage.removeItem(CAR_COST_STORAGE_KEY);
-      setHasResolvedRestore(true);
+    } else {
+      modalInstanceRef.current.open();
     }
 
     return () => {
@@ -337,17 +447,20 @@ const CarCost: React.FC<CarCostProps> = () => {
   }, []);
 
   useEffect(() => {
-    if (!hasResolvedRestore) {
+    if (!hasResolvedStartupChoice) {
       return;
     }
 
     const nextState: PersistedCarCostState = {
+      selectedSource,
+      selectedTemplateId,
       values,
       recurringType,
+      updatedAt: new Date().toISOString(),
     };
 
     localStorage.setItem(CAR_COST_STORAGE_KEY, JSON.stringify(nextState));
-  }, [hasResolvedRestore, recurringType, values]);
+  }, [hasResolvedStartupChoice, recurringType, selectedSource, selectedTemplateId, values]);
 
   const handleChange =
     (name: keyof CarCostValues) =>
@@ -359,26 +472,115 @@ const CarCost: React.FC<CarCostProps> = () => {
       }));
     };
 
-  const handleRestoreSavedState = () => {
-    if (pendingSavedStateRef.current) {
-      setValues(pendingSavedStateRef.current.values);
-      setRecurringType(pendingSavedStateRef.current.recurringType);
-    }
+  const handleToggleChange =
+    (name: "includeDepreciation" | "includeAnnualOwnership") =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setValues((current) => ({
+        ...current,
+        [name]: event.target.checked ? 1 : 0,
+      }));
+    };
 
-    setHasResolvedRestore(true);
+  const applySelection = (
+    source: "default" | "template" | "custom",
+    nextValues: CarCostValues,
+    nextRecurringType: RecurringType,
+    nextTemplateId: string | null
+  ) => {
+    setSelectedSource(source);
+    setSelectedTemplateId(nextTemplateId);
+    setValues(nextValues);
+    setRecurringType(nextRecurringType);
+    if (source === "default") {
+      setCustomVehicleDraft({ year: "", make: "", model: "" });
+    }
+    setHasResolvedStartupChoice(true);
     modalInstanceRef.current?.close();
   };
 
-  const handleUseDefaults = () => {
-    pendingSavedStateRef.current = null;
-    setValues(defaultValues);
-    setRecurringType("day");
-    localStorage.setItem(
-      CAR_COST_STORAGE_KEY,
-      JSON.stringify({ values: defaultValues, recurringType: "day" })
+  const handleLoadStartupTemplate = () => {
+    const matchingTemplate = typedTemplates.find((template) => template.id === startupTemplateId);
+    if (!matchingTemplate) {
+      M.toast({ html: "Choose a template to get started", displayLength: 2500 });
+      return;
+    }
+
+    const plannerValues = getPlannerValues(values);
+    applySelection(
+      "template",
+      applyPlannerValues(matchingTemplate.values, plannerValues),
+      recurringType,
+      matchingTemplate.id
     );
-    setHasResolvedRestore(true);
-    modalInstanceRef.current?.close();
+  };
+
+  const handleTemplateSwitch = (nextValue: string) => {
+    const plannerValues = getPlannerValues(values);
+    if (nextValue === "custom") {
+      if (!savedCustomVehicle) {
+        return;
+      }
+      setSelectedSource("custom");
+      setSelectedTemplateId("custom");
+      setValues(applyPlannerValues(savedCustomVehicle.values, plannerValues));
+      return;
+    }
+
+    const template = typedTemplates.find((item) => item.id === nextValue);
+    if (!template) {
+      return;
+    }
+
+    setSelectedSource("template");
+    setSelectedTemplateId(template.id);
+    setValues(applyPlannerValues(template.values, plannerValues));
+  };
+
+  const handleCustomVehicleDraftChange =
+    (field: keyof CustomVehicleDraft) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setCustomVehicleDraft((current) => ({
+        ...current,
+        [field]: event.target.value,
+      }));
+    };
+
+  const parsedCustomVehicleYear = Number(customVehicleDraft.year);
+  const currentModelYear = new Date().getFullYear() + 1;
+  const isCustomVehicleValid =
+    Number.isInteger(parsedCustomVehicleYear) &&
+    parsedCustomVehicleYear >= 1886 &&
+    parsedCustomVehicleYear <= currentModelYear &&
+    customVehicleDraft.make.trim().length > 0 &&
+    customVehicleDraft.model.trim().length > 0;
+
+  const handleStartWithOwnCar = () => {
+    if (!isCustomVehicleValid) {
+      M.toast({ html: "Enter a valid year, make, and model", displayLength: 2500 });
+      return;
+    }
+
+    const trimmedMake = customVehicleDraft.make.trim();
+    const trimmedModel = customVehicleDraft.model.trim();
+    const nextCustomVehicle: CustomVehicle = {
+      id: "custom",
+      year: parsedCustomVehicleYear,
+      make: trimmedMake,
+      model: trimmedModel,
+      title: `${parsedCustomVehicleYear} ${trimmedMake} ${trimmedModel}`,
+      values: defaultValues,
+      recurringType: "day",
+    };
+
+    setSavedCustomVehicle(nextCustomVehicle);
+    localStorage.setItem(CAR_COST_CUSTOM_KEY, JSON.stringify(nextCustomVehicle));
+    applySelection("custom", defaultValues, "day", "custom");
+    M.toast({ html: `Loaded ${nextCustomVehicle.title}`, displayLength: 2500 });
+  };
+
+  const handleOpenOwnCarModal = () => {
+    setCustomVehicleDraft({ year: "", make: "", model: "" });
+    modalInstanceRef.current?.open();
   };
 
   const calculations = useMemo(() => {
@@ -393,7 +595,7 @@ const CarCost: React.FC<CarCostProps> = () => {
         ? values.miscMaintenanceCost / values.miscMaintenanceInterval
         : 0;
     const depreciationCostPerMile =
-      values.depreciationInterval > 0
+      isToggleEnabled(values.includeDepreciation) && values.depreciationInterval > 0
         ? Math.max(values.purchasePrice - values.resaleValue, 0) /
           values.depreciationInterval
         : 0;
@@ -413,11 +615,13 @@ const CarCost: React.FC<CarCostProps> = () => {
 
     const annualMileage = annualMileageByType[recurringType];
     const annualFixedCosts =
-      values.annualInsurance +
-      values.annualRegistration +
-      values.annualParking +
-      values.annualInspection +
-      values.annualRoadside;
+      isToggleEnabled(values.includeAnnualOwnership)
+        ? values.annualInsurance +
+          values.annualRegistration +
+          values.annualParking +
+          values.annualInspection +
+          values.annualRoadside
+        : 0;
     const fixedCostPerMile = annualMileage > 0 ? annualFixedCosts / annualMileage : 0;
     const trueCostPerMile = variableCostPerMile + fixedCostPerMile;
     const tripCost = values.tripDistance * trueCostPerMile;
@@ -497,6 +701,11 @@ const CarCost: React.FC<CarCostProps> = () => {
     });
   };
 
+  const handleBreakdownCardHover = (label: string) => {
+    setActiveBreakdownLabel(label);
+    setTooltipPosition(null);
+  };
+
   const handleBreakdownLeave = () => {
     setActiveBreakdownLabel(null);
     setTooltipPosition(null);
@@ -516,6 +725,44 @@ const CarCost: React.FC<CarCostProps> = () => {
     },
   ];
 
+  const templateOptions = [
+    ...typedTemplates.map((template) => ({
+      id: template.id,
+      title: `${template.year} ${template.make} ${template.model}`,
+    })),
+    ...(savedCustomVehicle
+      ? [{ id: "custom", title: `${savedCustomVehicle.title} (Saved custom)` }]
+      : []),
+  ];
+
+  const currentVehicleLabel =
+    selectedSource === "custom"
+      ? savedCustomVehicle?.title ?? "Your vehicle"
+      : (() => {
+          const matchingTemplate = typedTemplates.find(
+            (template) => template.id === selectedTemplateId
+          );
+          return matchingTemplate
+            ? `${matchingTemplate.year} ${matchingTemplate.make} ${matchingTemplate.model}`
+            : "Vehicle template";
+        })();
+
+  const solidPrimaryButtonStyle: React.CSSProperties = {
+    marginTop: "1rem",
+    backgroundColor: "var(--primary-color)",
+    color: "#ffffff",
+    opacity: 1,
+    filter: "none",
+  };
+
+  const solidSecondaryButtonStyle: React.CSSProperties = {
+    backgroundColor: "var(--secondary-color)",
+    color: "#ffffff",
+    opacity: 1,
+    filter: "none",
+    whiteSpace: "nowrap",
+  };
+
   return (
     <div className="container flow-text" style={{ paddingBottom: "3rem" }}>
       <div id="car-cost-restore-modal" className="modal" ref={modalRef}>
@@ -526,11 +773,149 @@ const CarCost: React.FC<CarCostProps> = () => {
             color: palette.text,
           }}
         >
-          <h4>Restore saved calculator values?</h4>
+          <h4>Choose how you want to get started</h4>
           <p style={{ color: palette.muted }}>
-            I found a previous `carCostState` in local storage. Would you like to
-            restore your saved selections or start over with the default values?
+            You can load a realistic starter example, or enter your own car and
+            begin with a fresh calculator state.
           </p>
+          <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
+            <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
+              <div style={{ ...cardStyle, padding: "1.25rem", height: "100%", background: palette.subtlePanel }}>
+                <h5 style={{ marginTop: 0 }}>Use a starter example</h5>
+                <p style={{ color: palette.muted }}>
+                  Pick one of the built-in vehicles to see how the calculator behaves
+                  with realistic sample values.
+                </p>
+                <label
+                  htmlFor="startupTemplate"
+                  style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                >
+                  Example vehicle
+                </label>
+                <div style={{ ...inputContainerStyle, position: "relative" }}>
+                  <select
+                    id="startupTemplate"
+                    className="browser-default"
+                    value={startupTemplateId}
+                    onChange={(event) => setStartupTemplateId(event.target.value)}
+                    style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                  >
+                    {typedTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.year} {template.make} {template.model}
+                      </option>
+                    ))}
+                  </select>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      right: "1rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: palette.muted,
+                      fontSize: "0.85rem",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    ▼
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="waves-effect waves-light btn primaryColor"
+                  onClick={handleLoadStartupTemplate}
+                  style={solidPrimaryButtonStyle}
+                >
+                  Load example
+                </button>
+              </div>
+            </div>
+
+            <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
+              <div style={{ ...cardStyle, padding: "1.25rem", height: "100%", background: palette.subtlePanel }}>
+                <h5 style={{ marginTop: 0 }}>Check with my own car</h5>
+                <p style={{ color: palette.muted }}>
+                  Enter your vehicle details to begin with a fresh state tied to your
+                  own car.
+                </p>
+                <div className="row" style={{ marginBottom: 0 }}>
+                  <div className="col s12">
+                    <label
+                      htmlFor="customVehicleYear"
+                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                    >
+                      Year
+                    </label>
+                    <div style={inputContainerStyle}>
+                      <input
+                        id="customVehicleYear"
+                        type="number"
+                        min="1886"
+                        max={`${currentModelYear}`}
+                        step="1"
+                        value={customVehicleDraft.year}
+                        onChange={handleCustomVehicleDraftChange("year")}
+                        placeholder="2020"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+                  <div className="col s12 m6">
+                    <label
+                      htmlFor="customVehicleMake"
+                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                    >
+                      Make
+                    </label>
+                    <div style={inputContainerStyle}>
+                      <input
+                        id="customVehicleMake"
+                        type="text"
+                        value={customVehicleDraft.make}
+                        onChange={handleCustomVehicleDraftChange("make")}
+                        placeholder="Toyota"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+                  <div className="col s12 m6">
+                    <label
+                      htmlFor="customVehicleModel"
+                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                    >
+                      Model
+                    </label>
+                    <div style={inputContainerStyle}>
+                      <input
+                        id="customVehicleModel"
+                        type="text"
+                        value={customVehicleDraft.model}
+                        onChange={handleCustomVehicleDraftChange("model")}
+                        placeholder="Camry"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p style={{ color: palette.muted, fontSize: "0.92rem", margin: "0.5rem 0 0" }}>
+                  Year must be between 1886 and {currentModelYear}.
+                </p>
+                <button
+                  type="button"
+                  className="waves-effect waves-light btn primaryColor"
+                  onClick={handleStartWithOwnCar}
+                  disabled={!isCustomVehicleValid}
+                  style={{
+                    ...solidPrimaryButtonStyle,
+                    opacity: isCustomVehicleValid ? 1 : 0.65,
+                  }}
+                >
+                  Calculate with this vehicle
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         <div
           className="modal-footer"
@@ -538,24 +923,7 @@ const CarCost: React.FC<CarCostProps> = () => {
             background: palette.panelBackground,
             borderTop: palette.border,
           }}
-        >
-          <button
-            type="button"
-            className="modal-close waves-effect waves-light btn-flat"
-            onClick={handleUseDefaults}
-            style={{ color: palette.text }}
-          >
-            Use defaults
-          </button>
-          <button
-            type="button"
-            className="modal-close waves-effect waves-light btn primaryColor"
-            onClick={handleRestoreSavedState}
-            style={{ marginLeft: "0.75rem" }}
-          >
-            Restore saved
-          </button>
-        </div>
+        />
       </div>
 
       <div
@@ -567,6 +935,96 @@ const CarCost: React.FC<CarCostProps> = () => {
           color: palette.text,
         }}
       >
+        <div
+          style={{
+            ...cardStyle,
+            position: "sticky",
+            top: `${stickyTop}px`,
+            zIndex: 20,
+            padding: "1rem 1.2rem",
+            marginBottom: "1.5rem",
+            background: palette.panelBackground,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "1rem",
+              alignItems: isMobileView ? "center" : "end",
+            }}
+          >
+            {!isMobileView ? (
+              <div style={{ flex: "1 1 260px" }}>
+                <span
+                  style={{
+                    display: "block",
+                    color: palette.muted,
+                    fontSize: "0.85rem",
+                    marginBottom: "0.35rem",
+                  }}
+                >
+                  Selected vehicle
+                </span>
+                <strong style={{ display: "block", fontSize: "1.15rem" }}>{currentVehicleLabel}</strong>
+              </div>
+            ) : null}
+            <div style={{ flex: isMobileView ? "1 1 0" : "1 1 280px" }}>
+              {!isMobileView ? (
+                <label
+                  htmlFor="vehicleTemplateSwitcher"
+                  style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                >
+                  Switch vehicle
+                </label>
+              ) : null}
+              <div style={{ ...inputContainerStyle, position: "relative" }}>
+                <select
+                  id="vehicleTemplateSwitcher"
+                  className="browser-default"
+                  value={
+                    selectedSource === "custom"
+                      ? "custom"
+                      : selectedTemplateId ?? typedTemplates[0]?.id ?? ""
+                  }
+                  onChange={(event) => handleTemplateSwitch(event.target.value)}
+                  style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                >
+                  {templateOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.title}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    right: "1rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: palette.muted,
+                    fontSize: "0.85rem",
+                    pointerEvents: "none",
+                  }}
+                >
+                  ▼
+                </span>
+              </div>
+            </div>
+            <div style={{ flex: "0 0 auto" }}>
+              <button
+                type="button"
+                className="waves-effect waves-light btn secondaryColor"
+                onClick={handleOpenOwnCarModal}
+                style={solidSecondaryButtonStyle}
+              >
+                {isMobileView ? "Use my own" : "Use one of my cars"}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="row" style={{ marginBottom: 0 }}>
           <div className="col s12 l7" style={{ marginBottom: "1rem" }}>
             <p
@@ -661,9 +1119,60 @@ const CarCost: React.FC<CarCostProps> = () => {
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           {sections.map((section) => (
             <div key={section.title} className="col s12 m6 xl4" style={{ marginBottom: "1rem" }}>
-              <section style={{ ...cardStyle, padding: "1.5rem", height: "100%" }}>
+              <section
+                style={{
+                  ...cardStyle,
+                  padding: "1.5rem",
+                  height: "100%",
+                  opacity:
+                    section.title === "Depreciation" && !isToggleEnabled(values.includeDepreciation)
+                      ? 0.58
+                      : section.title === "Annual ownership costs" &&
+                          !isToggleEnabled(values.includeAnnualOwnership)
+                        ? 0.58
+                        : 1,
+                }}
+              >
                 <h3 style={{ marginTop: 0 }}>{section.title}</h3>
                 <p style={{ color: palette.muted, lineHeight: 1.5 }}>{section.description}</p>
+                {section.title === "Depreciation" ? (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isToggleEnabled(values.includeDepreciation)}
+                        onChange={handleToggleChange("includeDepreciation")}
+                      />
+                      <span style={{ color: palette.text }}>Include depreciation</span>
+                    </label>
+                  </div>
+                ) : null}
+                {section.title === "Annual ownership costs" ? (
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isToggleEnabled(values.includeAnnualOwnership)}
+                        onChange={handleToggleChange("includeAnnualOwnership")}
+                      />
+                      <span style={{ color: palette.text }}>Include annual ownership costs</span>
+                    </label>
+                  </div>
+                ) : null}
                 <div style={{ display: "grid", gap: "1rem" }}>
                   {section.items.map((field) => (
                     <div key={field.name}>
@@ -692,6 +1201,12 @@ const CarCost: React.FC<CarCostProps> = () => {
                           step={field.step}
                           value={values[field.name]}
                           onChange={handleChange(field.name)}
+                          disabled={
+                            (section.title === "Depreciation" &&
+                              !isToggleEnabled(values.includeDepreciation)) ||
+                            (section.title === "Annual ownership costs" &&
+                              !isToggleEnabled(values.includeAnnualOwnership))
+                          }
                           style={inputStyle}
                         />
                       </div>
@@ -977,8 +1492,8 @@ const CarCost: React.FC<CarCostProps> = () => {
                                 : cardStyle.boxShadow,
                             transition: "transform 180ms ease, box-shadow 180ms ease",
                           }}
-                          onMouseMove={(event) => handleBreakdownHover(slice.label, event)}
-                          onMouseEnter={(event) => handleBreakdownHover(slice.label, event)}
+                          onMouseMove={() => handleBreakdownCardHover(slice.label)}
+                          onMouseEnter={() => handleBreakdownCardHover(slice.label)}
                           onMouseLeave={handleBreakdownLeave}
                         >
                           <div
