@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import BreakdownItemDetailModal, {
   BreakdownItemDetail,
 } from "./BreakdownItemDetailModal";
+import SeeMoreButton from "./SeeMoreButton";
 
 export type BreakdownMode =
   | "mile"
@@ -413,27 +414,19 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
                     onMouseLeave={handleHoverLeave}
                   >
                     {slice.detail ? (
-                      <button
-                        type="button"
-                        className="btn-flat"
+                      <SeeMoreButton
                         onClick={(event) => {
                           event.stopPropagation();
                           setActiveDetail(slice.detail ?? null);
                         }}
-                        style={{
+                        accentColor={palette.accent}
+                        ariaLabel={`See more about ${slice.label}`}
+                        buttonStyle={{
                           position: "absolute",
                           top: "0.35rem",
                           right: "0.35rem",
-                          color: palette.accent,
-                          minWidth: "unset",
-                          padding: "0 0.45rem",
-                          lineHeight: 1,
-                          textTransform: "none",
-                          fontWeight: 700,
                         }}
-                      >
-                        See more
-                      </button>
+                      />
                     ) : null}
                     <div
                       style={{

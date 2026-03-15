@@ -9,6 +9,7 @@ import CostBreakdownViewer, {
 import { InsightCardData } from "./InsightsCard";
 import InsightsSection from "./InsightsSection";
 import LoanPaydownDetails from "./LoanPaydownDetails";
+import SeeMoreButton from "./SeeMoreButton";
 import insightsMetadata from "./insights.json";
 import vehicleTemplates from "./vehicleTemplates.json";
 
@@ -1621,15 +1622,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           },
         },
         {
-          label: "Vehicle value change",
+          label: "Depreciation",
           value: depreciationValue,
           color: colors.depreciation,
           detail: {
-            title: `Vehicle value change for ${modeLabel.toLowerCase()}`,
+            title: `Depreciation for ${modeLabel.toLowerCase()}`,
             subtitle:
               "Shows the vehicle’s expected value change over your ownership horizon, with financing shown alongside it for context.",
             metrics: [
-              { label: `Value change in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(depreciationValue) },
+              { label: `Depreciation in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(depreciationValue) },
               { label: "Purchase price", value: formatCurrency(values.purchasePrice) },
               { label: "Expected resale value", value: formatCurrency(values.resaleValue) },
               {
@@ -1643,16 +1644,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             pieTitle: "Vehicle cost context",
             pieSegments: [
               {
-                label: "Vehicle value change",
+                label: "Depreciation",
                 value: Math.max(depreciationValue, 0),
                 color: colors.depreciation,
               },
-              ...(financingValue > 0
-                ? [{ label: "Financing interest", value: financingValue, color: colors.financing }]
-                : []),
             ].filter((segment) => segment.value > 0),
             steps: [
-              `Expected value change = ${formatCurrency(values.purchasePrice)} - ${formatCurrency(
+              `Expected depreciation = ${formatCurrency(values.purchasePrice)} - ${formatCurrency(
                 values.resaleValue,
               )} = ${formatCurrency(calculations.depreciationTotal)}.`,
               `That total is spread across your selected ownership horizon and allocated into this ${modeLabel.toLowerCase()} view.`,
@@ -1813,7 +1811,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     { label: "Oil changes", value: calculations.oilCostPerMile },
     { label: "Tires", value: calculations.tireCostPerMile },
     { label: "Misc. maintenance", value: calculations.miscCostPerMile },
-    { label: "Vehicle value change", value: calculations.depreciationCostPerMile },
+    { label: "Depreciation", value: calculations.depreciationCostPerMile },
     { label: "Ownership overhead", value: calculations.fixedCostPerMile },
     { label: "Financing", value: calculations.financeCostPerMile },
     {
@@ -3337,9 +3335,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 }}
               >
                 <h3 style={{ margin: 0 }}>Trip estimate</h3>
-                <button
-                  type="button"
-                  className="btn-flat"
+                <SeeMoreButton
                   onClick={() =>
                     openBreakdownModal(
                       "trip",
@@ -3348,25 +3344,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       "tripEstimate",
                     )
                   }
-                  style={{
-                    color: palette.accentDark,
-                    fontWeight: 700,
-                    textTransform: "none",
-                    padding: "0 0.5rem",
-                  }}
-                >
-                  <i
-                    className="material-icons left"
-                    style={{
-                      marginRight: "0.3rem",
-                      fontSize: "1.1rem",
-                      lineHeight: "inherit",
-                    }}
-                  >
-                    open_in_full
-                  </i>
-                  See more
-                </button>
+                  accentColor={palette.accentDark}
+                  ariaLabel="See more about the trip cost breakdown"
+                />
               </div>
               <p style={{ color: palette.muted, lineHeight: 1.5 }}>
                 Multiply your true cost per mile by a route distance to estimate
@@ -3481,9 +3461,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 }}
               >
                 <h3 style={{ margin: 0 }}>Recurring driving totals</h3>
-                <button
-                  type="button"
-                  className="btn-flat"
+                <SeeMoreButton
                   onClick={() =>
                     openBreakdownModal(
                       recurringBreakdownMode,
@@ -3492,25 +3470,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       "recurringDrivingTotals",
                     )
                   }
-                  style={{
-                    color: palette.accentDark,
-                    fontWeight: 700,
-                    textTransform: "none",
-                    padding: "0 0.5rem",
-                  }}
-                >
-                  <i
-                    className="material-icons left"
-                    style={{
-                      marginRight: "0.3rem",
-                      fontSize: "1.1rem",
-                      lineHeight: "inherit",
-                    }}
-                  >
-                    open_in_full
-                  </i>
-                  See more
-                </button>
+                  accentColor={palette.accentDark}
+                  ariaLabel="See more about recurring cost breakdowns"
+                />
               </div>
               <p style={{ color: palette.muted, lineHeight: 1.5 }}>
                 Enter miles by day, week, month, or year to see equivalent cost
@@ -3614,9 +3576,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             : palette.cardBackground,
                       }}
                     >
-                      <button
-                        type="button"
-                        className="btn-flat"
+                      <SeeMoreButton
                         onClick={() =>
                           openBreakdownModal(
                             key,
@@ -3625,25 +3585,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             "recurringDrivingTotals",
                           )
                         }
-                        style={{
+                        accentColor={palette.accentDark}
+                        ariaLabel={`See ${key} breakdown details`}
+                        title={`See ${key} breakdown details`}
+                        iconOnly
+                        buttonStyle={{
                           position: "absolute",
                           top: "0.35rem",
                           right: "0.35rem",
-                          color: palette.accentDark,
-                          minWidth: "unset",
-                          padding: "0 0.45rem",
-                          lineHeight: 1,
                         }}
-                        aria-label={`See ${key} breakdown details`}
-                        title={`See ${key} breakdown details`}
-                      >
-                        <i
-                          className="material-icons"
-                          style={{ fontSize: "1rem", lineHeight: "inherit" }}
-                        >
-                          open_in_full
-                        </i>
-                      </button>
+                        iconStyle={{ fontSize: "1rem" }}
+                      />
                       <span
                         style={{
                           display: "block",
@@ -3851,29 +3803,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           position: "relative",
                         }}
                       >
-                        <button
-                          type="button"
-                          className="btn-flat"
+                        <SeeMoreButton
                           onClick={openLoanDetailsModal}
-                          style={{
+                          accentColor={palette.accentDark}
+                          ariaLabel="See financing details"
+                          title="See financing details"
+                          iconOnly
+                          buttonStyle={{
                             position: "absolute",
                             top: "0.35rem",
                             right: "0.35rem",
-                            color: palette.accentDark,
-                            minWidth: "unset",
-                            padding: "0 0.45rem",
-                            lineHeight: 1,
                           }}
-                          aria-label="See financing details"
-                          title="See financing details"
-                        >
-                          <i
-                            className="material-icons"
-                            style={{ fontSize: "1rem", lineHeight: "inherit" }}
-                          >
-                            open_in_full
-                          </i>
-                        </button>
+                          iconStyle={{ fontSize: "1rem" }}
+                        />
                         <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
                           Total loan payments made
                         </span>
@@ -3891,29 +3833,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           position: "relative",
                         }}
                       >
-                        <button
-                          type="button"
-                          className="btn-flat"
+                        <SeeMoreButton
                           onClick={openLoanDetailsModal}
-                          style={{
+                          accentColor={palette.accentDark}
+                          ariaLabel="See interest details"
+                          title="See interest details"
+                          iconOnly
+                          buttonStyle={{
                             position: "absolute",
                             top: "0.35rem",
                             right: "0.35rem",
-                            color: palette.accentDark,
-                            minWidth: "unset",
-                            padding: "0 0.45rem",
-                            lineHeight: 1,
                           }}
-                          aria-label="See interest details"
-                          title="See interest details"
-                        >
-                          <i
-                            className="material-icons"
-                            style={{ fontSize: "1rem", lineHeight: "inherit" }}
-                          >
-                            open_in_full
-                          </i>
-                        </button>
+                          iconStyle={{ fontSize: "1rem" }}
+                        />
                         <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
                           Interest paid while owned
                         </span>
