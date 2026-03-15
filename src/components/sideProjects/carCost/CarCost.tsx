@@ -1077,6 +1077,28 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     modalInstanceRef.current?.open();
   };
 
+  const handleAnnualMileageChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const parsedAnnualMiles = Number(event.target.value);
+    const nextAnnualMiles = Number.isFinite(parsedAnnualMiles)
+      ? Math.max(parsedAnnualMiles, 0)
+      : 0;
+
+    const recurringMilesByType: Record<RecurringType, number> = {
+      day: nextAnnualMiles / 365,
+      week: nextAnnualMiles / 52,
+      month: nextAnnualMiles / 12,
+      year: nextAnnualMiles,
+      weekday: nextAnnualMiles / 260,
+    };
+
+    setValues((current) => ({
+      ...current,
+      recurringMiles: recurringMilesByType[recurringType],
+    }));
+  };
+
   const calculations = useMemo(() => {
     const tripMultiplier = tripType === "oneWay" ? 2 : 1;
     const selectedTripDistance = values.tripDistance * tripMultiplier;
@@ -1894,6 +1916,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     opacity: 1,
     filter: "none",
     whiteSpace: "nowrap",
+    borderRadius: "999px",
+    boxShadow: isDarkMode
+      ? "0 10px 22px rgba(0, 0, 0, 0.24)"
+      : "0 10px 22px rgba(91, 60, 34, 0.16)",
+    padding: isMobileView ? "0 1rem" : "0 1.2rem",
+    height: isMobileView ? "2.7rem" : "2.85rem",
+    lineHeight: isMobileView ? "2.7rem" : "2.85rem",
+    fontSize: isMobileView ? "0.88rem" : "0.92rem",
+    fontWeight: 700,
+    letterSpacing: "0.02em",
+    textTransform: "none",
   };
 
   const tripTypeButtonStyle = (isActive: boolean): React.CSSProperties => ({
@@ -1920,6 +1953,26 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const compactMetricValueStyle: React.CSSProperties = {
     fontSize: compactMetricValueSize,
     lineHeight: 1.05,
+  };
+  const sectionDescriptionStyle: React.CSSProperties = {
+    color: palette.muted,
+    lineHeight: 1.4,
+    fontSize: "0.9rem",
+  };
+  const fieldLabelStyle: React.CSSProperties = {
+    display: "block",
+    fontWeight: 600,
+    marginBottom: "0.38rem",
+    fontSize: "0.98rem",
+    lineHeight: 1.3,
+  };
+  const subFieldLabelStyle: React.CSSProperties = {
+    display: "block",
+    color: palette.muted,
+    fontWeight: 500,
+    marginBottom: "0.3rem",
+    fontSize: "0.82rem",
+    lineHeight: 1.3,
   };
 
   const insights: InsightCardData[] = (
@@ -2794,7 +2847,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>{section.title}</h3>
-                <p style={{ color: palette.muted, lineHeight: 1.5 }}>
+                <p style={sectionDescriptionStyle}>
                   {section.description}
                 </p>
                 {section.title === "Vehicle cost" ? (
@@ -2872,14 +2925,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     }}
                   >
                     <div>
-                      <label
-                        htmlFor="fuelType"
-                        style={{
-                          display: "block",
-                          fontWeight: 600,
-                          marginBottom: "0.45rem",
-                        }}
-                      >
+                      <label htmlFor="fuelType" style={fieldLabelStyle}>
                         Fuel type
                       </label>
                       <div
@@ -2918,14 +2964,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       </div>
                     </div>
                     <div>
-                      <label
-                        htmlFor="fuelEfficiency"
-                        style={{
-                          display: "block",
-                          fontWeight: 600,
-                          marginBottom: "0.45rem",
-                        }}
-                      >
+                      <label htmlFor="fuelEfficiency" style={fieldLabelStyle}>
                         {fuelEfficiencyLabel}
                       </label>
                       <div style={inputContainerStyle}>
@@ -2945,11 +2984,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       <label
                         htmlFor="fuelUnitPrice"
                         style={{
+                          ...fieldLabelStyle,
                           display: "flex",
                           alignItems: "center",
                           gap: "0.45rem",
-                          fontWeight: 600,
-                          marginBottom: "0.45rem",
                         }}
                       >
                         <span>{fuelPriceLabel}</span>
@@ -2984,18 +3022,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 <div style={{ display: "grid", gap: "1rem" }}>
                   {section.items.map((field) => (
                     <div key={field.name}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "0.75rem",
-                          fontWeight: 600,
-                          marginBottom: "0.45rem",
-                        }}
-                      >
+                      <div style={{ marginBottom: "0.38rem" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
-                          <span>
+                          <span style={fieldLabelStyle}>
                             {field.name === "miscMaintenanceInterval"
                               ? values.miscMaintenanceBasis === "miles"
                                 ? "Misc. maintenance interval (miles)"
@@ -3039,16 +3068,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       {field.name === "miscMaintenanceInterval" ? (
                         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "0.75rem" }}>
                           <div>
-                            <label
-                              htmlFor="miscMaintenanceBasis"
-                              style={{
-                                display: "block",
-                                color: palette.muted,
-                                fontWeight: 500,
-                                marginBottom: "0.35rem",
-                                fontSize: "0.86rem",
-                              }}
-                            >
+                            <label htmlFor="miscMaintenanceBasis" style={subFieldLabelStyle}>
                               Based on
                             </label>
                             <div style={{ ...inputContainerStyle, position: "relative" }}>
@@ -3080,16 +3100,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             </div>
                           </div>
                           <div>
-                            <label
-                              htmlFor={field.name}
-                              style={{
-                                display: "block",
-                                color: palette.muted,
-                                fontWeight: 500,
-                                marginBottom: "0.35rem",
-                                fontSize: "0.86rem",
-                              }}
-                            >
+                            <label htmlFor={field.name} style={subFieldLabelStyle}>
                               Every
                             </label>
                             <div style={inputContainerStyle}>
@@ -3107,18 +3118,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           </div>
                         </div>
                       ) : field.name === "depreciationInterval" ? (
+                        <>
                         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "0.75rem" }}>
                           <div>
-                            <label
-                              htmlFor="depreciationBasis"
-                              style={{
-                                display: "block",
-                                color: palette.muted,
-                                fontWeight: 500,
-                                marginBottom: "0.35rem",
-                                fontSize: "0.86rem",
-                              }}
-                            >
+                            <label htmlFor="depreciationBasis" style={subFieldLabelStyle}>
                               Based on
                             </label>
                             <div style={{ ...inputContainerStyle, position: "relative" }}>
@@ -3149,16 +3152,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             </div>
                           </div>
                           <div>
-                            <label
-                              htmlFor={field.name}
-                              style={{
-                                display: "block",
-                                color: palette.muted,
-                                fontWeight: 500,
-                                marginBottom: "0.35rem",
-                                fontSize: "0.86rem",
-                              }}
-                            >
+                            <label htmlFor={field.name} style={subFieldLabelStyle}>
                               {values.depreciationBasis === "miles" ? "Every" : "For"}
                             </label>
                             <div style={inputContainerStyle}>
@@ -3176,6 +3170,24 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             </div>
                           </div>
                         </div>
+                        <div style={{ marginTop: "0.75rem" }}>
+                          <label htmlFor="annualMileageVehicleCost" style={subFieldLabelStyle}>
+                            Annual miles driven
+                          </label>
+                          <div style={inputContainerStyle}>
+                            <input
+                              id="annualMileageVehicleCost"
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={Math.round(calculations.annualMileage)}
+                              onChange={handleAnnualMileageChange}
+                              onFocus={handleNumericInputFocus}
+                              style={inputStyle}
+                            />
+                          </div>
+                        </div>
+                        </>
                       ) : (
                         <div style={inputContainerStyle}>
                           {field.prefix ? (
@@ -3203,10 +3215,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         <div
                           style={{
                             marginTop: "0.85rem",
-                            display: "flex",
-                            alignItems: "center",
+                            display: "grid",
                             gap: "0.85rem",
-                            flexWrap: "wrap",
                           }}
                         >
                           <label
@@ -3228,26 +3238,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             <span>Vehicle is financed</span>
                           </label>
                           {isToggleEnabled(values.includeFinancing) ? (
-                            <>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "0.6rem",
-                                  flex: "1 1 220px",
-                                  minWidth: 0,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    color: palette.muted,
-                                    fontWeight: 600,
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: isMobileView
+                                  ? "1fr"
+                                  : "repeat(3, minmax(0, 1fr))",
+                                gap: "0.75rem",
+                              }}
+                            >
+                              <div>
+                                <label htmlFor="loanDownPayment" style={subFieldLabelStyle}>
                                   Down payment
-                                </span>
-                                <div style={{ ...inputContainerStyle, flex: "1 1 auto" }}>
+                                </label>
+                                <div style={inputContainerStyle}>
                                   <span style={prefixStyle}>$</span>
                                   <input
                                     id="loanDownPayment"
@@ -3261,25 +3265,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                   />
                                 </div>
                               </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "0.6rem",
-                                  flex: "1 1 180px",
-                                  minWidth: 0,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    color: palette.muted,
-                                    fontWeight: 600,
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
+                              <div>
+                                <label htmlFor="loanApr" style={subFieldLabelStyle}>
                                   APR (%)
-                                </span>
-                                <div style={{ ...inputContainerStyle, flex: "1 1 auto" }}>
+                                </label>
+                                <div style={inputContainerStyle}>
                                   <input
                                     id="loanApr"
                                     type="number"
@@ -3292,25 +3282,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                   />
                                 </div>
                               </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "0.6rem",
-                                  flex: "1 1 220px",
-                                  minWidth: 0,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    color: palette.muted,
-                                    fontWeight: 600,
-                                    whiteSpace: "nowrap",
-                                  }}
-                                >
+                              <div>
+                                <label htmlFor="loanMonthlyPayment" style={subFieldLabelStyle}>
                                   Monthly payment
-                                </span>
-                                <div style={{ ...inputContainerStyle, flex: "1 1 auto" }}>
+                                </label>
+                                <div style={inputContainerStyle}>
                                   <span style={prefixStyle}>$</span>
                                   <input
                                     id="loanMonthlyPayment"
@@ -3326,10 +3302,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                               </div>
                               <div
                                 style={{
-                                  flex: "1 1 100%",
+                                  gridColumn: "1 / -1",
                                   color: palette.muted,
-                                  fontSize: "0.9rem",
-                                  lineHeight: 1.45,
+                                  fontSize: "0.82rem",
+                                  lineHeight: 1.35,
                                 }}
                               >
                                 Amount financed:{" "}
@@ -3337,7 +3313,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                   Math.max(values.purchasePrice - values.loanDownPayment, 0),
                                 )}
                               </div>
-                            </>
+                            </div>
                           ) : null}
                         </div>
                       ) : null}
