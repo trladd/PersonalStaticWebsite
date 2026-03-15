@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import BreakdownItemDetailModal, {
+  BreakdownItemDetail,
+} from "./BreakdownItemDetailModal";
 
 export type BreakdownMode =
   | "mile"
@@ -13,6 +16,7 @@ export type CostBreakdownViewerItem = {
   label: string;
   value: number;
   color: string;
+  detail?: BreakdownItemDetail;
 };
 
 export type CostBreakdownViewerMode = {
@@ -91,6 +95,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
   const [isInteracting, setIsInteracting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isAutoCycleEnabled, setIsAutoCycleEnabled] = useState(autoCycle);
+  const [activeDetail, setActiveDetail] = useState<BreakdownItemDetail | null>(null);
 
   useEffect(() => {
     setIsAutoCycleEnabled(autoCycle);
@@ -392,6 +397,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
                   <article
                     style={{
                       ...cardStyle,
+                      position: "relative",
                       padding: "1rem 1.1rem",
                       height: "100%",
                       cursor: "pointer",
@@ -406,6 +412,29 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
                     onMouseMove={() => handleCardHover(slice.label)}
                     onMouseLeave={handleHoverLeave}
                   >
+                    {slice.detail ? (
+                      <button
+                        type="button"
+                        className="btn-flat"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setActiveDetail(slice.detail ?? null);
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: "0.35rem",
+                          right: "0.35rem",
+                          color: palette.accent,
+                          minWidth: "unset",
+                          padding: "0 0.45rem",
+                          lineHeight: 1,
+                          textTransform: "none",
+                          fontWeight: 700,
+                        }}
+                      >
+                        See more
+                      </button>
+                    ) : null}
                     <div
                       style={{
                         display: "flex",
@@ -486,6 +515,19 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
           </small>
         </div>
       ) : null}
+
+      <BreakdownItemDetailModal
+        detail={activeDetail}
+        onClose={() => setActiveDetail(null)}
+        palette={{
+          text: palette.text,
+          muted: palette.muted,
+          border: palette.border,
+          cardBackground: palette.cardBackground,
+          shadow: palette.shadow,
+        }}
+        cardStyle={cardStyle}
+      />
     </div>
   );
 };

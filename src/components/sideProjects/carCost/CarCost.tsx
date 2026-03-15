@@ -1321,37 +1321,6 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       financing: "#8a5f8f",
     };
 
-    const buildItems = (
-      fuel: number,
-      oil: number,
-      tires: number,
-      misc: number,
-      depreciation: number,
-      ownership: number,
-      financing: number,
-    ) =>
-      [
-        { label: "Fuel", value: fuel, color: colors.fuel },
-        { label: "Oil changes", value: oil, color: colors.oil },
-        { label: "Tires", value: tires, color: colors.tires },
-        { label: "Misc. maintenance", value: misc, color: colors.misc },
-        {
-          label: "Depreciation",
-          value: depreciation,
-          color: colors.depreciation,
-        },
-        {
-          label: "Ownership overhead",
-          value: ownership,
-          color: colors.ownership,
-        },
-        {
-          label: "Financing",
-          value: financing,
-          color: colors.financing,
-        },
-      ].filter((item) => item.value > 0);
-
     const recurringModeMeta: Record<
       "day" | "week" | "month" | "year" | "overall",
       { label: string; description: string; unitLabel: string }
@@ -1388,11 +1357,365 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       },
     };
 
+    const getOwnershipFactor = (modeKey: BreakdownMode, miles: number) => {
+      switch (modeKey) {
+        case "mile":
+          return calculations.annualMileage > 0 ? 1 / calculations.annualMileage : 0;
+        case "trip":
+          return calculations.annualMileage > 0
+            ? calculations.selectedTripDistance / calculations.annualMileage
+            : 0;
+        case "day":
+          return 1 / 365;
+        case "week":
+          return 1 / 52;
+        case "month":
+          return 1 / 12;
+        case "year":
+          return 1;
+        case "overall":
+          return calculations.ownershipYears;
+        default:
+          return miles > 0 && calculations.annualMileage > 0
+            ? miles / calculations.annualMileage
+            : 0;
+      }
+    };
+
+    const buildOwnershipSegments = (factor: number) =>
+      [
+        {
+          label: "Insurance",
+          value: isToggleEnabled(values.includeAnnualOwnership)
+            ? values.annualInsurance * factor
+            : 0,
+          color: "#4f6d7a",
+        },
+        {
+          label: "Registration",
+          value: isToggleEnabled(values.includeAnnualOwnership)
+            ? values.annualRegistration * factor
+            : 0,
+          color: "#6a8793",
+        },
+        {
+          label: "Parking",
+          value: isToggleEnabled(values.includeAnnualOwnership)
+            ? values.annualParking * factor
+            : 0,
+          color: "#8ea6af",
+        },
+        {
+          label: "Inspection / emissions",
+          value: isToggleEnabled(values.includeAnnualOwnership)
+            ? values.annualInspection * factor
+            : 0,
+          color: "#9fb8c0",
+        },
+        {
+          label: "Roadside assistance",
+          value: isToggleEnabled(values.includeAnnualOwnership)
+            ? values.annualRoadside * factor
+            : 0,
+          color: "#bfd2d8",
+        },
+      ].filter((segment) => segment.value > 0);
+
+    const buildModeItems = (modeKey: BreakdownMode, modeLabel: string, unitLabel: string, miles: number) => {
+      const fuelValue =
+        modeKey === "overall"
+          ? calculations.overallItems.fuel
+          : calculations.fuelCostPerMile * miles;
+      const oilValue =
+        modeKey === "overall"
+          ? calculations.overallItems.oil
+          : calculations.oilCostPerMile * miles;
+      const tireValue =
+        modeKey === "overall"
+          ? calculations.overallItems.tires
+          : calculations.tireCostPerMile * miles;
+      const miscValue =
+        modeKey === "overall"
+          ? calculations.overallItems.misc
+          : calculations.miscCostPerMile * miles;
+      const depreciationValue =
+        modeKey === "overall"
+          ? calculations.overallItems.depreciation
+          : calculations.depreciationCostPerMile * miles;
+      const ownershipValue =
+        modeKey === "overall"
+          ? calculations.overallItems.ownership
+          : recurringModeMeta[modeKey as "day" | "week" | "month" | "year"]
+            ? recurringOwnershipByPeriod[modeKey as "day" | "week" | "month" | "year"]
+            : modeKey === "trip"
+              ? calculations.fixedCostPerMile * miles
+              : modeKey === "mile"
+                ? calculations.fixedCostPerMile
+                : 0;
+      const financingValue =
+        modeKey === "overall"
+          ? calculations.overallItems.financing
+          : recurringModeMeta[modeKey as "day" | "week" | "month" | "year"]
+            ? recurringFinanceByPeriod[modeKey as "day" | "week" | "month" | "year"]
+            : modeKey === "trip"
+              ? calculations.financeCostPerMile * miles
+              : modeKey === "mile"
+                ? calculations.financeCostPerMile
+                : 0;
+
+      const ownershipFactor = getOwnershipFactor(modeKey, miles);
+      const ownershipSegments = buildOwnershipSegments(ownershipFactor);
+
+      const serviceMetrics = (
+        costValue: number,
+        serviceCost: number,
+        serviceIntervalLabel: string,
+        serviceIntervalValue: number,
+        unitNoun: string,
+      ) => {
+        const equivalent = serviceCost > 0 ? costValue / serviceCost : 0;
+        const whole = Math.floor(equivalent);
+        const partialPercent =
+          equivalent >= 1 ? (equivalent - whole) * 100 : equivalent * 100;
+
+        return {
+          equivalent,
+          metrics: [
+            { label: `Cost in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(costValue) },
+            { label: `${serviceIntervalLabel}`, value: `${formatNumber(serviceIntervalValue)} ${unitNoun}` },
+            { label: "Equivalent services used", value: formatNumber(equivalent, 2) },
+            { label: "Completed full services", value: formatNumber(whole) },
+            {
+              label: equivalent >= 1 ? "Next service used" : "Single service used",
+              value: `${formatNumber(partialPercent, 1)}%`,
+            },
+          ],
+        };
+      };
+
+      return [
+        {
+          label: "Fuel",
+          value: fuelValue,
+          color: colors.fuel,
+          detail: {
+            title: `Fuel detail for ${modeLabel.toLowerCase()}`,
+            subtitle:
+              values.fuelType === "electric"
+                ? `Energy usage for ${unitLabel}.`
+                : `Fuel usage for ${unitLabel}.`,
+            metrics: [
+              { label: `Cost in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(fuelValue) },
+              {
+                label: values.fuelType === "electric" ? "Estimated kWh used" : "Estimated gallons used",
+                value: formatNumber(
+                  values.fuelUnitPrice > 0 ? fuelValue / values.fuelUnitPrice : 0,
+                  2,
+                ),
+              },
+              {
+                label: values.fuelType === "electric" ? "Electricity rate" : "Fuel price",
+                value: `${formatCurrency(values.fuelUnitPrice)} per ${
+                  values.fuelType === "electric" ? "kWh" : "gallon"
+                }`,
+              },
+              {
+                label: values.fuelType === "electric" ? "Efficiency" : "Fuel mileage",
+                value: `${formatNumber(values.fuelEfficiency, 1)} ${
+                  values.fuelType === "electric" ? "mi/kWh" : "mpg"
+                }`,
+              },
+            ],
+            steps: [
+              values.fuelType === "electric"
+                ? `The calculator estimates total energy used, then multiplies by your electricity cost per kWh.`
+                : `The calculator estimates total gallons consumed, then multiplies by your selected fuel price.`,
+              `This ${modeLabel.toLowerCase()} view uses ${formatNumber(miles, 2)} miles of driving.`,
+            ],
+          },
+        },
+        {
+          label: "Oil changes",
+          value: oilValue,
+          color: colors.oil,
+          detail: {
+            title: `Oil change detail for ${modeLabel.toLowerCase()}`,
+            subtitle: `How much of your oil change cycle this ${unitLabel} uses up.`,
+            metrics: serviceMetrics(
+              oilValue,
+              values.oilChangeCost,
+              "Oil change interval",
+              values.oilChangeInterval,
+              "miles",
+            ).metrics.concat([
+              { label: "Oil change cost", value: formatCurrency(values.oilChangeCost) },
+            ]),
+            steps: [
+              `Equivalent oil changes = ${formatCurrency(oilValue)} / ${formatCurrency(
+                values.oilChangeCost,
+              )} = ${formatNumber(
+                values.oilChangeCost > 0 ? oilValue / values.oilChangeCost : 0,
+                2,
+              )}.`,
+              `That tells you what share of one oil change, or how many full oil changes, this ${modeLabel.toLowerCase()} uses.`,
+            ],
+          },
+        },
+        {
+          label: "Tires",
+          value: tireValue,
+          color: colors.tires,
+          detail: {
+            title: `Tire detail for ${modeLabel.toLowerCase()}`,
+            subtitle: `How much of a tire set this ${unitLabel} uses up.`,
+            metrics: serviceMetrics(
+              tireValue,
+              values.tireCost,
+              "Tire interval",
+              values.tireInterval,
+              "miles",
+            ).metrics.concat([{ label: "Tire set cost", value: formatCurrency(values.tireCost) }]),
+            steps: [
+              `Equivalent tire sets = ${formatCurrency(tireValue)} / ${formatCurrency(
+                values.tireCost,
+              )}.`,
+              `This tells you the percentage of one set used, or how many full sets would be consumed over this view.`,
+            ],
+          },
+        },
+        {
+          label: "Misc. maintenance",
+          value: miscValue,
+          color: colors.misc,
+          detail: {
+            title: `Misc. maintenance detail for ${modeLabel.toLowerCase()}`,
+            subtitle: `How the miscellaneous maintenance allowance contributes to this ${modeLabel.toLowerCase()}.`,
+            metrics: serviceMetrics(
+              miscValue,
+              values.miscMaintenanceCost,
+              "Maintenance interval",
+              values.miscMaintenanceInterval,
+              values.miscMaintenanceBasis === "miles"
+                ? "miles"
+                : values.miscMaintenanceBasis === "month"
+                  ? "months"
+                  : "years",
+            ).metrics.concat([
+              { label: "Maintenance event cost", value: formatCurrency(values.miscMaintenanceCost) },
+              {
+                label: "Basis",
+                value:
+                  values.miscMaintenanceBasis === "miles"
+                    ? "Mileage-based"
+                    : values.miscMaintenanceBasis === "month"
+                      ? "Month-based"
+                      : "Year-based",
+              },
+            ]),
+            steps: [
+              `Equivalent maintenance events = ${formatCurrency(miscValue)} / ${formatCurrency(
+                values.miscMaintenanceCost,
+              )}.`,
+              `The same allowance can be spread by miles, months, or years depending on how you track maintenance.`,
+            ],
+          },
+        },
+        {
+          label: "Vehicle value change",
+          value: depreciationValue,
+          color: colors.depreciation,
+          detail: {
+            title: `Vehicle value change for ${modeLabel.toLowerCase()}`,
+            subtitle:
+              "Shows the vehicle’s expected value change over your ownership horizon, with financing shown alongside it for context.",
+            metrics: [
+              { label: `Value change in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(depreciationValue) },
+              { label: "Purchase price", value: formatCurrency(values.purchasePrice) },
+              { label: "Expected resale value", value: formatCurrency(values.resaleValue) },
+              {
+                label: values.depreciationBasis === "miles" ? "Ownership miles assumed" : "Ownership years assumed",
+                value:
+                  values.depreciationBasis === "miles"
+                    ? `${formatNumber(values.depreciationInterval)} miles`
+                    : `${formatNumber(values.depreciationInterval, 1)} years`,
+              },
+            ],
+            pieTitle: "Vehicle cost context",
+            pieSegments: [
+              {
+                label: "Vehicle value change",
+                value: Math.max(depreciationValue, 0),
+                color: colors.depreciation,
+              },
+              ...(financingValue > 0
+                ? [{ label: "Financing interest", value: financingValue, color: colors.financing }]
+                : []),
+            ].filter((segment) => segment.value > 0),
+            steps: [
+              `Expected value change = ${formatCurrency(values.purchasePrice)} - ${formatCurrency(
+                values.resaleValue,
+              )} = ${formatCurrency(calculations.depreciationTotal)}.`,
+              `That total is spread across your selected ownership horizon and allocated into this ${modeLabel.toLowerCase()} view.`,
+            ],
+          },
+        },
+        {
+          label: "Ownership overhead",
+          value: ownershipValue,
+          color: colors.ownership,
+          detail: {
+            title: `Ownership overhead for ${modeLabel.toLowerCase()}`,
+            subtitle: `Annual fixed ownership costs scaled into ${unitLabel}.`,
+            metrics: [
+              { label: `Overhead in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(ownershipValue) },
+              { label: "Annual fixed ownership total", value: formatCurrency(calculations.annualFixedCosts) },
+              { label: "Annual miles assumed", value: formatNumber(calculations.annualMileage) },
+            ],
+            pieTitle: "Ownership overhead breakdown",
+            pieSegments: ownershipSegments,
+            steps: [
+              `The calculator scales insurance, registration, parking, inspection, and roadside costs from annual totals into this ${modeLabel.toLowerCase()} view.`,
+            ],
+          },
+        },
+        {
+          label: "Financing",
+          value: financingValue,
+          color: colors.financing,
+          detail: {
+            title: `Financing detail for ${modeLabel.toLowerCase()}`,
+            subtitle: "Interest cost is calculated from the amortized loan schedule, not by multiplying APR directly across the full purchase price forever.",
+            metrics: [
+              { label: `Interest in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(financingValue) },
+              { label: "Amount financed", value: formatCurrency(calculations.financedAmount) },
+              { label: "Down payment", value: formatCurrency(values.loanDownPayment) },
+              { label: "Monthly payment", value: formatCurrency(values.loanMonthlyPayment) },
+              { label: "Total interest while owned", value: formatCurrency(calculations.totalInterestPaid) },
+              { label: "Payments made while owned", value: formatCurrency(calculations.totalLoanPaymentsMade) },
+            ],
+            steps: [
+              `Amount financed = purchase price (${formatCurrency(values.purchasePrice)}) - down payment (${formatCurrency(
+                values.loanDownPayment,
+              )}) = ${formatCurrency(calculations.financedAmount)}.`,
+              `The loan is amortized month by month using ${formatNumber(values.loanApr, 2)}% APR and a ${formatCurrency(
+                values.loanMonthlyPayment,
+              )} monthly payment.`,
+              `Only interest paid during the ownership window is counted here as financing cost.`,
+            ],
+            note:
+              calculations.payoffMonth !== null
+                ? `At this payment level, the loan is paid off in month ${formatNumber(
+                    calculations.payoffMonth,
+                  )}.`
+                : "At the current payment and APR, the loan is not fully paid off within the ownership window.",
+          },
+        },
+      ].filter((item) => item.value > 0);
+    };
+
     const recurringModes = (["day", "week", "month", "year"] as const).map(
       (key) => {
         const miles = recurringMilesByPeriod[key];
-        const ownership = recurringOwnershipByPeriod[key];
-        const financing = recurringFinanceByPeriod[key];
 
         return {
           key,
@@ -1400,15 +1723,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           description: recurringModeMeta[key].description,
           unitLabel: recurringModeMeta[key].unitLabel,
           total: calculations.recurringTrueCosts[key],
-          items: buildItems(
-            calculations.fuelCostPerMile * miles,
-            calculations.oilCostPerMile * miles,
-            calculations.tireCostPerMile * miles,
-            calculations.miscCostPerMile * miles,
-            calculations.depreciationCostPerMile * miles,
-            ownership,
-            financing,
-          ),
+          items: buildModeItems(key, recurringModeMeta[key].label, recurringModeMeta[key].unitLabel, miles),
         };
       },
     );
@@ -1421,15 +1736,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           "This is the baseline view of how much each category contributes to every mile driven.",
         unitLabel: "per mile",
         total: calculations.trueCostPerMile,
-        items: buildItems(
-          calculations.fuelCostPerMile,
-          calculations.oilCostPerMile,
-          calculations.tireCostPerMile,
-          calculations.miscCostPerMile,
-          calculations.depreciationCostPerMile,
-          calculations.fixedCostPerMile,
-          calculations.financeCostPerMile,
-        ),
+        items: buildModeItems("mile", "Per mile", "per mile", 1),
       },
       {
         key: "trip",
@@ -1439,15 +1746,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         )} miles across fuel, maintenance, depreciation, and ownership overhead.`,
         unitLabel: `${formatNumber(calculations.selectedTripDistance)} mi trip`,
         total: calculations.tripCost,
-        items: buildItems(
-          calculations.fuelCostPerMile * calculations.selectedTripDistance,
-          calculations.oilCostPerMile * calculations.selectedTripDistance,
-          calculations.tireCostPerMile * calculations.selectedTripDistance,
-          calculations.miscCostPerMile * calculations.selectedTripDistance,
-          calculations.depreciationCostPerMile *
-            calculations.selectedTripDistance,
-          calculations.fixedCostPerMile * calculations.selectedTripDistance,
-          calculations.financeCostPerMile * calculations.selectedTripDistance,
+        items: buildModeItems(
+          "trip",
+          "Trip",
+          `${formatNumber(calculations.selectedTripDistance)} mi trip`,
+          calculations.selectedTripDistance,
         ),
       },
       ...recurringModes,
@@ -1464,37 +1767,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         )} miles per year driven.`,
         unitLabel: recurringModeMeta.overall.unitLabel,
         total: calculations.overallCost,
-        items: buildItems(
-          calculations.overallItems.fuel,
-          calculations.overallItems.oil,
-          calculations.overallItems.tires,
-          calculations.overallItems.misc,
-          calculations.overallItems.depreciation,
-          calculations.overallItems.ownership,
-          calculations.overallItems.financing,
+        items: buildModeItems(
+          "overall",
+          recurringModeMeta.overall.label,
+          recurringModeMeta.overall.unitLabel,
+          calculations.ownershipMiles,
         ),
       },
     ];
   }, [
-    calculations.depreciationCostPerMile,
-    calculations.annualMileage,
-    calculations.fixedCostPerMile,
-    calculations.financeCostPerMile,
-    calculations.fuelCostPerMile,
-    calculations.miscCostPerMile,
-    calculations.oilCostPerMile,
-    calculations.recurringTrueCosts,
-    calculations.overallCost,
-    calculations.overallItems,
-    calculations.ownershipMiles,
-    calculations.ownershipYears,
-    calculations.selectedTripDistance,
-    calculations.tireCostPerMile,
-    calculations.tripCost,
-    calculations.trueCostPerMile,
+    calculations,
     recurringMilesByPeriod,
     recurringFinanceByPeriod,
     recurringOwnershipByPeriod,
+    values,
   ]);
 
   const filteredBreakdownModalModes = useMemo(
@@ -1527,7 +1813,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     { label: "Oil changes", value: calculations.oilCostPerMile },
     { label: "Tires", value: calculations.tireCostPerMile },
     { label: "Misc. maintenance", value: calculations.miscCostPerMile },
-    { label: "Depreciation", value: calculations.depreciationCostPerMile },
+    { label: "Vehicle value change", value: calculations.depreciationCostPerMile },
     { label: "Ownership overhead", value: calculations.fixedCostPerMile },
     { label: "Financing", value: calculations.financeCostPerMile },
     {
