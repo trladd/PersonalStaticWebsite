@@ -41,7 +41,9 @@ type CarCostValues = {
   annualRoadside: number;
   loanDownPayment: number;
   loanApr: number;
+  loanTermMonths: number;
   loanMonthlyPayment: number;
+  loanPaymentMode: "months" | "payment";
   includeDepreciation: number;
   includeAnnualOwnership: number;
   includeFinancing: number;
@@ -133,7 +135,9 @@ const defaultValues: CarCostValues = {
   annualRoadside: 100,
   loanDownPayment: 4000,
   loanApr: 6.56,
+  loanTermMonths: 72,
   loanMonthlyPayment: 748,
+  loanPaymentMode: "months",
   includeDepreciation: 1,
   includeAnnualOwnership: 1,
   includeFinancing: 0,
@@ -163,6 +167,7 @@ const FUEL_TYPE_LABELS: Record<FuelType, string> = {
 
 const DEFAULT_NEW_CAR_APR = 6.56;
 const DEFAULT_NEW_CAR_PAYMENT = 748;
+const DEFAULT_NEW_CAR_TERM_MONTHS = 72;
 
 const getPlannerValues = (values: CarCostValues): PlannerValues => ({
   tripDistance: values.tripDistance,
@@ -361,10 +366,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           includeDepreciation: template.values.includeDepreciation ?? 1,
           includeAnnualOwnership: template.values.includeAnnualOwnership ?? 1,
           loanApr: template.values.loanApr ?? DEFAULT_NEW_CAR_APR,
+          loanTermMonths:
+            template.values.loanTermMonths ?? DEFAULT_NEW_CAR_TERM_MONTHS,
           loanDownPayment:
             template.values.loanDownPayment ?? defaultValues.loanDownPayment,
           loanMonthlyPayment:
             template.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
+          loanPaymentMode:
+            template.values.loanPaymentMode ?? defaultValues.loanPaymentMode,
           includeFinancing: template.values.includeFinancing ?? 0,
         },
       })),
@@ -695,10 +704,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                     defaultValues.fuelType) as FuelType
                 ],
               loanApr: parsedCustom.values.loanApr ?? DEFAULT_NEW_CAR_APR,
+              loanTermMonths:
+                parsedCustom.values.loanTermMonths ?? DEFAULT_NEW_CAR_TERM_MONTHS,
               loanDownPayment:
                 parsedCustom.values.loanDownPayment ?? defaultValues.loanDownPayment,
               loanMonthlyPayment:
                 parsedCustom.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
+              loanPaymentMode:
+                parsedCustom.values.loanPaymentMode ?? defaultValues.loanPaymentMode,
               includeFinancing: parsedCustom.values.includeFinancing ?? 0,
             },
           } as CustomVehicle;
@@ -737,10 +750,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   defaultValues.fuelType) as FuelType
               ],
             loanApr: parsedState.values.loanApr ?? DEFAULT_NEW_CAR_APR,
+            loanTermMonths:
+              parsedState.values.loanTermMonths ?? DEFAULT_NEW_CAR_TERM_MONTHS,
             loanDownPayment:
               parsedState.values.loanDownPayment ?? defaultValues.loanDownPayment,
             loanMonthlyPayment:
               parsedState.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
+            loanPaymentMode:
+              parsedState.values.loanPaymentMode ?? defaultValues.loanPaymentMode,
             includeFinancing: parsedState.values.includeFinancing ?? 0,
           });
           setRecurringType(parsedState.recurringType);
@@ -877,6 +894,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         [name]: event.target.checked ? 1 : 0,
       }));
     };
+
+  const handleLoanPaymentModeChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    setValues((current) => ({
+      ...current,
+      loanPaymentMode: event.target.value as CarCostValues["loanPaymentMode"],
+    }));
+  };
 
   const handleNumericInputFocus = (
     event: React.FocusEvent<HTMLInputElement>,
@@ -1168,6 +1194,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     const monthsOwned = Math.max(0, Math.round(ownershipYears * 12));
     const financedAmount = Math.max(values.purchasePrice - values.loanDownPayment, 0);
     const monthlyRate = values.loanApr / 100 / 12;
+    const normalizedLoanTermMonths = Math.max(
+      0,
+      Math.round(values.loanTermMonths),
+    );
+    const effectiveMonthlyPayment =
+      values.loanPaymentMode === "months"
+        ? financedAmount > 0 && normalizedLoanTermMonths > 0
+          ? monthlyRate > 0
+            ? (financedAmount * monthlyRate) /
+              (1 - Math.pow(1 + monthlyRate, -normalizedLoanTermMonths))
+            : financedAmount / normalizedLoanTermMonths
+          : 0
+        : values.loanMonthlyPayment;
     let remainingLoanBalance = financedAmount;
     let totalLoanPaymentsMade = 0;
     let totalInterestPaid = 0;
@@ -1177,9 +1216,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     ];
 
     if (isToggleEnabled(values.includeFinancing) && financedAmount > 0) {
-      for (let month = 1; month <= monthsOwned; month += 1) {
+      const simulationMonths =
+        values.loanPaymentMode === "months"
+          ? Math.max(monthsOwned, normalizedLoanTermMonths)
+          : Math.max(monthsOwned, 1);
+
+      for (let month = 1; month <= simulationMonths; month += 1) {
         const monthlyInterest = remainingLoanBalance * monthlyRate;
-        const scheduledPayment = values.loanMonthlyPayment;
+        const scheduledPayment = effectiveMonthlyPayment;
         const actualPayment = Math.min(
           scheduledPayment,
           remainingLoanBalance + monthlyInterest,
@@ -1281,6 +1325,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       annualFinanceCost,
       depreciationTotal,
       financedAmount,
+      effectiveMonthlyPayment,
+      effectiveLoanTermMonths:
+        values.loanPaymentMode === "months"
+          ? normalizedLoanTermMonths
+          : payoffMonth ?? monthsOwned,
       totalLoanPaymentsMade,
       remainingLoanBalance,
       totalInterestPaid,
@@ -1709,7 +1758,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               { label: `Interest in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(financingValue) },
               { label: "Amount financed", value: formatCurrency(calculations.financedAmount) },
               { label: "Down payment", value: formatCurrency(values.loanDownPayment) },
-              { label: "Monthly payment", value: formatCurrency(values.loanMonthlyPayment) },
+              {
+                label: "Monthly payment",
+                value: formatCurrency(calculations.effectiveMonthlyPayment),
+              },
+              {
+                label: "Loan term",
+                value: `${formatNumber(calculations.effectiveLoanTermMonths)} months`,
+              },
               { label: "Total interest while owned", value: formatCurrency(calculations.totalInterestPaid) },
               { label: "Payments made while owned", value: formatCurrency(calculations.totalLoanPaymentsMade) },
             ],
@@ -1717,9 +1773,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               `Amount financed = purchase price (${formatCurrency(values.purchasePrice)}) - down payment (${formatCurrency(
                 values.loanDownPayment,
               )}) = ${formatCurrency(calculations.financedAmount)}.`,
-              `The loan is amortized month by month using ${formatNumber(values.loanApr, 2)}% APR and a ${formatCurrency(
-                values.loanMonthlyPayment,
-              )} monthly payment.`,
+              values.loanPaymentMode === "months"
+                ? `The loan uses ${formatNumber(values.loanApr, 2)}% APR across ${formatNumber(
+                    calculations.effectiveLoanTermMonths,
+                  )} months, which computes to about ${formatCurrency(
+                    calculations.effectiveMonthlyPayment,
+                  )} per month.`
+                : `The loan is amortized month by month using ${formatNumber(
+                    values.loanApr,
+                    2,
+                  )}% APR and a ${formatCurrency(
+                    calculations.effectiveMonthlyPayment,
+                  )} monthly payment.`,
               `Only interest paid during the ownership window is counted here as financing cost.`,
             ],
             note:
@@ -2494,7 +2559,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             downPayment={values.loanDownPayment}
             financedAmount={calculations.financedAmount}
             apr={values.loanApr}
-            monthlyPayment={values.loanMonthlyPayment}
+            monthlyPayment={calculations.effectiveMonthlyPayment}
+            loanTermMonths={calculations.effectiveLoanTermMonths}
             monthsOwned={calculations.monthsOwned}
             payoffMonth={calculations.payoffMonth}
             remainingBalance={calculations.remainingLoanBalance}
@@ -3243,7 +3309,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                 display: "grid",
                                 gridTemplateColumns: isMobileView
                                   ? "1fr"
-                                  : "repeat(3, minmax(0, 1fr))",
+                                  : "repeat(2, minmax(0, 1fr))",
                                 gap: "0.75rem",
                               }}
                             >
@@ -3283,18 +3349,72 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                 </div>
                               </div>
                               <div>
-                                <label htmlFor="loanMonthlyPayment" style={subFieldLabelStyle}>
-                                  Monthly payment
+                                <label htmlFor="loanPaymentMode" style={subFieldLabelStyle}>
+                                  Based on
+                                </label>
+                                <div style={{ ...inputContainerStyle, position: "relative" }}>
+                                  <select
+                                    id="loanPaymentMode"
+                                    className="browser-default"
+                                    value={values.loanPaymentMode}
+                                    onChange={handleLoanPaymentModeChange}
+                                    style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                                  >
+                                    <option value="months">Months financed</option>
+                                    <option value="payment">Monthly payment</option>
+                                  </select>
+                                  <span
+                                    aria-hidden="true"
+                                    style={{
+                                      position: "absolute",
+                                      right: "1rem",
+                                      top: "50%",
+                                      transform: "translateY(-50%)",
+                                      color: palette.muted,
+                                      fontSize: "0.85rem",
+                                      pointerEvents: "none",
+                                    }}
+                                  >
+                                    â–¼
+                                  </span>
+                                </div>
+                              </div>
+                              <div>
+                                <label
+                                  htmlFor={
+                                    values.loanPaymentMode === "months"
+                                      ? "loanTermMonths"
+                                      : "loanMonthlyPayment"
+                                  }
+                                  style={subFieldLabelStyle}
+                                >
+                                  {values.loanPaymentMode === "months"
+                                    ? "Months financed"
+                                    : "Monthly payment"}
                                 </label>
                                 <div style={inputContainerStyle}>
-                                  <span style={prefixStyle}>$</span>
+                                  {values.loanPaymentMode === "payment" ? (
+                                    <span style={prefixStyle}>$</span>
+                                  ) : null}
                                   <input
-                                    id="loanMonthlyPayment"
+                                    id={
+                                      values.loanPaymentMode === "months"
+                                        ? "loanTermMonths"
+                                        : "loanMonthlyPayment"
+                                    }
                                     type="number"
                                     min="0"
-                                    step="0.01"
-                                    value={values.loanMonthlyPayment}
-                                    onChange={handleChange("loanMonthlyPayment")}
+                                    step={values.loanPaymentMode === "months" ? "1" : "0.01"}
+                                    value={
+                                      values.loanPaymentMode === "months"
+                                        ? values.loanTermMonths
+                                        : values.loanMonthlyPayment
+                                    }
+                                    onChange={
+                                      values.loanPaymentMode === "months"
+                                        ? handleChange("loanTermMonths")
+                                        : handleChange("loanMonthlyPayment")
+                                    }
                                     onFocus={handleNumericInputFocus}
                                     style={inputStyle}
                                   />
@@ -3308,10 +3428,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                   lineHeight: 1.35,
                                 }}
                               >
-                                Amount financed:{" "}
-                                {formatCurrency(
-                                  Math.max(values.purchasePrice - values.loanDownPayment, 0),
-                                )}
+                                Amount financed: {formatCurrency(calculations.financedAmount)}
+                                <br />
+                                {values.loanPaymentMode === "months"
+                                  ? `Estimated payment: ${formatCurrency(
+                                      calculations.effectiveMonthlyPayment,
+                                    )} per month`
+                                  : `Estimated term: ${formatNumber(
+                                      calculations.effectiveLoanTermMonths,
+                                    )} months`}
                               </div>
                             </div>
                           ) : null}

@@ -22,6 +22,7 @@ type LoanPaydownDetailsProps = {
   financedAmount: number;
   apr: number;
   monthlyPayment: number;
+  loanTermMonths: number;
   monthsOwned: number;
   payoffMonth: number | null;
   remainingBalance: number;
@@ -56,6 +57,7 @@ const LoanPaydownDetails: React.FC<LoanPaydownDetailsProps> = ({
   financedAmount,
   apr,
   monthlyPayment,
+  loanTermMonths,
   monthsOwned,
   payoffMonth,
   remainingBalance,
@@ -117,7 +119,7 @@ const LoanPaydownDetails: React.FC<LoanPaydownDetailsProps> = ({
               {apr.toFixed(2)}% APR
             </strong>
             <small style={{ display: "block", marginTop: "0.35rem", color: palette.muted }}>
-              {formatCurrency(monthlyPayment)}/month
+              {formatCurrency(monthlyPayment)}/month for {loanTermMonths} months
             </small>
           </article>
         </div>
