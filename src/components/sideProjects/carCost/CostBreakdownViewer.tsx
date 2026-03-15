@@ -97,6 +97,20 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isAutoCycleEnabled, setIsAutoCycleEnabled] = useState(autoCycle);
   const [activeDetail, setActiveDetail] = useState<BreakdownItemDetail | null>(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  useEffect(() => {
+    const updateIsMobile = () => {
+      setIsMobileView(window.innerWidth < 700);
+    };
+
+    updateIsMobile();
+    window.addEventListener("resize", updateIsMobile);
+
+    return () => {
+      window.removeEventListener("resize", updateIsMobile);
+    };
+  }, []);
 
   useEffect(() => {
     setIsAutoCycleEnabled(autoCycle);
@@ -394,12 +408,12 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
           <div style={{ flex: "1 1 320px" }}>
             <div className="row" style={{ marginBottom: 0 }}>
               {pieSlices.map((slice) => (
-                <div key={slice.label} className="col s12 m6" style={{ marginBottom: "1rem" }}>
+                <div key={slice.label} className="col s6 m6" style={{ marginBottom: "1rem" }}>
                   <article
                     style={{
                       ...cardStyle,
                       position: "relative",
-                      padding: "1rem 1.1rem",
+                      padding: isMobileView ? "0.8rem 0.85rem" : "1rem 1.1rem",
                       height: "100%",
                       cursor: "pointer",
                       transform: activeLabel === slice.label ? "translateY(-2px)" : "none",
@@ -438,20 +452,40 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
                     >
                       <span
                         style={{
-                          width: "14px",
-                          height: "14px",
+                          width: isMobileView ? "11px" : "14px",
+                          height: isMobileView ? "11px" : "14px",
                           borderRadius: "999px",
                           background: slice.color,
                           flex: "0 0 auto",
                         }}
                       />
-                      <span style={{ fontWeight: 600 }}>{slice.label}</span>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: isMobileView ? "0.92rem" : "1rem",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {slice.label}
+                      </span>
                     </div>
-                    <strong style={{ display: "block", fontSize: "1.4rem", lineHeight: 1.1 }}>
+                    <strong
+                      style={{
+                        display: "block",
+                        fontSize: isMobileView ? "1.1rem" : "1.4rem",
+                        lineHeight: 1.1,
+                      }}
+                    >
                       {formatCurrency(slice.value)}
                     </strong>
                     <small
-                      style={{ display: "block", marginTop: "0.4rem", color: palette.muted }}
+                      style={{
+                        display: "block",
+                        marginTop: "0.32rem",
+                        color: palette.muted,
+                        fontSize: isMobileView ? "0.74rem" : "0.82rem",
+                        lineHeight: 1.3,
+                      }}
                     >
                       {formatPercent(slice.percentage * 100)} of {currentMode.label.toLowerCase()}
                     </small>

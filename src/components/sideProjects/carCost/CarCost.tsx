@@ -1908,6 +1908,20 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     boxShadow: "none",
   });
 
+  const compactMetricCardPadding = isMobileView ? "0.8rem 0.9rem" : "1rem 1.1rem";
+  const compactMetricValueSize = isMobileView ? "1.15rem" : "1.5rem";
+  const compactMetricLabelStyle: React.CSSProperties = {
+    display: "block",
+    color: palette.muted,
+    marginBottom: "0.35rem",
+    fontSize: isMobileView ? "0.78rem" : "0.92rem",
+    lineHeight: 1.3,
+  };
+  const compactMetricValueStyle: React.CSSProperties = {
+    fontSize: compactMetricValueSize,
+    lineHeight: 1.05,
+  };
+
   const insights: InsightCardData[] = (
     insightsMetadata as InsightDefinition[]
   ).map((item) => {
@@ -1934,7 +1948,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     : [];
 
   return (
-    <div className="container flow-text" style={{ paddingBottom: "3rem" }}>
+    <div
+      className={isMobileView ? "flow-text" : "container flow-text"}
+      style={{
+        paddingBottom: isMobileView ? "2rem" : "3rem",
+        width: isMobileView ? "100%" : undefined,
+        maxWidth: isMobileView ? "100%" : undefined,
+      }}
+    >
       <style>
         {`
           .material-tooltip {
@@ -2461,10 +2482,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
       <div
         style={{
-          background: palette.shellBackground,
-          borderRadius: "32px",
-          padding: "2rem",
-          marginTop: "1rem",
+          background: isMobileView ? "transparent" : palette.shellBackground,
+          borderRadius: isMobileView ? 0 : "32px",
+          padding: isMobileView ? "0.5rem" : "2rem",
+          marginTop: isMobileView ? "0.5rem" : "1rem",
+          marginLeft: isMobileView ? "-0.75rem" : undefined,
+          marginRight: isMobileView ? "-0.75rem" : undefined,
+          width: isMobileView ? "calc(100% + 1.5rem)" : undefined,
+          maxWidth: isMobileView ? "calc(100% + 1.5rem)" : undefined,
           color: palette.text,
         }}
       >
@@ -2474,8 +2499,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             position: "sticky",
             top: `${stickyTop}px`,
             zIndex: 20,
-            padding: "1rem 1.2rem",
-            marginBottom: "1.5rem",
+            padding: isMobileView ? "0.8rem 0.9rem" : "1rem 1.2rem",
+            marginBottom: isMobileView ? "1rem" : "1.5rem",
+            borderRadius: isMobileView ? "22px" : "24px",
             background: palette.panelBackground,
           }}
         >
@@ -2622,7 +2648,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               style={{
                 ...cardStyle,
                 marginTop: "1.25rem",
-                padding: "1.25rem 1.5rem",
+                padding: isMobileView ? "1rem 1.1rem" : "1.25rem 1.5rem",
                 background: palette.panelBackground,
                 boxShadow: palette.missionShadow,
               }}
@@ -2666,11 +2692,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   display: "block",
                   color: "rgba(255,255,255,0.82)",
                   marginBottom: "0.3rem",
+                  fontSize: isMobileView ? "0.82rem" : "1rem",
                 }}
               >
                 {primarySummaryCard.label}
               </span>
-              <strong style={{ fontSize: "2.1rem", lineHeight: 1 }}>
+              <strong
+                style={{ fontSize: isMobileView ? "1.7rem" : "2.1rem", lineHeight: 1 }}
+              >
                 {formatCurrency(primarySummaryCard.value)}
               </strong>
               <small
@@ -3561,14 +3590,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 {(["day", "week", "month", "year"] as const).map((key) => (
                   <div
                     key={key}
-                    className="col s12 m6"
+                    className="col s6 m6"
                     style={{ marginBottom: "1rem" }}
                   >
                     <article
                       style={{
                         ...cardStyle,
                         position: "relative",
-                        padding: "1rem 1.1rem",
+                        padding: compactMetricCardPadding,
                         height: "100%",
                         background:
                           key === "year"
@@ -3598,21 +3627,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       />
                       <span
                         style={{
-                          display: "block",
-                          color: palette.muted,
-                          marginBottom: "0.4rem",
+                          ...compactMetricLabelStyle,
                         }}
                       >
                         Per {key}
                       </span>
-                      <strong style={{ fontSize: "1.6rem", lineHeight: 1 }}>
+                      <strong style={{ fontSize: isMobileView ? "1.25rem" : "1.6rem", lineHeight: 1 }}>
                         {formatCurrency(calculations.recurringTrueCosts[key])}
                       </strong>
                       <small
                         style={{
                           display: "block",
-                          marginTop: "0.45rem",
+                          marginTop: "0.35rem",
                           color: palette.muted,
+                          fontSize: isMobileView ? "0.76rem" : "0.85rem",
+                          lineHeight: 1.3,
                         }}
                       >
                         Driving:{" "}
@@ -3627,75 +3656,57 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
               <div className="row" style={{ marginTop: "1rem", marginBottom: 0 }}>
                 <div
-                  className={`col s12 ${isToggleEnabled(values.includeFinancing) ? "m4" : "m6"}`}
+                  className={`col s6 ${isToggleEnabled(values.includeFinancing) ? "m4" : "m6"}`}
                   style={{ marginBottom: "1rem" }}
                 >
                   <article
                     style={{
                       ...cardStyle,
-                      padding: "1rem 1.1rem",
+                      padding: compactMetricCardPadding,
                       height: "100%",
                     }}
                   >
-                    <span
-                      style={{
-                        display: "block",
-                        color: palette.muted,
-                        marginBottom: "0.4rem",
-                      }}
-                    >
+                    <span style={compactMetricLabelStyle}>
                       Annual fixed ownership costs
                     </span>
-                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                    <strong style={compactMetricValueStyle}>
                       {formatCurrency(calculations.annualFixedCosts)}
                     </strong>
                   </article>
                 </div>
                 {isToggleEnabled(values.includeFinancing) ? (
-                  <div className="col s12 m4" style={{ marginBottom: "1rem" }}>
+                  <div className="col s6 m4" style={{ marginBottom: "1rem" }}>
                     <article
                       style={{
                         ...cardStyle,
-                        padding: "1rem 1.1rem",
+                        padding: compactMetricCardPadding,
                         height: "100%",
                       }}
                     >
-                      <span
-                        style={{
-                          display: "block",
-                          color: palette.muted,
-                          marginBottom: "0.4rem",
-                        }}
-                      >
+                      <span style={compactMetricLabelStyle}>
                         Annual financing cost
                       </span>
-                      <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                      <strong style={compactMetricValueStyle}>
                         {formatCurrency(calculations.annualFinanceCost)}
                       </strong>
                     </article>
                   </div>
                 ) : null}
                 <div
-                  className={`col s12 ${isToggleEnabled(values.includeFinancing) ? "m4" : "m6"}`}
+                  className={`col s6 ${isToggleEnabled(values.includeFinancing) ? "m4" : "m6"}`}
                   style={{ marginBottom: "1rem" }}
                 >
                   <article
                     style={{
                       ...cardStyle,
-                      padding: "1rem 1.1rem",
+                      padding: compactMetricCardPadding,
                       height: "100%",
                     }}
                   >
-                    <span
-                      style={{
-                        display: "block",
-                        color: palette.muted,
-                        marginBottom: "0.4rem",
-                      }}
-                    >
+                    <span style={compactMetricLabelStyle}>
                       Annual miles assumed
                     </span>
-                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                    <strong style={compactMetricValueStyle}>
                       {formatNumber(calculations.annualMileage)}
                     </strong>
                   </article>
@@ -3752,53 +3763,53 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 </div>
               </div>
               <div className="row" style={{ marginBottom: 0 }}>
-                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <span style={compactMetricLabelStyle}>
                       Ownership length
                     </span>
-                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                    <strong style={compactMetricValueStyle}>
                       {formatNumber(calculations.ownershipYears, 1)} years
                     </strong>
                   </article>
                 </div>
-                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <span style={compactMetricLabelStyle}>
                       Estimated ownership miles
                     </span>
-                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                    <strong style={compactMetricValueStyle}>
                       {formatNumber(calculations.ownershipMiles)}
                     </strong>
                   </article>
                 </div>
-                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <span style={compactMetricLabelStyle}>
                       Net vehicle cost after sale
                     </span>
-                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                    <strong style={compactMetricValueStyle}>
                       {formatCurrency(calculations.netVehicleCostAtSale)}
                     </strong>
                   </article>
                 </div>
-                <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                    <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <span style={compactMetricLabelStyle}>
                       Total estimated ownership cost
                     </span>
-                    <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                    <strong style={compactMetricValueStyle}>
                       {formatCurrency(calculations.overallCost)}
                     </strong>
                   </article>
                 </div>
                 {isToggleEnabled(values.includeFinancing) ? (
                   <>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
                       <article
                         style={{
                           ...cardStyle,
-                          padding: "1rem 1.1rem",
+                          padding: compactMetricCardPadding,
                           height: "100%",
                           position: "relative",
                         }}
@@ -3816,19 +3827,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           }}
                           iconStyle={{ fontSize: "1rem" }}
                         />
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                        <span style={compactMetricLabelStyle}>
                           Total loan payments made
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(calculations.totalLoanPaymentsMade)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
                       <article
                         style={{
                           ...cardStyle,
-                          padding: "1rem 1.1rem",
+                          padding: compactMetricCardPadding,
                           height: "100%",
                           position: "relative",
                         }}
@@ -3846,50 +3857,50 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           }}
                           iconStyle={{ fontSize: "1rem" }}
                         />
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                        <span style={compactMetricLabelStyle}>
                           Interest paid while owned
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(calculations.totalInterestPaid)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Remaining balance at sale
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(calculations.remainingLoanBalance)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Expected sale price
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(values.resaleValue)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Equity at sale
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(calculations.equityAtSale)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Average cost per year
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(
                             calculations.ownershipYears > 0
                               ? calculations.overallCost / calculations.ownershipYears
@@ -3901,42 +3912,42 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   </>
                 ) : (
                   <>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Purchase price
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(values.purchasePrice)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Expected sale price
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(values.resaleValue)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Value change at sale
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(calculations.depreciationTotal)}
                         </strong>
                       </article>
                     </div>
-                    <div className="col s12 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: "1rem 1.1rem", height: "100%" }}>
-                        <span style={{ display: "block", color: palette.muted, marginBottom: "0.4rem" }}>
+                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                        <span style={compactMetricLabelStyle}>
                           Average cost per year
                         </span>
-                        <strong style={{ fontSize: "1.5rem", lineHeight: 1 }}>
+                        <strong style={compactMetricValueStyle}>
                           {formatCurrency(
                             calculations.ownershipYears > 0
                               ? calculations.overallCost / calculations.ownershipYears
