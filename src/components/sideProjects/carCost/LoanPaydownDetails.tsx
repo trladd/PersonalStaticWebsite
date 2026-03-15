@@ -1,4 +1,14 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export type LoanPaydownPoint = {
   month: number;
@@ -31,11 +41,13 @@ type LoanPaydownDetailsProps = {
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
 const formatShortCurrency = (value: number) =>
   value.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0,
+    notation: "compact",
+    maximumFractionDigits: 1,
   });
 
 const LoanPaydownDetails: React.FC<LoanPaydownDetailsProps> = ({
@@ -53,58 +65,15 @@ const LoanPaydownDetails: React.FC<LoanPaydownDetailsProps> = ({
   palette,
   cardStyle,
 }) => {
-  const [activeMonth, setActiveMonth] = useState<number | null>(null);
-
-  const chartGeometry = useMemo(() => {
-    if (points.length < 2) {
-      return {
-        balancePath: "",
-        interestPath: "",
-        maxMonth: 1,
-        maxValue: 1,
-      };
-    }
-
-    const maxValue = Math.max(
-      ...points.flatMap((point) => [point.balance, point.interestPaid]),
-      1
-    );
-    const maxMonth = Math.max(...points.map((point) => point.month), 1);
-
-    const buildPath = (valueSelector: (point: LoanPaydownPoint) => number) =>
-      points
-        .map((point, index) => {
-          const x = 14 + (point.month / maxMonth) * 78;
-          const y = 86 - (valueSelector(point) / maxValue) * 62;
-          return `${index === 0 ? "M" : "L"} ${x} ${y}`;
-        })
-        .join(" ");
-
-    return {
-      balancePath: buildPath((point) => point.balance),
-      interestPath: buildPath((point) => point.interestPaid),
-      maxMonth,
-      maxValue,
-    };
-  }, [points]);
-
-  const xTicks = useMemo(
-    () => [0, Math.round(chartGeometry.maxMonth / 2), chartGeometry.maxMonth],
-    [chartGeometry.maxMonth]
+  const chartData = useMemo(
+    () =>
+      points.map((point) => ({
+        month: point.month,
+        principalBalance: point.balance,
+        interestPaid: point.interestPaid,
+      })),
+    [points]
   );
-
-  const yTicks = useMemo(
-    () => [0, chartGeometry.maxValue / 2, chartGeometry.maxValue],
-    [chartGeometry.maxValue]
-  );
-
-  const activePoint = useMemo(() => {
-    if (activeMonth === null) {
-      return null;
-    }
-
-    return points.find((point) => point.month === activeMonth) ?? null;
-  }, [activeMonth, points]);
 
   return (
     <div>
@@ -155,12 +124,19 @@ const LoanPaydownDetails: React.FC<LoanPaydownDetailsProps> = ({
       </div>
 
       <article style={{ ...cardStyle, padding: "1rem 1.1rem", marginBottom: "1rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "1rem",
+            flexWrap: "wrap",
+          }}
+        >
           <div>
             <strong style={{ display: "block", marginBottom: "0.3rem" }}>Loan payoff curve</strong>
             <span style={{ color: palette.muted, lineHeight: 1.5 }}>
-              Shows the remaining principal balance over time. The curve stops early if the loan
-              is paid off before you sell the vehicle.
+              Month-by-month view of remaining principal balance and cumulative interest paid.
+              Hover or tap any point to inspect exact values.
             </span>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -172,242 +148,95 @@ const LoanPaydownDetails: React.FC<LoanPaydownDetailsProps> = ({
             </small>
           </div>
         </div>
-        <svg viewBox="0 0 100 100" style={{ width: "100%", display: "block", marginTop: "1rem" }}>
-          {yTicks.map((tickValue, index) => {
-            const y = 86 - (tickValue / chartGeometry.maxValue) * 62;
-            return (
-              <g key={`y-${index}`}>
-                <line x1="14" y1={y} x2="92" y2={y} stroke={palette.border} strokeDasharray="2 2" />
-                <text
-                  x="12"
-                  y={y + 1.5}
-                  textAnchor="end"
-                  style={{ fontSize: "3px", fill: palette.muted }}
-                >
-                  {formatShortCurrency(tickValue)}
-                </text>
-              </g>
-            );
-          })}
-          {xTicks.map((tickValue, index) => {
-            const x = 14 + (tickValue / chartGeometry.maxMonth) * 78;
-            return (
-              <g key={`x-${index}`}>
-                <line x1={x} y1="86" x2={x} y2="88.5" stroke={palette.border} />
-                <text
-                  x={x}
-                  y="93"
-                  textAnchor="middle"
-                  style={{ fontSize: "3px", fill: palette.muted }}
-                >
-                  {tickValue}
-                </text>
-              </g>
-            );
-          })}
-          <line x1="14" y1="86" x2="92" y2="86" stroke={palette.border} />
-          <line x1="14" y1="24" x2="14" y2="86" stroke={palette.border} />
-          <text
-            x="53"
-            y="98"
-            textAnchor="middle"
-            style={{ fontSize: "3.2px", fill: palette.muted, fontWeight: 600 }}
-          >
-            Month number
-          </text>
-          <text
-            x="3.5"
-            y="55"
-            textAnchor="middle"
-            transform="rotate(-90 3.5 55)"
-            style={{ fontSize: "3.2px", fill: palette.muted, fontWeight: 600 }}
-          >
-            Principal balance / interest paid
-          </text>
-          <path
-            d={chartGeometry.balancePath}
-            fill="none"
-            stroke={palette.accent}
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          <path
-            d={chartGeometry.interestPath}
-            fill="none"
-            stroke="#4f6d7a"
-            strokeWidth="2.2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          {points.map((point) => {
-            const x = 14 + (point.month / chartGeometry.maxMonth) * 78;
-            const balanceY = 86 - (point.balance / chartGeometry.maxValue) * 62;
-            const interestY = 86 - (point.interestPaid / chartGeometry.maxValue) * 62;
-            const isActive = activePoint?.month === point.month;
 
-            return (
-              <g key={point.month}>
-                <circle
-                  cx={x}
-                  cy={balanceY}
-                  r={isActive ? "1.6" : "0.9"}
-                  fill={palette.accent}
-                />
-                <circle
-                  cx={x}
-                  cy={interestY}
-                  r={isActive ? "1.5" : "0.8"}
-                  fill="#4f6d7a"
-                />
-              </g>
-            );
-          })}
-          <rect
-            x="14"
-            y="24"
-            width="78"
-            height="62"
-            fill="transparent"
-            onMouseLeave={() => setActiveMonth(null)}
-            onMouseMove={(event) => {
-              const svg = event.currentTarget.ownerSVGElement;
-              if (!svg) {
-                return;
-              }
-              const point = svg.createSVGPoint();
-              point.x = event.clientX;
-              point.y = event.clientY;
-              const cursor = point.matrixTransform(svg.getScreenCTM()?.inverse());
-              const relativeX = Math.min(Math.max(cursor.x, 14), 92);
-              const month = Math.round(((relativeX - 14) / 78) * chartGeometry.maxMonth);
-              setActiveMonth(month);
-            }}
-            onTouchMove={(event) => {
-              const svg = event.currentTarget.ownerSVGElement;
-              const touch = event.touches[0];
-              if (!svg || !touch) {
-                return;
-              }
-              const point = svg.createSVGPoint();
-              point.x = touch.clientX;
-              point.y = touch.clientY;
-              const cursor = point.matrixTransform(svg.getScreenCTM()?.inverse());
-              const relativeX = Math.min(Math.max(cursor.x, 14), 92);
-              const month = Math.round(((relativeX - 14) / 78) * chartGeometry.maxMonth);
-              setActiveMonth(month);
-            }}
-          />
-          {activePoint ? (
-            <>
-              {(() => {
-                const x = 14 + (activePoint.month / chartGeometry.maxMonth) * 78;
-                const balanceY = 86 - (activePoint.balance / chartGeometry.maxValue) * 62;
-                const interestY =
-                  86 - (activePoint.interestPaid / chartGeometry.maxValue) * 62;
-                const tooltipX = Math.min(Math.max(x + 2, 28), 72);
-                const tooltipY = Math.max(Math.min(Math.min(balanceY, interestY) - 16, 60), 18);
-
-                return (
-                  <g>
-                    <line
-                      x1={x}
-                      y1="24"
-                      x2={x}
-                      y2="86"
-                      stroke={palette.border}
-                      strokeDasharray="2 2"
-                    />
-                    <rect
-                      x={tooltipX}
-                      y={tooltipY}
-                      width="24"
-                      height="15"
-                      rx="2.5"
-                      fill={palette.cardBackground}
-                      stroke={palette.border}
-                    />
-                    <text
-                      x={tooltipX + 1.8}
-                      y={tooltipY + 4.2}
-                      style={{ fontSize: "2.6px", fill: palette.text, fontWeight: 700 }}
-                    >
-                      {`Month ${activePoint.month}`}
-                    </text>
-                    <text
-                      x={tooltipX + 1.8}
-                      y={tooltipY + 8}
-                      style={{ fontSize: "2.3px", fill: palette.accent }}
-                    >
-                      {`Bal ${formatShortCurrency(activePoint.balance)}`}
-                    </text>
-                    <text
-                      x={tooltipX + 1.8}
-                      y={tooltipY + 11.8}
-                      style={{ fontSize: "2.3px", fill: "#4f6d7a" }}
-                    >
-                      {`Int ${formatShortCurrency(activePoint.interestPaid)}`}
-                    </text>
-                  </g>
-                );
-              })()}
-            </>
-          ) : null}
-        </svg>
         <div
           style={{
-            display: "flex",
-            gap: "1rem",
-            flexWrap: "wrap",
-            alignItems: "center",
-            marginTop: "0.75rem",
+            marginTop: "1rem",
+            padding: "0.75rem 0.5rem 0 0",
+            borderRadius: "16px",
+            background: palette.chartBase,
           }}
         >
-          <span style={{ display: "flex", alignItems: "center", gap: "0.45rem", color: palette.muted }}>
-            <span style={{ width: "12px", height: "3px", background: palette.accent, display: "inline-block" }} />
-            Principal balance
-          </span>
-          <span style={{ display: "flex", alignItems: "center", gap: "0.45rem", color: palette.muted }}>
-            <span style={{ width: "12px", height: "3px", background: "#4f6d7a", display: "inline-block" }} />
-            Interest paid
-          </span>
+          <div style={{ width: "100%", height: "360px" }}>
+            <ResponsiveContainer>
+              <LineChart
+                data={chartData}
+                margin={{ top: 16, right: 20, left: 12, bottom: 18 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={palette.border} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fill: palette.muted, fontSize: 12 }}
+                  tickLine={{ stroke: palette.border }}
+                  axisLine={{ stroke: palette.border }}
+                  label={{
+                    value: "Month number",
+                    position: "insideBottom",
+                    offset: -8,
+                    fill: palette.muted,
+                    fontSize: 12,
+                  }}
+                />
+                <YAxis
+                  tickFormatter={formatShortCurrency}
+                  tick={{ fill: palette.muted, fontSize: 12 }}
+                  tickLine={{ stroke: palette.border }}
+                  axisLine={{ stroke: palette.border }}
+                  width={78}
+                  label={{
+                    value: "Principal balance / interest paid",
+                    angle: -90,
+                    position: "insideLeft",
+                    fill: palette.muted,
+                    fontSize: 12,
+                    dx: -2,
+                  }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => [
+                    formatCurrency(value),
+                    name === "principalBalance" ? "Principal balance" : "Interest paid",
+                  ]}
+                  labelFormatter={(label) => `Month ${label}`}
+                  contentStyle={{
+                    background: palette.cardBackground,
+                    border: palette.border,
+                    borderRadius: "12px",
+                    color: palette.text,
+                  }}
+                  itemStyle={{ color: palette.text }}
+                  labelStyle={{ color: palette.text, fontWeight: 700 }}
+                />
+                <Legend
+                  wrapperStyle={{ color: palette.muted, paddingTop: "10px" }}
+                  formatter={(value) =>
+                    value === "principalBalance" ? "Principal balance" : "Interest paid"
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="principalBalance"
+                  name="principalBalance"
+                  stroke={palette.accent}
+                  strokeWidth={3}
+                  dot={false}
+                  activeDot={{ r: 5 }}
+                  isAnimationActive={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="interestPaid"
+                  name="interestPaid"
+                  stroke="#4f6d7a"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5 }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        {activePoint ? (
-          <div
-            style={{
-              marginTop: "0.9rem",
-              padding: "0.9rem 1rem",
-              borderRadius: "14px",
-              background: palette.cardBackground,
-              border: palette.border,
-            }}
-          >
-            <strong style={{ display: "block", marginBottom: "0.35rem" }}>
-              Month {activePoint.month} snapshot
-            </strong>
-            <span style={{ display: "block", color: palette.muted, lineHeight: 1.5 }}>
-              Remaining principal balance: {formatCurrency(activePoint.balance)}
-            </span>
-            <span style={{ display: "block", color: palette.muted, lineHeight: 1.5 }}>
-              Cumulative interest paid: {formatCurrency(activePoint.interestPaid)}
-            </span>
-          </div>
-        ) : (
-          <div
-            style={{
-              marginTop: "0.9rem",
-              padding: "0.9rem 1rem",
-              borderRadius: "14px",
-              background: palette.cardBackground,
-              border: palette.border,
-              color: palette.muted,
-              lineHeight: 1.5,
-            }}
-          >
-            Move across the chart to inspect the exact principal balance and cumulative interest
-            paid for each month.
-          </div>
-        )}
       </article>
 
       <div className="row" style={{ marginBottom: 0 }}>
