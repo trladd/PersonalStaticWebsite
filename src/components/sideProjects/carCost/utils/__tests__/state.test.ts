@@ -33,6 +33,7 @@ describe("state utils", () => {
 
     expect(normalized.fuelType).toBe("premium");
     expect(normalized.fuelEfficiency).toBe(21);
+    expect(normalized.includeVehicleCost).toBe(1);
     expect(normalized.includeFinancing).toBe(1);
     expect(normalized.loanApr).toBeGreaterThan(0);
   });

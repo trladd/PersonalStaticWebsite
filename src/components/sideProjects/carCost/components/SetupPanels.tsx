@@ -44,7 +44,11 @@ type SetupPanelsProps = {
   ) => (event: React.FocusEvent<HTMLInputElement>) => void;
   handleNumericInputFocus: (event: React.FocusEvent<HTMLInputElement>) => void;
   handleToggleChange: (
-    name: "includeDepreciation" | "includeAnnualOwnership" | "includeFinancing",
+    name:
+      | "includeVehicleCost"
+      | "includeDepreciation"
+      | "includeAnnualOwnership"
+      | "includeFinancing",
   ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleMiscMaintenanceBasisChange: (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -388,17 +392,43 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
           <p style={styles.sectionDescriptionStyle}>
             Estimate depreciation and, if applicable, financing costs tied to the vehicle itself.
           </p>
-          <div style={{ display: "grid", gap: "1rem" }}>
+          <div style={{ marginBottom: "1rem" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                cursor: "pointer",
+                fontWeight: 500,
+                color: palette.text,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isToggleEnabled(values.includeVehicleCost)}
+                onChange={handleToggleChange("includeVehicleCost")}
+              />
+              <span>Include vehicle cost</span>
+            </label>
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gap: "1rem",
+              opacity: isToggleEnabled(values.includeVehicleCost) ? 1 : 0.62,
+            }}
+          >
             <NumericField
               id="purchasePrice"
               label="Purchase price"
               value={getNumericDraftValue("purchasePrice", values.purchasePrice)}
-              step="0.01"
-              prefix="$"
-              styles={styles}
-              onChange={handleNumericFieldChange("purchasePrice")}
-              onBlur={handleNumericFieldBlur("purchasePrice")}
-              onFocus={handleNumericInputFocus}
+                step="0.01"
+                prefix="$"
+                styles={styles}
+                disabled={!isToggleEnabled(values.includeVehicleCost)}
+                onChange={handleNumericFieldChange("purchasePrice")}
+                onBlur={handleNumericFieldBlur("purchasePrice")}
+                onFocus={handleNumericInputFocus}
             />
             <div
               style={{
@@ -422,6 +452,7 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
                   type="checkbox"
                   checked={isToggleEnabled(values.includeFinancing)}
                   onChange={handleToggleChange("includeFinancing")}
+                  disabled={!isToggleEnabled(values.includeVehicleCost)}
                 />
                 <span>Vehicle is financed</span>
               </label>
@@ -550,13 +581,14 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
               value={getNumericDraftValue("resaleValue", values.resaleValue)}
               step="0.01"
               prefix="$"
-              warningTooltip={
-                values.resaleValue > values.purchasePrice ? resaleWarningTooltip : undefined
-              }
-              styles={styles}
-              onChange={handleNumericFieldChange("resaleValue")}
-              onBlur={handleNumericFieldBlur("resaleValue")}
-              onFocus={handleNumericInputFocus}
+                warningTooltip={
+                  values.resaleValue > values.purchasePrice ? resaleWarningTooltip : undefined
+                }
+                styles={styles}
+                disabled={!isToggleEnabled(values.includeVehicleCost)}
+                onChange={handleNumericFieldChange("resaleValue")}
+                onBlur={handleNumericFieldBlur("resaleValue")}
+                onFocus={handleNumericInputFocus}
             />
             <div>
               <div
@@ -596,6 +628,7 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
                       className="browser-default"
                       value={values.depreciationBasis}
                       onChange={handleDepreciationBasisChange}
+                      disabled={!isToggleEnabled(values.includeVehicleCost)}
                       style={{ ...styles.selectStyle, paddingRight: "2.75rem" }}
                     >
                       <option value="miles">Miles</option>
@@ -621,7 +654,7 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
                       onChange={handleNumericFieldChange("depreciationInterval")}
                       onBlur={handleNumericFieldBlur("depreciationInterval")}
                       onFocus={handleNumericInputFocus}
-                      disabled={!isToggleEnabled(values.includeDepreciation)}
+                      disabled={!isToggleEnabled(values.includeVehicleCost)}
                       style={styles.inputStyle}
                     />
                   </div>
@@ -644,11 +677,12 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
                       "annualMileageVehicleCost",
                       Math.round(calculations.annualMileage),
                     )}
-                    onChange={handleAnnualMileageDraftChange}
-                    onBlur={handleAnnualMileageBlur}
-                    onFocus={handleNumericInputFocus}
-                    style={styles.inputStyle}
-                  />
+                      onChange={handleAnnualMileageDraftChange}
+                      onBlur={handleAnnualMileageBlur}
+                      onFocus={handleNumericInputFocus}
+                      disabled={!isToggleEnabled(values.includeVehicleCost)}
+                      style={styles.inputStyle}
+                    />
                 </div>
               </div>
             </div>

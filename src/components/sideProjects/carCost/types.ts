@@ -48,6 +48,7 @@ export type CarCostValues = {
   loanTermMonths: number;
   loanMonthlyPayment: number;
   loanPaymentMode: "months" | "payment";
+  includeVehicleCost: number;
   includeDepreciation: number;
   includeAnnualOwnership: number;
   includeFinancing: number;

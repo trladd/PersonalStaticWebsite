@@ -310,7 +310,12 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
 
           <div className="row" style={{ marginTop: "1rem", marginBottom: 0 }}>
             <div
-              className={`col s6 ${isToggleEnabled(values.includeFinancing) ? "m4" : "m6"}`}
+              className={`col s6 ${
+                isToggleEnabled(values.includeVehicleCost) &&
+                isToggleEnabled(values.includeFinancing)
+                  ? "m4"
+                  : "m6"
+              }`}
               style={{ marginBottom: "1rem" }}
             >
               <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
@@ -320,7 +325,8 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
                 </strong>
               </article>
             </div>
-            {isToggleEnabled(values.includeFinancing) ? (
+            {isToggleEnabled(values.includeVehicleCost) &&
+            isToggleEnabled(values.includeFinancing) ? (
               <div className="col s6 m4" style={{ marginBottom: "1rem" }}>
                 <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
                   <span style={compactMetricLabelStyle}>Annual financing cost</span>
@@ -331,7 +337,12 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
               </div>
             ) : null}
             <div
-              className={`col s6 ${isToggleEnabled(values.includeFinancing) ? "m4" : "m6"}`}
+              className={`col s6 ${
+                isToggleEnabled(values.includeVehicleCost) &&
+                isToggleEnabled(values.includeFinancing)
+                  ? "m4"
+                  : "m6"
+              }`}
               style={{ marginBottom: "1rem" }}
             >
               <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>

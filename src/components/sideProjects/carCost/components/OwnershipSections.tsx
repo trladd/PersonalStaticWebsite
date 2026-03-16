@@ -143,22 +143,24 @@ const OwnershipSections: React.FC<OwnershipSectionsProps> = ({
                   </strong>
                 </article>
               </div>
-              <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                <article
-                  style={{
-                    ...cardStyle,
-                    padding: compactMetricCardPadding,
-                    height: "100%",
-                  }}
-                >
-                  <span style={compactMetricLabelStyle}>
-                    Net vehicle cost after sale
-                  </span>
-                  <strong style={compactMetricValueStyle}>
-                    {formatCurrency(calculations.netVehicleCostAtSale)}
-                  </strong>
-                </article>
-              </div>
+              {isToggleEnabled(values.includeVehicleCost) ? (
+                <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                  <article
+                    style={{
+                      ...cardStyle,
+                      padding: compactMetricCardPadding,
+                      height: "100%",
+                    }}
+                  >
+                    <span style={compactMetricLabelStyle}>
+                      Net vehicle cost after sale
+                    </span>
+                    <strong style={compactMetricValueStyle}>
+                      {formatCurrency(calculations.netVehicleCostAtSale)}
+                    </strong>
+                  </article>
+                </div>
+              ) : null}
               <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
                 <article
                   style={{
@@ -175,7 +177,8 @@ const OwnershipSections: React.FC<OwnershipSectionsProps> = ({
                   </strong>
                 </article>
               </div>
-              {isToggleEnabled(values.includeFinancing) ? (
+              {isToggleEnabled(values.includeVehicleCost) &&
+              isToggleEnabled(values.includeFinancing) ? (
                 <>
                   <div
                     className="col s6 m6 xl3"
@@ -320,7 +323,7 @@ const OwnershipSections: React.FC<OwnershipSectionsProps> = ({
                     </article>
                   </div>
                 </>
-              ) : (
+              ) : isToggleEnabled(values.includeVehicleCost) ? (
                 <>
                   <div
                     className="col s6 m6 xl3"
@@ -399,7 +402,7 @@ const OwnershipSections: React.FC<OwnershipSectionsProps> = ({
                     </article>
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           </section>
         </div>

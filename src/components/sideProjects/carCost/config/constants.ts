@@ -27,6 +27,7 @@ export const defaultValues: CarCostValues = {
   loanTermMonths: 72,
   loanMonthlyPayment: 748,
   loanPaymentMode: "months",
+  includeVehicleCost: 1,
   includeDepreciation: 1,
   includeAnnualOwnership: 1,
   includeFinancing: 0,

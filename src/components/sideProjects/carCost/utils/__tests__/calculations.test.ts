@@ -104,4 +104,26 @@ describe("calculateCarCost", () => {
     expect(result.annualFixedCosts).toBe(0);
     expect(result.fixedCostPerMile).toBe(0);
   });
+
+  it("removes vehicle cost effects when the parent vehicle-cost toggle is off", () => {
+    const values = {
+      ...defaultValues,
+      includeVehicleCost: 0,
+      includeDepreciation: 1,
+      includeFinancing: 1,
+      purchasePrice: 37000,
+      resaleValue: 18000,
+      loanDownPayment: 5000,
+      loanApr: 6,
+      loanTermMonths: 72,
+    };
+
+    const result = calculateCarCost(values, "year", "roundTrip");
+
+    expect(result.depreciationCostPerMile).toBe(0);
+    expect(result.depreciationTotal).toBe(0);
+    expect(result.financeCostPerMile).toBe(0);
+    expect(result.totalInterestPaid).toBe(0);
+    expect(result.netVehicleCostAtSale).toBe(0);
+  });
 });

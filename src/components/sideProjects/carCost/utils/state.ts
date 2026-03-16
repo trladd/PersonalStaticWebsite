@@ -69,6 +69,7 @@ export const normalizeCarCostValues = (
   fuelUnitPrice:
     rawValues?.fuelUnitPrice ??
     DEFAULT_FUEL_PRICES[rawValues?.fuelType ?? defaultValues.fuelType],
+  includeVehicleCost: rawValues?.includeVehicleCost ?? 1,
   includeDepreciation: rawValues?.includeDepreciation ?? 1,
   includeAnnualOwnership: rawValues?.includeAnnualOwnership ?? 1,
   loanApr: rawValues?.loanApr ?? DEFAULT_NEW_CAR_APR,

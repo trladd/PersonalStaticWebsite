@@ -468,11 +468,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     };
 
   const handleToggleChange =
-    (
-      name:
-        | "includeDepreciation"
-        | "includeAnnualOwnership"
-        | "includeFinancing",
+      (
+        name:
+          | "includeVehicleCost"
+          | "includeDepreciation"
+          | "includeAnnualOwnership"
+          | "includeFinancing",
     ) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setValues((current) => ({

@@ -55,6 +55,7 @@ export const calculateCarCost = (
   recurringType: RecurringType,
   tripType: TripType,
 ): CarCostCalculations => {
+  const includesVehicleCost = isToggleEnabled(values.includeVehicleCost);
   const tripMultiplier = tripType === "oneWay" ? 2 : 1;
   const selectedTripDistance = values.tripDistance * tripMultiplier;
   const fuelCostPerMile =
@@ -85,7 +86,9 @@ export const calculateCarCost = (
       : annualMileage * values.depreciationInterval;
   const depreciationValueChange = values.purchasePrice - values.resaleValue;
   const depreciationCostPerMile =
-    isToggleEnabled(values.includeDepreciation) && ownershipMiles > 0
+    includesVehicleCost &&
+    isToggleEnabled(values.includeDepreciation) &&
+    ownershipMiles > 0
       ? depreciationValueChange / ownershipMiles
       : 0;
   const miscCostPerMile =
@@ -113,7 +116,8 @@ export const calculateCarCost = (
       values.annualInspection +
       values.annualRoadside
     : 0;
-  const depreciationTotal = isToggleEnabled(values.includeDepreciation)
+  const depreciationTotal =
+    includesVehicleCost && isToggleEnabled(values.includeDepreciation)
     ? depreciationValueChange
     : 0;
   const monthsOwned = Math.max(0, Math.round(ownershipYears * 12));
@@ -138,7 +142,7 @@ export const calculateCarCost = (
     { month: 0, balance: financedAmount, interestPaid: 0 },
   ];
 
-  if (isToggleEnabled(values.includeFinancing) && financedAmount > 0) {
+  if (includesVehicleCost && isToggleEnabled(values.includeFinancing) && financedAmount > 0) {
     const simulationMonths =
       values.loanPaymentMode === "months"
         ? Math.max(monthsOwned, normalizedLoanTermMonths)
@@ -179,6 +183,7 @@ export const calculateCarCost = (
   }
 
   if (
+    includesVehicleCost &&
     isToggleEnabled(values.includeFinancing) &&
     financedAmount > 0 &&
     payoffMonth === null &&
@@ -188,11 +193,14 @@ export const calculateCarCost = (
   }
 
   const annualFinanceCost =
-    isToggleEnabled(values.includeFinancing) && ownershipYears > 0
+    includesVehicleCost &&
+    isToggleEnabled(values.includeFinancing) &&
+    ownershipYears > 0
       ? totalInterestPaid / ownershipYears
       : 0;
   const fixedCostPerMile = annualMileage > 0 ? annualFixedCosts / annualMileage : 0;
-  const financeCostPerMile = ownershipMiles > 0 ? totalInterestPaid / ownershipMiles : 0;
+  const financeCostPerMile =
+    includesVehicleCost && ownershipMiles > 0 ? totalInterestPaid / ownershipMiles : 0;
   const trueCostPerMile =
     variableCostPerMile + fixedCostPerMile + financeCostPerMile;
   const tripCost = selectedTripDistance * trueCostPerMile;
@@ -210,9 +218,12 @@ export const calculateCarCost = (
     year: recurringDrivingCosts.year + annualFixedCosts + annualFinanceCost,
   };
   const equityAtSale = values.resaleValue - remainingLoanBalance;
-  const netVehicleCostAtSale = isToggleEnabled(values.includeFinancing)
+  const netVehicleCostAtSale =
+    includesVehicleCost && isToggleEnabled(values.includeFinancing)
     ? values.loanDownPayment + totalLoanPaymentsMade - equityAtSale
-    : depreciationTotal;
+    : includesVehicleCost
+      ? depreciationTotal
+      : 0;
   const overallItems = {
     fuel: fuelCostPerMile * ownershipMiles,
     oil: oilCostPerMile * ownershipMiles,
