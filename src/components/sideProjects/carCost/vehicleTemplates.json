@@ -87,6 +87,35 @@
     }
   },
   {
+    "id": "2011-ford-mustang-v6-automatic",
+    "year": 2011,
+    "make": "Ford",
+    "model": "Mustang V6 Automatic",
+    "title": "2011 Ford Mustang V6 Automatic",
+    "values": {
+      "fuelType": "regular",
+      "fuelEfficiency": 22,
+      "oilChangeCost": 65,
+      "oilChangeInterval": 5000,
+      "tireCost": 850,
+      "tireInterval": 40000,
+      "miscMaintenanceCost": 700,
+      "miscMaintenanceInterval": 12000,
+      "purchasePrice": 10500,
+      "resaleValue": 5800,
+      "depreciationInterval": 60000,
+      "tripDistance": 250,
+      "recurringMiles": 40,
+      "annualInsurance": 1650,
+      "annualRegistration": 120,
+      "annualParking": 0,
+      "annualInspection": 0,
+      "annualRoadside": 90,
+      "includeDepreciation": 1,
+      "includeAnnualOwnership": 1
+    }
+  },
+  {
     "id": "2025-toyota-camry",
     "year": 2025,
     "make": "Toyota",

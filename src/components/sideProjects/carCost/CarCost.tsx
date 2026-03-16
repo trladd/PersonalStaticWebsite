@@ -170,7 +170,16 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         M.Tooltip.getInstance(element)?.destroy();
       });
     };
-  }, [values.depreciationBasis, values.fuelType, values.fuelUnitPrice]);
+  }, [
+    values.depreciationBasis,
+    values.depreciationInterval,
+    values.fuelType,
+    values.fuelUnitPrice,
+    values.purchasePrice,
+    values.resaleValue,
+    values.recurringMiles,
+    values.includeVehicleCost,
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();
