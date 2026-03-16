@@ -1,12 +1,16 @@
 import React, {
-  useState,
+  useContext,
+  ReactNode,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
-  ReactNode,
+  useState,
 } from "react";
-import UserDeviceInfo from "./UserDeviceInfo";
 import M from "materialize-css";
+import { ThemeContext } from "../../../utility/ThemeContext";
+import UserDeviceInfo from "./UserDeviceInfo";
+import LocalStorageInspector from "./LocalStorageInspector";
 import styles from "./SiteDebugTools.module.css";
 
 interface SiteDebugToolsProps {
@@ -20,51 +24,51 @@ interface NetworkInfo {
   rtt?: number;
   saveData?: boolean;
 }
-const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
-  const [localStorageItems, setLocalStorageItems] = useState<
-    { key: string; value: string | null }[]
-  >([]);
 
+type BrowserNetworkConnection = {
+  effectiveType?: string;
+  downlink?: number;
+  rtt?: number;
+  saveData?: boolean;
+  addEventListener?: (type: string, listener: () => void) => void;
+  removeEventListener?: (type: string, listener: () => void) => void;
+};
+
+type DebugTab = {
+  name: string;
+  content: ReactNode;
+};
+
+const SiteDebugTools: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
+  const { isDarkMode } = useContext(ThemeContext);
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo>({
     online: navigator.onLine,
   });
-
   const debugTabsRef = useRef<HTMLUListElement>(null);
 
-  const updateLocalStorage = () => {
-    const items: { key: string; value: string | null }[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key) {
-        items.push({ key, value: localStorage.getItem(key) });
-      }
-    }
-    setLocalStorageItems(items);
-  };
-
-  const setTabsOffset = () => {
+  const setTabsOffset = useCallback(() => {
     if (navWrapperRef.current && debugTabsRef.current) {
       const navHeight = navWrapperRef.current.offsetHeight;
       debugTabsRef.current.style.top = `${navHeight}px`;
     }
-  };
+  }, [navWrapperRef]);
 
   useLayoutEffect(() => {
     setTabsOffset();
-  });
+  }, [setTabsOffset]);
 
   useEffect(() => {
     const elems = document.querySelectorAll(".tabs");
     M.Tabs.init(elems, {});
     setTabsOffset();
-  }, []);
+  }, [setTabsOffset]);
 
   useEffect(() => {
-    updateLocalStorage();
-  }, []);
-
-  useEffect(() => {
-    const nav: any = window.navigator;
+    const nav = window.navigator as Navigator & {
+      connection?: BrowserNetworkConnection;
+      mozConnection?: BrowserNetworkConnection;
+      webkitConnection?: BrowserNetworkConnection;
+    };
     const connection =
       nav.connection || nav.mozConnection || nav.webkitConnection;
 
@@ -91,45 +95,10 @@ const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
     };
   }, []);
 
-  const clearLocalStorage = () => {
-    localStorage.clear();
-    setLocalStorageItems([]);
-  };
-  type Tabs = {
-    name: string;
-    content: ReactNode;
-  };
-  const tabs: Tabs[] = [
+  const tabs: DebugTab[] = [
     {
       name: "Local Storage",
-      content: (
-        <div className="container">
-          <h1>Local Storage</h1>
-          <div className="row">
-            <div className="col s12 m8 l6">
-              <table className="mt-2 mb-2">
-                <thead>
-                  <tr>
-                    <th>Item Key</th>
-                    <th>Item Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {localStorageItems.map((item) => (
-                    <tr key={item.key}>
-                      <td>{item.key}</td>
-                      <td>{item.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button className="btn red mt-2 mb-2" onClick={clearLocalStorage}>
-                Clear Local Storage
-              </button>
-            </div>
-          </div>
-        </div>
-      ),
+      content: <LocalStorageInspector />,
     },
     {
       name: "Device Info",
@@ -141,17 +110,14 @@ const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
         <div className="container">
           <h1>Network & Connectivity</h1>
           <p>
-            Online Status:{" "}
-            <b>{networkInfo.online ? "Online" : "Offline"}</b>
+            Online Status: <b>{networkInfo.online ? "Online" : "Offline"}</b>
           </p>
           {networkInfo.effectiveType ? (
             <>
               <p>Connection Type: {networkInfo.effectiveType}</p>
               <p>Estimated Downlink: {networkInfo.downlink} Mbps</p>
               <p>Estimated RTT: {networkInfo.rtt} ms</p>
-              <p>
-                Data Saver Enabled: {networkInfo.saveData ? "Yes" : "No"}
-              </p>
+              <p>Data Saver Enabled: {networkInfo.saveData ? "Yes" : "No"}</p>
             </>
           ) : (
             <p>
@@ -165,28 +131,32 @@ const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
   ];
 
   return (
-    <div className="container flow-text">
+    <div
+      className={`container flow-text ${styles.debugToolsRoot} ${
+        isDarkMode ? styles.darkMode : styles.lightMode
+      }`}
+    >
       <p>
         This section showcases client-side diagnostics I use to understand how
         the site behaves in a real browser. It highlights the kinds of data
-        available directly from the device and network—without any backend
-        integration—covering local storage, device capabilities, and
+        available directly from the device and network without any backend
+        integration, covering local storage, device capabilities, and
         connectivity characteristics.
       </p>
       <ul
         id="debugToolsTabs"
-        className={"tabs " + styles.debugTabs}
+        className={`tabs ${styles.debugTabs}`}
         ref={debugTabsRef}
       >
         {tabs.map((tab, index) => (
-          <li className="tab col s3" key={index}>
+          <li className="tab col s3" key={tab.name}>
             <a href={`#tab-${index}`}>{tab.name}</a>
           </li>
         ))}
       </ul>
       <div className={styles.tabContent}>
         {tabs.map((tab, index) => (
-          <div id={`tab-${index}`} key={index} className={styles.debugTabPane}>
+          <div id={`tab-${index}`} key={tab.name} className={styles.debugTabPane}>
             {tab.content}
           </div>
         ))}
@@ -195,4 +165,4 @@ const SiteDebugProps: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
   );
 };
 
-export default SiteDebugProps;
+export default SiteDebugTools;

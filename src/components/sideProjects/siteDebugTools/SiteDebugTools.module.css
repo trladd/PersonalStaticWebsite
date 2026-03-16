@@ -1,9 +1,80 @@
 /* SiteDebugTools.module.css */
+.debugToolsRoot {
+  --debug-text: #2d241c;
+  --debug-muted: #6b625b;
+  --debug-panel: rgba(255, 252, 247, 0.98);
+  --debug-panel-strong: #fffaf3;
+  --debug-border: rgba(155, 120, 88, 0.2);
+  --debug-accent: #c5704d;
+  --debug-accent-strong: #7f351b;
+  --debug-accent-soft: rgba(197, 112, 77, 0.12);
+  --debug-shadow: 0 22px 50px rgba(32, 24, 19, 0.16);
+  --debug-backdrop: rgba(25, 20, 16, 0.52);
+  --debug-validation-bg: #fff0ee;
+  --debug-validation-text: #a24936;
+  color: var(--debug-text);
+}
+
+.lightMode {
+  --debug-text: #2d241c;
+  --debug-muted: #6b625b;
+  --debug-panel: rgba(255, 252, 247, 0.98);
+  --debug-panel-strong: #fffaf3;
+  --debug-border: rgba(155, 120, 88, 0.2);
+  --debug-accent: #c5704d;
+  --debug-accent-strong: #7f351b;
+  --debug-accent-soft: rgba(197, 112, 77, 0.12);
+  --debug-shadow: 0 22px 50px rgba(32, 24, 19, 0.16);
+  --debug-backdrop: rgba(25, 20, 16, 0.52);
+  --debug-validation-bg: #fff0ee;
+  --debug-validation-text: #a24936;
+}
+
+.darkMode {
+  --debug-text: rgba(248, 239, 231, 0.96);
+  --debug-muted: rgba(214, 196, 180, 0.8);
+  --debug-panel: rgba(34, 28, 22, 0.98);
+  --debug-panel-strong: rgba(42, 34, 27, 0.98);
+  --debug-border: rgba(214, 154, 127, 0.18);
+  --debug-accent: #d79a7f;
+  --debug-accent-strong: #efb79f;
+  --debug-accent-soft: rgba(215, 154, 127, 0.14);
+  --debug-shadow: 0 28px 65px rgba(0, 0, 0, 0.42);
+  --debug-backdrop: rgba(6, 6, 7, 0.72);
+  --debug-validation-bg: rgba(124, 58, 50, 0.28);
+  --debug-validation-text: #ffbeb0;
+}
+
 .debugTabs {
   position: sticky;
   top: 0;
-  background-color: white;
+  background-color: var(--debug-panel);
   z-index: 1;
+  border-radius: 18px;
+  border-bottom: 1px solid var(--debug-border);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.debugTabs :global(.indicator) {
+  background-color: var(--debug-accent);
+}
+
+.debugTabs :global(.tab a) {
+  color: var(--debug-accent) !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.debugTabs :global(.tab a:hover),
+.debugTabs :global(.tab a:focus) {
+  color: var(--debug-accent-strong) !important;
+  background-color: var(--debug-accent-soft) !important;
+}
+
+.debugTabs :global(.tab a.active) {
+  color: var(--debug-accent-strong) !important;
+  background-color: var(--debug-accent-soft) !important;
 }
 
 .tabContent {
@@ -13,4 +84,244 @@
 
 .debugTabPane {
   padding: 20px;
+}
+
+.sectionHelper {
+  margin-bottom: 1rem;
+  color: var(--debug-muted);
+}
+
+.storageToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.storageTableShell {
+  overflow-x: auto;
+}
+
+.storageTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: var(--debug-text);
+}
+
+.storageTable th,
+.storageTable td {
+  vertical-align: top;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--debug-border);
+}
+
+.storageKeyCell {
+  font-weight: 700;
+  white-space: nowrap;
+  width: 180px;
+}
+
+.storageValueCell {
+  width: auto;
+}
+
+.storageValueCell code {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--debug-text);
+}
+
+.actionsColumn {
+  width: 180px;
+}
+
+.storageActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.storageActions :global(.btn-flat) {
+  min-width: 0;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--debug-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 1rem;
+}
+
+.jsonModal {
+  width: min(80vw, 1120px);
+  max-width: 100%;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  background: var(--debug-panel-strong);
+  color: var(--debug-text);
+  border-radius: 24px;
+  padding: 1.25rem;
+  box-shadow: var(--debug-shadow);
+  border: 1px solid var(--debug-border);
+}
+
+.jsonModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modalTitle {
+  margin: 0;
+}
+
+.modalSubtitle {
+  margin-top: 0.35rem;
+  color: var(--debug-muted);
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.modalHelperText {
+  margin: 0.75rem 0 1rem;
+  color: var(--debug-muted);
+}
+
+.validationBanner {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  background: var(--debug-validation-bg);
+  color: var(--debug-validation-text);
+  font-weight: 600;
+}
+
+.codeMirrorShell {
+  border: 1px solid var(--debug-border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--debug-panel);
+}
+
+.codeMirrorShell :global(.cm-editor) {
+  font-size: 0.9rem;
+  background: var(--debug-panel);
+  color: var(--debug-text);
+}
+
+.codeMirrorShell :global(.cm-scroller),
+.codeMirrorShell :global(.cm-gutters) {
+  background: var(--debug-panel);
+  color: var(--debug-muted);
+  border-color: var(--debug-border);
+}
+
+.codeMirrorShell :global(.cm-activeLine),
+.codeMirrorShell :global(.cm-activeLineGutter) {
+  background: var(--debug-accent-soft);
+}
+
+.codeMirrorShell :global(.cm-content) {
+  caret-color: var(--debug-accent);
+}
+
+.codeMirrorShell :global(.cm-cursor) {
+  border-left-color: var(--debug-accent);
+}
+
+.codeMirrorShell :global(.cm-selectionBackground),
+.codeMirrorShell :global(.cm-focused .cm-selectionBackground),
+.codeMirrorShell :global(.cm-selectionLayer .cm-selectionBackground) {
+  background: rgba(197, 112, 77, 0.24) !important;
+}
+
+.darkMode .codeMirrorShell :global(.cm-selectionBackground),
+.darkMode .codeMirrorShell :global(.cm-focused .cm-selectionBackground),
+.darkMode .codeMirrorShell :global(.cm-selectionLayer .cm-selectionBackground) {
+  background: rgba(215, 154, 127, 0.28) !important;
+}
+
+.codeMirrorShell :global(.cm-property) {
+  color: var(--debug-accent-strong);
+}
+
+.codeMirrorShell :global(.cm-string) {
+  color: #3f7f61;
+}
+
+.darkMode .codeMirrorShell :global(.cm-string) {
+  color: #9ad6a0;
+}
+
+.codeMirrorShell :global(.cm-number),
+.codeMirrorShell :global(.cm-bool),
+.codeMirrorShell :global(.cm-null) {
+  color: #93613c;
+}
+
+.darkMode .codeMirrorShell :global(.cm-number),
+.darkMode .codeMirrorShell :global(.cm-bool),
+.darkMode .codeMirrorShell :global(.cm-null) {
+  color: #f1c28d;
+}
+
+.jsonModal :global(.btn-flat) {
+  color: var(--debug-accent-strong);
+}
+
+.modalActions :global(.btn) {
+  background: var(--debug-accent-strong);
+}
+
+.modalActions :global(.btn:hover),
+.modalActions :global(.btn:focus) {
+  background: var(--debug-accent);
+}
+
+.storageToolbar :global(.btn-flat),
+.storageActions :global(.btn-flat) {
+  color: var(--debug-accent-strong);
+}
+
+.storageToolbar :global(.btn.red) {
+  background: var(--debug-accent-strong) !important;
+}
+
+.storageToolbar :global(.btn.red):hover,
+.storageToolbar :global(.btn.red):focus {
+  background: var(--debug-accent) !important;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 700px) {
+  .modalBackdrop {
+    padding: 0;
+  }
+
+  .jsonModal {
+    width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: 1rem;
+  }
 }

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@codemirror/lang-json": "^6.0.2",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -10,8 +11,10 @@
     "@types/node": "^16.18.106",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "@uiw/react-codemirror": "^4.25.8",
     "leaflet": "^1.9.4",
     "materialize-css": "^1.0.0",
+    "prettier": "^3.8.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",
