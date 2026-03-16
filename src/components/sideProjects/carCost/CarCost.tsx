@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import M from "materialize-css";
 import { ThemeContext } from "../../../utility/ThemeContext";
 import { BreakdownMode } from "./components/CostBreakdownViewer";
@@ -73,6 +80,10 @@ import {
   getCurrentVehicleLabel,
   getRecurringBreakdownMode,
 } from "./utils/viewModel";
+import {
+  buildShareableCarCostUrl,
+  parseSharedCarCostPayload,
+} from "./utils/share";
 
 const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const { isDarkMode } = useContext(ThemeContext);
@@ -285,6 +296,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
     const savedState = localStorage.getItem(CAR_COST_STORAGE_KEY);
     const savedCustom = localStorage.getItem(CAR_COST_CUSTOM_KEY);
+    const sharedPayload = parseSharedCarCostPayload(window.location.search);
 
     const normalizedCustomVehicle = parseSavedCustomVehicle(savedCustom);
     if (normalizedCustomVehicle) {
@@ -292,7 +304,42 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       setCustomVehicleDraft(getDraftFromVehicle(normalizedCustomVehicle));
     }
 
-    if (savedState) {
+    if (sharedPayload?.state) {
+      const { migratedState, startupNotice: migrationNotice } =
+        migratePersistedCarCostState(JSON.stringify(sharedPayload.state));
+
+      if (sharedPayload.savedCustomVehicle) {
+        const normalizedSharedVehicle: CustomVehicle = {
+          ...sharedPayload.savedCustomVehicle,
+          id: "custom",
+          values: normalizeCarCostValues(
+            stripSessionScopedValues(sharedPayload.savedCustomVehicle.values),
+          ),
+        };
+        setSavedCustomVehicle(normalizedSharedVehicle);
+        setCustomVehicleDraft(getDraftFromVehicle(normalizedSharedVehicle));
+      }
+
+      if (migratedState?.values && migratedState?.recurringType) {
+        setValues(normalizeCarCostValues(migratedState.values));
+        setRecurringType(migratedState.recurringType);
+        setTripType(migratedState.tripType ?? "oneWay");
+        setSelectedSource(migratedState.selectedSource ?? "default");
+        setSelectedTemplateId(migratedState.selectedTemplateId ?? null);
+        setStartupNotice(
+          migrationNotice ?? "Loaded a shared car cost setup from a friend.",
+        );
+        if (
+          migratedState.selectedSource === "template" &&
+          migratedState.selectedTemplateId
+        ) {
+          setStartupTemplateId(migratedState.selectedTemplateId);
+        }
+        setHasResolvedStartupChoice(true);
+      } else {
+        modalInstanceRef.current.open();
+      }
+    } else if (savedState) {
       try {
         const { migratedState, startupNotice: migrationNotice } =
           migratePersistedCarCostState(savedState);
@@ -390,12 +437,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hasResolvedStartupChoice) {
-      return;
-    }
-
-    const nextState: PersistedCarCostState = {
+  const buildPersistedStateSnapshot = useCallback(
+    (): PersistedCarCostState => ({
       version: CAR_COST_STATE_VERSION,
       selectedSource,
       selectedTemplateId,
@@ -403,16 +446,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       recurringType,
       tripType,
       updatedAt: new Date().toISOString(),
-    };
+    }),
+    [recurringType, selectedSource, selectedTemplateId, tripType, values],
+  );
+
+  useEffect(() => {
+    if (!hasResolvedStartupChoice) {
+      return;
+    }
+
+    const nextState: PersistedCarCostState = buildPersistedStateSnapshot();
 
     localStorage.setItem(CAR_COST_STORAGE_KEY, JSON.stringify(nextState));
   }, [
+    buildPersistedStateSnapshot,
     hasResolvedStartupChoice,
-    recurringType,
-    selectedSource,
-    selectedTemplateId,
-    tripType,
-    values,
   ]);
 
   const getNumericDraftValue = (key: string, actualValue: number) =>
@@ -791,6 +839,42 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     clearNumericDraft("annualMileageVehicleCost");
   };
 
+  const handleShareCalculator = async () => {
+    const shareUrl = buildShareableCarCostUrl({
+      currentUrl: window.location.href,
+      savedCustomVehicle,
+      state: buildPersistedStateSnapshot(),
+    });
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Vehicle cost estimate for ${currentVehicleLabel}`,
+          text: `Take a look at this car cost estimate for ${currentVehicleLabel}.`,
+          url: shareUrl,
+        });
+        return;
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      M.toast({
+        html: "Share link copied. Paste it to send it to a friend.",
+        displayLength: 2800,
+      });
+    } catch (error) {
+      M.toast({
+        html: "Couldn't copy the share link automatically.",
+        displayLength: 2500,
+      });
+    }
+  };
+
   const calculations = useMemo(
     () => calculateCarCost(values, recurringType, tripType),
     [recurringType, tripType, values],
@@ -994,6 +1078,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         templateOptions={templateOptions}
         handleTemplateSwitch={handleTemplateSwitch}
         handleOpenOwnCarModal={handleOpenOwnCarModal}
+        handleShareCalculator={handleShareCalculator}
         calculations={calculations}
       />
 
@@ -1011,6 +1096,29 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           display: "flow-root",
         }}
       >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: isMobileView ? "center" : "flex-end",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <button
+            type="button"
+            className="btn-flat"
+            onClick={handleShareCalculator}
+            style={{
+              color: palette.accentDark,
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.35rem",
+            }}
+          >
+            <i className="material-icons tiny">ios_share</i>
+            Share with a friend
+          </button>
+        </div>
         <HeaderOverview
           palette={{
             panelBackground: palette.panelBackground,
@@ -1118,7 +1226,32 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           openLoanDetailsModal={openLoanDetailsModal}
         />
 
-        <div style={{ textAlign: "center", padding: "0.5rem 0 1rem" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "0.5rem 0 1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "1rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            className="btn-flat"
+            onClick={handleShareCalculator}
+            style={{
+              color: palette.accentDark,
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.35rem",
+            }}
+          >
+            <i className="material-icons tiny">ios_share</i>
+            Share with a friend
+          </button>
           <Link
             to="/sideProjects/carCost/about"
             onClick={() => window.scrollTo({ top: 0, behavior: "auto" })}
