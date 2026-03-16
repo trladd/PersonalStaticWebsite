@@ -1,6 +1,6 @@
-import { BreakdownMode, CostBreakdownViewerMode } from "../CostBreakdownViewer";
+import { BreakdownMode, CostBreakdownViewerMode } from "../components/CostBreakdownViewer";
 import { CarCostValues } from "../types";
-import { BreakdownItemDetail } from "../BreakdownItemDetailModal";
+import { BreakdownItemDetail } from "../components/BreakdownItemDetailModal";
 import { CarCostCalculations } from "./calculations";
 import { formatCurrency, formatNumber, isToggleEnabled } from "./formatters";
 

@@ -1,4 +1,4 @@
-import { InsightCardData } from "../InsightsCard";
+import { InsightCardData } from "../components/InsightsCard";
 import { FUEL_TYPE_LABELS } from "../config/constants";
 import { CarCostCalculations } from "./calculations";
 import { formatCurrency, formatNumber } from "./formatters";
@@ -10,7 +10,7 @@ import {
   RecurringType,
   VehicleTemplate,
 } from "../types";
-import { BreakdownMode } from "../CostBreakdownViewer";
+import { BreakdownMode } from "../components/CostBreakdownViewer";
 
 export const buildSummaryCards = (calculations: CarCostCalculations) =>
   [

@@ -1,10 +1,10 @@
 import React from "react";
 import CostBreakdownViewer, {
   CostBreakdownViewerMode,
-} from "../CostBreakdownViewer";
-import InsightsSection from "../InsightsSection";
-import SeeMoreButton from "../SeeMoreButton";
-import { InsightCardData } from "../InsightsCard";
+} from "./CostBreakdownViewer";
+import InsightsSection from "./InsightsSection";
+import SeeMoreButton from "./SeeMoreButton";
+import { InsightCardData } from "./InsightsCard";
 import { CarCostCalculations } from "../utils/calculations";
 import {
   formatCurrency,

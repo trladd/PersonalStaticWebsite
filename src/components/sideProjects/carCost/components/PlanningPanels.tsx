@@ -1,6 +1,6 @@
 import React from "react";
-import SeeMoreButton from "../SeeMoreButton";
-import { BreakdownMode } from "../CostBreakdownViewer";
+import SeeMoreButton from "./SeeMoreButton";
+import { BreakdownMode } from "./CostBreakdownViewer";
 import { CarCostCalculations } from "../utils/calculations";
 import { formatCurrency, formatNumber, isToggleEnabled } from "../utils/formatters";
 import { CarCostValues, RecurringType, TripType } from "../types";

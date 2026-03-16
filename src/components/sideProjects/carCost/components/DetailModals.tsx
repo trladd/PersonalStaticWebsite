@@ -1,9 +1,9 @@
 import React from "react";
-import CostBreakdownViewer, { BreakdownMode, CostBreakdownViewerMode } from "../CostBreakdownViewer";
-import InsightsSection from "../InsightsSection";
-import LoanPaydownDetails from "../LoanPaydownDetails";
+import CostBreakdownViewer, { BreakdownMode, CostBreakdownViewerMode } from "./CostBreakdownViewer";
+import InsightsSection from "./InsightsSection";
+import LoanPaydownDetails from "./LoanPaydownDetails";
 import { CarCostCalculations } from "../utils/calculations";
-import { InsightCardData } from "../InsightsCard";
+import { InsightCardData } from "./InsightsCard";
 import { CarCostValues } from "../types";
 
 type BreakdownModalProps = {

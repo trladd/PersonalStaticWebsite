@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import M from "materialize-css";
 import { ThemeContext } from "../../../utility/ThemeContext";
-import { BreakdownMode } from "./CostBreakdownViewer";
+import { BreakdownMode } from "./components/CostBreakdownViewer";
 import StartupModal from "./components/StartupModal";
 import VehicleStickyBar from "./components/VehicleStickyBar";
 import HeaderOverview from "./components/HeaderOverview";
