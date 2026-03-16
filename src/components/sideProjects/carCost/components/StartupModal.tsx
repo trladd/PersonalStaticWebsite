@@ -1,5 +1,6 @@
 import React from "react";
 import { CustomVehicleDraft, CustomVehicleField, FuelType, VehicleTemplate } from "../types";
+import { formatCurrency } from "../utils/formatters";
 
 type Palette = {
   panelBackground: string;
@@ -23,6 +24,12 @@ type StartupModalProps = {
   palette: Palette;
   styles: StyleBundle;
   isMobileView: boolean;
+  startupMode: "default" | "resume" | "shared";
+  sharedStartupSummary: {
+    vehicleLabel: string;
+    trueCostPerMile: number;
+    overallCost: number;
+  } | null;
   startupTemplateId: string;
   typedTemplates: VehicleTemplate[];
   setStartupTemplateId: (value: string) => void;
@@ -36,6 +43,7 @@ type StartupModalProps = {
   currentModelYear: number;
   isCustomVehicleValid: boolean;
   startupNotice: string | null;
+  handleContinueFromSavedState: () => void;
   handleCustomVehicleDraftChange: (
     field: CustomVehicleField,
   ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -83,6 +91,8 @@ const StartupModal: React.FC<StartupModalProps> = ({
   palette,
   styles,
   isMobileView,
+  startupMode,
+  sharedStartupSummary,
   startupTemplateId,
   typedTemplates,
   setStartupTemplateId,
@@ -96,6 +106,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
   currentModelYear,
   isCustomVehicleValid,
   startupNotice,
+  handleContinueFromSavedState,
   handleCustomVehicleDraftChange,
   handleCustomVehicleFieldBlur,
   handleNumericInputFocus,
@@ -112,15 +123,69 @@ const StartupModal: React.FC<StartupModalProps> = ({
           color: palette.text,
         }}
       >
-        <h4>Choose how you want to get started</h4>
+        <h4>
+          {startupMode === "shared"
+            ? "Welcome to the vehicle cost calculator"
+            : "Choose how you want to get started"}
+        </h4>
         <p
           style={{
             color: palette.muted,
             display: isMobileView ? "none" : "block",
           }}
         >
-          You can load a presaved template, or enter your own car and begin with a fresh calculator state.
+          {startupMode === "shared"
+            ? "Someone shared a vehicle estimate with you. You can continue into their setup, then explore or modify any values."
+            : "You can load a presaved template, or enter your own car and begin with a fresh calculator state."}
         </p>
+        {startupMode === "resume" ? (
+          <div
+            style={{
+              marginTop: "1rem",
+              display: "flex",
+              justifyContent: "flex-start",
+            }}
+          >
+            <button
+              type="button"
+              className="waves-effect waves-light btn primaryColor"
+              onClick={handleContinueFromSavedState}
+              style={styles.solidPrimaryButtonStyle}
+            >
+              Continue where you left off
+            </button>
+          </div>
+        ) : null}
+        {startupMode === "shared" && sharedStartupSummary ? (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "1rem 1.1rem",
+              borderRadius: "18px",
+              background: palette.subtlePanel,
+              border: `1px solid ${palette.border}`,
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: 700 }}>
+              Shared vehicle: {sharedStartupSummary.vehicleLabel}
+            </p>
+            <p style={{ margin: "0.5rem 0 0", color: palette.muted }}>
+              About {formatCurrency(sharedStartupSummary.trueCostPerMile)} per
+              mile and roughly {formatCurrency(sharedStartupSummary.overallCost)}{" "}
+              over the full ownership estimate.
+            </p>
+            <div style={{ marginTop: "0.9rem" }}>
+              <button
+                type="button"
+                className="waves-effect waves-light btn primaryColor"
+                onClick={handleContinueFromSavedState}
+                style={styles.solidPrimaryButtonStyle}
+              >
+                Continue to see more or modify values
+              </button>
+            </div>
+          </div>
+        ) : null}
         {startupNotice ? (
           <div
             style={{

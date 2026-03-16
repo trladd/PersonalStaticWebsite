@@ -21,6 +21,7 @@ type VehicleStickyBarProps = {
   templateOptions: Array<{ id: string; title: string }>;
   handleTemplateSwitch: (value: string) => void;
   handleOpenOwnCarModal: () => void;
+  handleShareCalculator: () => void;
   calculations: CarCostCalculations;
 };
 
@@ -47,6 +48,7 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
   templateOptions,
   handleTemplateSwitch,
   handleOpenOwnCarModal,
+  handleShareCalculator,
   calculations,
 }) => {
   const slotRef = useRef<HTMLDivElement>(null);
@@ -179,6 +181,23 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
                   ▼
                 </span>
               </div>
+            </div>
+            <div style={{ flex: "0 0 auto" }}>
+              <button
+                type="button"
+                className="btn-flat tooltipped"
+                data-position="bottom"
+                data-tooltip="Share this calculator state"
+                onClick={handleShareCalculator}
+                aria-label="Share calculator"
+                style={{
+                  color: palette.muted,
+                  minWidth: "unset",
+                  padding: isMobileView ? "0.45rem" : "0.5rem",
+                }}
+              >
+                <i className="material-icons">ios_share</i>
+              </button>
             </div>
             <div style={{ flex: "0 0 auto" }}>
               <button

@@ -29,6 +29,7 @@ describe("VehicleStickyBar", () => {
   it("renders a fixed bar aligned to the measured slot and wires controls", async () => {
     const handleTemplateSwitch = jest.fn();
     const handleOpenOwnCarModal = jest.fn();
+    const handleShareCalculator = jest.fn();
 
     const { container } = render(
       <VehicleStickyBar
@@ -53,6 +54,7 @@ describe("VehicleStickyBar", () => {
         ]}
         handleTemplateSwitch={handleTemplateSwitch}
         handleOpenOwnCarModal={handleOpenOwnCarModal}
+        handleShareCalculator={handleShareCalculator}
         calculations={{ trueCostPerMile: 0.79 } as any}
       />,
     );
@@ -71,9 +73,11 @@ describe("VehicleStickyBar", () => {
     fireEvent.change(screen.getByRole("combobox"), {
       target: { value: "camry" },
     });
+    fireEvent.click(screen.getByLabelText(/share calculator/i));
     fireEvent.click(screen.getByRole("button", { name: /start over/i }));
 
     expect(handleTemplateSwitch).toHaveBeenCalledWith("camry");
+    expect(handleShareCalculator).toHaveBeenCalledTimes(1);
     expect(handleOpenOwnCarModal).toHaveBeenCalledTimes(1);
   });
 });
