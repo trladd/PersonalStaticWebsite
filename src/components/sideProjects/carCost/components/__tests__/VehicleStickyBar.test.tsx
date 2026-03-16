@@ -60,7 +60,9 @@ describe("VehicleStickyBar", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /start over/i })).toBeInTheDocument(),
+      expect(
+        screen.getByRole("button", { name: /change vehicle/i }),
+      ).toBeInTheDocument(),
     );
 
     const stickyCard = Array.from(container.querySelectorAll("div")).find(
@@ -74,7 +76,7 @@ describe("VehicleStickyBar", () => {
       target: { value: "camry" },
     });
     fireEvent.click(screen.getByLabelText(/share calculator/i));
-    fireEvent.click(screen.getByRole("button", { name: /start over/i }));
+    fireEvent.click(screen.getByRole("button", { name: /change vehicle/i }));
 
     expect(handleTemplateSwitch).toHaveBeenCalledWith("camry");
     expect(handleShareCalculator).toHaveBeenCalledTimes(1);

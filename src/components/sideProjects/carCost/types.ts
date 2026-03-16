@@ -56,6 +56,7 @@ export type CarCostValues = {
 
 export type PersistedCarCostState = {
   version: number;
+  isSharedSession: boolean;
   selectedSource: "default" | "template" | "custom";
   selectedTemplateId: string | null;
   values: CarCostValues;

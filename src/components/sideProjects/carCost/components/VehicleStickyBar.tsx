@@ -113,8 +113,8 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
           <div
             style={{
               display: "flex",
-              flexWrap: "wrap",
-              gap: "1rem",
+              flexWrap: isMobileView ? "nowrap" : "wrap",
+              gap: isMobileView ? "0.6rem" : "1rem",
               alignItems: isMobileView ? "center" : "end",
             }}
           >
@@ -135,7 +135,12 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
                 </strong>
               </div>
             ) : null}
-            <div style={{ flex: isMobileView ? "1 1 0" : "1 1 280px" }}>
+            <div
+              style={{
+                flex: isMobileView ? "1 1 0" : "1 1 280px",
+                minWidth: 0,
+              }}
+            >
               {!isMobileView ? (
                 <label
                   htmlFor="vehicleTemplateSwitcher"
@@ -182,58 +187,101 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
                 </span>
               </div>
             </div>
-            <div style={{ flex: "0 0 auto" }}>
-              <button
-                type="button"
-                className="btn-flat tooltipped"
-                data-position="bottom"
-                data-tooltip="Share this calculator state"
-                onClick={handleShareCalculator}
-                aria-label="Share calculator"
-                style={{
-                  color: palette.muted,
-                  minWidth: "unset",
-                  padding: isMobileView ? "0.45rem" : "0.5rem",
-                }}
-              >
-                <i className="material-icons">ios_share</i>
-              </button>
-            </div>
-            <div style={{ flex: "0 0 auto" }}>
+            <div
+              style={{
+                flex: "0 0 auto",
+                display: "flex",
+                justifyContent: "flex-start",
+                alignItems: "center",
+                gap: isMobileView ? "0.35rem" : "0.5rem",
+              }}
+            >
               <button
                 type="button"
                 className="waves-effect waves-light btn secondaryColor"
                 onClick={handleOpenOwnCarModal}
                 style={solidSecondaryButtonStyle}
               >
-                {isMobileView ? "Use my own" : "Start over"}
+                Change Vehicle
               </button>
-            </div>
-            <div
-              style={{
-                flex: "0 0 auto",
-                padding: "0.32rem 0.65rem",
-                borderRadius: "999px",
-                background: palette.resultHighlight,
-                border: palette.softBorder,
-                minWidth: "unset",
-              }}
-              className="tooltipped"
-              data-position="bottom"
-              data-tooltip={`True cost per mile: ${formatCurrency(
-                calculations.trueCostPerMile,
-              )} per mile`}
-            >
-              <strong
-                style={{
-                  fontSize: "0.84rem",
-                  lineHeight: 1,
-                  display: "block",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {formatCurrency(calculations.trueCostPerMile)}/mi
-              </strong>
+              {isMobileView ? (
+                <button
+                  type="button"
+                  className="btn-flat tooltipped"
+                  data-position="bottom"
+                  data-tooltip="Share this calculator state"
+                  onClick={handleShareCalculator}
+                  aria-label="Share calculator"
+                  style={{
+                    color: palette.muted,
+                    minWidth: "unset",
+                    padding: "0.4rem",
+                    marginTop: "0.12rem",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <i className="material-icons">ios_share</i>
+                </button>
+              ) : (
+                <div
+                  style={{
+                    flex: "0 0 auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.2rem",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn-flat tooltipped"
+                    data-position="bottom"
+                    data-tooltip="Share this calculator state"
+                    onClick={handleShareCalculator}
+                    aria-label="Share calculator"
+                    style={{
+                      color: palette.muted,
+                      minWidth: "unset",
+                      padding: "0.18rem 0.4rem",
+                      lineHeight: 1,
+                    }}
+                  >
+                    <i
+                      className="material-icons"
+                      style={{ fontSize: "1.15rem" }}
+                    >
+                      ios_share
+                    </i>
+                  </button>
+                  <div
+                    style={{
+                      padding: "0.32rem 0.65rem",
+                      borderRadius: "999px",
+                      background: palette.resultHighlight,
+                      border: palette.softBorder,
+                      minWidth: "unset",
+                    }}
+                    className="tooltipped"
+                    data-position="bottom"
+                    data-tooltip={`True cost per mile: ${formatCurrency(
+                      calculations.trueCostPerMile,
+                    )} per mile`}
+                  >
+                    <strong
+                      style={{
+                        fontSize: "0.84rem",
+                        lineHeight: 1,
+                        display: "block",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {formatCurrency(calculations.trueCostPerMile)}/mi
+                    </strong>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

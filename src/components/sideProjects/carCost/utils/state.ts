@@ -156,6 +156,7 @@ const buildPersistedCarCostState = (
   },
 ): PersistedCarCostState => ({
   version: CAR_COST_STATE_VERSION,
+  isSharedSession: rawState.isSharedSession ?? false,
   selectedSource: rawState.selectedSource ?? "default",
   selectedTemplateId: rawState.selectedTemplateId ?? null,
   values: normalizeCarCostValues(rawState.values),
@@ -206,6 +207,7 @@ export const migratePersistedCarCostState = (
     return {
       migratedState: {
         version: CAR_COST_STATE_VERSION,
+        isSharedSession: false,
         selectedSource: "default",
         selectedTemplateId: null,
         values: applySessionScopedValues(defaultValues, partialValues),

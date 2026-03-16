@@ -30,6 +30,7 @@ type StartupModalProps = {
     trueCostPerMile: number;
     overallCost: number;
   } | null;
+  showInstallAppAction: boolean;
   startupTemplateId: string;
   typedTemplates: VehicleTemplate[];
   setStartupTemplateId: (value: string) => void;
@@ -42,8 +43,8 @@ type StartupModalProps = {
   customVehicleValidationMessage: string;
   currentModelYear: number;
   isCustomVehicleValid: boolean;
-  startupNotice: string | null;
   handleContinueFromSavedState: () => void;
+  handleOpenInstallModal: () => void;
   handleCustomVehicleDraftChange: (
     field: CustomVehicleField,
   ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -93,6 +94,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
   isMobileView,
   startupMode,
   sharedStartupSummary,
+  showInstallAppAction,
   startupTemplateId,
   typedTemplates,
   setStartupTemplateId,
@@ -105,8 +107,8 @@ const StartupModal: React.FC<StartupModalProps> = ({
   customVehicleValidationMessage,
   currentModelYear,
   isCustomVehicleValid,
-  startupNotice,
   handleContinueFromSavedState,
+  handleOpenInstallModal,
   handleCustomVehicleDraftChange,
   handleCustomVehicleFieldBlur,
   handleNumericInputFocus,
@@ -138,21 +140,22 @@ const StartupModal: React.FC<StartupModalProps> = ({
             ? "Someone shared a vehicle estimate with you. You can continue into their setup, then explore or modify any values."
             : "You can load a presaved template, or enter your own car and begin with a fresh calculator state."}
         </p>
-        {startupMode === "resume" ? (
-          <div
-            style={{
-              marginTop: "1rem",
-              display: "flex",
-              justifyContent: "flex-start",
-            }}
-          >
+        {showInstallAppAction ? (
+          <div style={{ marginTop: "1rem" }}>
             <button
               type="button"
-              className="waves-effect waves-light btn primaryColor"
-              onClick={handleContinueFromSavedState}
-              style={styles.solidPrimaryButtonStyle}
+              className="btn-flat"
+              onClick={handleOpenInstallModal}
+              style={{
+                color: palette.text,
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
+              }}
             >
-              Continue where you left off
+              <i className="material-icons tiny">download</i>
+              Add this as an app
             </button>
           </div>
         ) : null}
@@ -186,20 +189,25 @@ const StartupModal: React.FC<StartupModalProps> = ({
             </div>
           </div>
         ) : null}
-        {startupNotice ? (
+        {startupMode === "resume" ? (
           <div
             style={{
               marginTop: "1rem",
-              padding: "0.85rem 1rem",
-              borderRadius: "16px",
-              background: "rgba(210, 138, 51, 0.14)",
-              border: "1px solid rgba(210, 138, 51, 0.28)",
-              color: palette.text,
+              display: "flex",
+              justifyContent: "flex-start",
             }}
           >
-            {startupNotice}
+            <button
+              type="button"
+              className="waves-effect waves-light btn primaryColor"
+              onClick={handleContinueFromSavedState}
+              style={styles.solidPrimaryButtonStyle}
+            >
+              Continue where you left off
+            </button>
           </div>
         ) : null}
+        {startupMode === "shared" ? null : (
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
             <div
@@ -383,6 +391,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
             </div>
           </div>
         </div>
+        )}
       </div>
       <div
         className="modal-footer"
