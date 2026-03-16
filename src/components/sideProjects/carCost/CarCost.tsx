@@ -14,6 +14,7 @@ import vehicleTemplates from "./vehicleTemplates.json";
 import { Link } from "react-router-dom";
 import {
   CAR_COST_CUSTOM_KEY,
+  CAR_COST_STATE_VERSION,
   CAR_COST_STORAGE_KEY,
   DEFAULT_FUEL_PRICES,
   STALE_STATE_MS,
@@ -55,6 +56,7 @@ import {
   applySessionScopedValues,
   cleanupModalArtifacts,
   getDraftFromVehicle,
+  migratePersistedCarCostState,
   normalizeCarCostValues,
   normalizeVehicleTemplate,
   parseSavedCustomVehicle,
@@ -115,6 +117,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   });
   const [showCustomVehicleValidation, setShowCustomVehicleValidation] =
     useState(false);
+  const [startupNotice, setStartupNotice] = useState<string | null>(null);
   const [numericInputDrafts, setNumericInputDrafts] = useState<
     Record<string, string>
   >({});
@@ -291,29 +294,32 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
     if (savedState) {
       try {
-        const parsedState = JSON.parse(savedState) as PersistedCarCostState;
-        if (parsedState?.values && parsedState?.recurringType) {
-          setValues(normalizeCarCostValues(parsedState.values));
-          setRecurringType(parsedState.recurringType);
-          setTripType(parsedState.tripType ?? "oneWay");
-          setSelectedSource(parsedState.selectedSource ?? "default");
-          setSelectedTemplateId(parsedState.selectedTemplateId ?? null);
+        const { migratedState, startupNotice: migrationNotice } =
+          migratePersistedCarCostState(savedState);
+
+        if (migratedState?.values && migratedState?.recurringType) {
+          setValues(normalizeCarCostValues(migratedState.values));
+          setRecurringType(migratedState.recurringType);
+          setTripType(migratedState.tripType ?? "oneWay");
+          setSelectedSource(migratedState.selectedSource ?? "default");
+          setSelectedTemplateId(migratedState.selectedTemplateId ?? null);
+          setStartupNotice(migrationNotice);
           if (
-            parsedState.selectedSource === "template" &&
-            parsedState.selectedTemplateId
+            migratedState.selectedSource === "template" &&
+            migratedState.selectedTemplateId
           ) {
-            setStartupTemplateId(parsedState.selectedTemplateId);
+            setStartupTemplateId(migratedState.selectedTemplateId);
           }
 
-          const savedAt = parsedState.updatedAt
-            ? new Date(parsedState.updatedAt).getTime()
+          const savedAt = migratedState.updatedAt
+            ? new Date(migratedState.updatedAt).getTime()
             : Number.NaN;
           const isRecentSession =
             Number.isFinite(savedAt) && Date.now() - savedAt <= STALE_STATE_MS;
 
           setHasResolvedStartupChoice(true);
 
-          if (!isRecentSession) {
+          if (!isRecentSession || migrationNotice) {
             modalInstanceRef.current.open();
           }
         } else {
@@ -390,6 +396,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }
 
     const nextState: PersistedCarCostState = {
+      version: CAR_COST_STATE_VERSION,
       selectedSource,
       selectedTemplateId,
       values,
@@ -918,6 +925,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         customVehicleValidationMessage={customVehicleValidationMessage}
         currentModelYear={currentModelYear}
         isCustomVehicleValid={isCustomVehicleValid}
+        startupNotice={startupNotice}
         handleCustomVehicleDraftChange={handleCustomVehicleDraftChange}
         handleCustomVehicleFieldBlur={handleCustomVehicleFieldBlur}
         handleNumericInputFocus={handleNumericInputFocus}

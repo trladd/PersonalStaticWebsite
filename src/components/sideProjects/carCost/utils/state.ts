@@ -1,5 +1,6 @@
 import {
   CAR_COST_CUSTOM_KEY,
+  CAR_COST_STATE_VERSION,
   DEFAULT_FUEL_PRICES,
   DEFAULT_NEW_CAR_APR,
   DEFAULT_NEW_CAR_PAYMENT,
@@ -10,6 +11,8 @@ import {
   CarCostValues,
   CustomVehicle,
   CustomVehicleDraft,
+  PersistedCarCostState,
+  PersistedStateMigrationResult,
   PartialTemplateValues,
   SessionScopedCarCostValues,
   VehicleTemplate,
@@ -144,5 +147,76 @@ export const parseSavedCustomVehicle = (savedCustom: string | null) => {
   } catch (error) {
     localStorage.removeItem(CAR_COST_CUSTOM_KEY);
     return null;
+  }
+};
+
+const buildPersistedCarCostState = (
+  rawState: Partial<PersistedCarCostState> & {
+    values?: PartialTemplateValues;
+  },
+): PersistedCarCostState => ({
+  version: CAR_COST_STATE_VERSION,
+  selectedSource: rawState.selectedSource ?? "default",
+  selectedTemplateId: rawState.selectedTemplateId ?? null,
+  values: normalizeCarCostValues(rawState.values),
+  recurringType: rawState.recurringType ?? "year",
+  tripType: rawState.tripType ?? "oneWay",
+  updatedAt: rawState.updatedAt ?? new Date(0).toISOString(),
+});
+
+export const migratePersistedCarCostState = (
+  savedState: string | null,
+): PersistedStateMigrationResult => {
+  if (!savedState) {
+    return { migratedState: null, startupNotice: null };
+  }
+
+  try {
+    const parsedState = JSON.parse(savedState) as Partial<PersistedCarCostState> & {
+      values?: PartialTemplateValues;
+      version?: number;
+    };
+
+    if (!parsedState?.values || !parsedState?.recurringType) {
+      return { migratedState: null, startupNotice: null };
+    }
+
+    const parsedVersion =
+      typeof parsedState.version === "number" ? parsedState.version : 0;
+
+    if (parsedVersion === CAR_COST_STATE_VERSION) {
+      return {
+        migratedState: buildPersistedCarCostState(parsedState),
+        startupNotice: null,
+      };
+    }
+
+    if (parsedVersion < CAR_COST_STATE_VERSION) {
+      return {
+        migratedState: buildPersistedCarCostState(parsedState),
+        startupNotice:
+          "We found a saved car cost setup from an older version of this page. We migrated the parts that still fit the current calculator.",
+      };
+    }
+
+    const partialValues = getSessionScopedValues(
+      normalizeCarCostValues(parsedState.values),
+    );
+
+    return {
+      migratedState: {
+        version: CAR_COST_STATE_VERSION,
+        selectedSource: "default",
+        selectedTemplateId: null,
+        values: applySessionScopedValues(defaultValues, partialValues),
+        recurringType: parsedState.recurringType ?? "year",
+        tripType: parsedState.tripType ?? "oneWay",
+        updatedAt: parsedState.updatedAt ?? new Date().toISOString(),
+      },
+      startupNotice:
+        "We found saved car cost data from a newer or incompatible version of this page. We could only keep the session-level planning pieces and reset the rest to current defaults.",
+    };
+  } catch (error) {
+    return { migratedState: null, startupNotice: null };
   }
 };

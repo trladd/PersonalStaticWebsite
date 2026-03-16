@@ -55,12 +55,18 @@ export type CarCostValues = {
 };
 
 export type PersistedCarCostState = {
+  version: number;
   selectedSource: "default" | "template" | "custom";
   selectedTemplateId: string | null;
   values: CarCostValues;
   recurringType: RecurringType;
   tripType: TripType;
   updatedAt: string;
+};
+
+export type PersistedStateMigrationResult = {
+  migratedState: PersistedCarCostState | null;
+  startupNotice: string | null;
 };
 
 export type VehicleTemplate = {

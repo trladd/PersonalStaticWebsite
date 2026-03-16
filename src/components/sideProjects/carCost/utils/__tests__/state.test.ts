@@ -1,8 +1,9 @@
-import { defaultValues } from "../../config/constants";
+import { CAR_COST_STATE_VERSION, defaultValues } from "../../config/constants";
 import {
   applySessionScopedValues,
   getDraftFromVehicle,
   getSessionScopedValues,
+  migratePersistedCarCostState,
   normalizeCarCostValues,
   normalizeVehicleTemplate,
   parseSavedCustomVehicle,
@@ -139,5 +140,53 @@ describe("state utils", () => {
     expect(removeItemSpy).toHaveBeenCalled();
 
     removeItemSpy.mockRestore();
+  });
+
+  it("migrates legacy persisted state to the current version with a notice", () => {
+    const result = migratePersistedCarCostState(
+      JSON.stringify({
+        selectedSource: "template",
+        selectedTemplateId: "camry",
+        values: {
+          fuelType: "regular",
+          fuelEfficiency: 33,
+        },
+        recurringType: "year",
+        tripType: "roundTrip",
+        updatedAt: "2026-03-15T00:00:00.000Z",
+      }),
+    );
+
+    expect(result.migratedState?.version).toBe(CAR_COST_STATE_VERSION);
+    expect(result.migratedState?.selectedTemplateId).toBe("camry");
+    expect(result.migratedState?.values.fuelEfficiency).toBe(33);
+    expect(result.startupNotice).toContain("older version");
+  });
+
+  it("falls back to session-level values when a future version cannot be migrated directly", () => {
+    const result = migratePersistedCarCostState(
+      JSON.stringify({
+        version: 999,
+        selectedSource: "template",
+        selectedTemplateId: "future-car",
+        values: {
+          tripDistance: 321,
+          recurringMiles: 222,
+          annualInsurance: 1900,
+          includeVehicleCost: 0,
+          purchasePrice: 99999,
+        },
+        recurringType: "year",
+        tripType: "roundTrip",
+        updatedAt: "2026-03-15T00:00:00.000Z",
+      }),
+    );
+
+    expect(result.migratedState?.version).toBe(CAR_COST_STATE_VERSION);
+    expect(result.migratedState?.selectedSource).toBe("default");
+    expect(result.migratedState?.values.tripDistance).toBe(321);
+    expect(result.migratedState?.values.annualInsurance).toBe(1900);
+    expect(result.migratedState?.values.purchasePrice).toBe(defaultValues.purchasePrice);
+    expect(result.startupNotice).toContain("could only keep");
   });
 });

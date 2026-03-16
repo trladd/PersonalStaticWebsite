@@ -35,6 +35,7 @@ type StartupModalProps = {
   customVehicleValidationMessage: string;
   currentModelYear: number;
   isCustomVehicleValid: boolean;
+  startupNotice: string | null;
   handleCustomVehicleDraftChange: (
     field: CustomVehicleField,
   ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -94,6 +95,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
   customVehicleValidationMessage,
   currentModelYear,
   isCustomVehicleValid,
+  startupNotice,
   handleCustomVehicleDraftChange,
   handleCustomVehicleFieldBlur,
   handleNumericInputFocus,
@@ -119,6 +121,20 @@ const StartupModal: React.FC<StartupModalProps> = ({
         >
           You can load a presaved template, or enter your own car and begin with a fresh calculator state.
         </p>
+        {startupNotice ? (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "0.85rem 1rem",
+              borderRadius: "16px",
+              background: "rgba(210, 138, 51, 0.14)",
+              border: "1px solid rgba(210, 138, 51, 0.28)",
+              color: palette.text,
+            }}
+          >
+            {startupNotice}
+          </div>
+        ) : null}
         <div className="row" style={{ marginTop: "1.5rem", marginBottom: 0 }}>
           <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
             <div
