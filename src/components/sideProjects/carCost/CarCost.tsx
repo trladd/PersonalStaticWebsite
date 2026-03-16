@@ -356,9 +356,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             (template.values as any).fuelMileage ??
             defaultValues.fuelEfficiency,
           miscMaintenanceBasis:
-            template.values.miscMaintenanceBasis ?? defaultValues.miscMaintenanceBasis,
+            template.values.miscMaintenanceBasis ??
+            defaultValues.miscMaintenanceBasis,
           depreciationBasis:
-            template.values.depreciationBasis ?? defaultValues.depreciationBasis,
+            template.values.depreciationBasis ??
+            defaultValues.depreciationBasis,
           fuelUnitPrice:
             DEFAULT_FUEL_PRICES[
               (template.values.fuelType ?? defaultValues.fuelType) as FuelType
@@ -411,6 +413,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   });
   const [showCustomVehicleValidation, setShowCustomVehicleValidation] =
     useState(false);
+  const [numericInputDrafts, setNumericInputDrafts] = useState<
+    Record<string, string>
+  >({});
   const [stickyTop, setStickyTop] = useState(72);
   const [isMobileView, setIsMobileView] = useState(false);
   const [breakdownModalMode, setBreakdownModalMode] =
@@ -705,13 +710,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 ],
               loanApr: parsedCustom.values.loanApr ?? DEFAULT_NEW_CAR_APR,
               loanTermMonths:
-                parsedCustom.values.loanTermMonths ?? DEFAULT_NEW_CAR_TERM_MONTHS,
+                parsedCustom.values.loanTermMonths ??
+                DEFAULT_NEW_CAR_TERM_MONTHS,
               loanDownPayment:
-                parsedCustom.values.loanDownPayment ?? defaultValues.loanDownPayment,
+                parsedCustom.values.loanDownPayment ??
+                defaultValues.loanDownPayment,
               loanMonthlyPayment:
-                parsedCustom.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
+                parsedCustom.values.loanMonthlyPayment ??
+                DEFAULT_NEW_CAR_PAYMENT,
               loanPaymentMode:
-                parsedCustom.values.loanPaymentMode ?? defaultValues.loanPaymentMode,
+                parsedCustom.values.loanPaymentMode ??
+                defaultValues.loanPaymentMode,
               includeFinancing: parsedCustom.values.includeFinancing ?? 0,
             },
           } as CustomVehicle;
@@ -753,11 +762,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             loanTermMonths:
               parsedState.values.loanTermMonths ?? DEFAULT_NEW_CAR_TERM_MONTHS,
             loanDownPayment:
-              parsedState.values.loanDownPayment ?? defaultValues.loanDownPayment,
+              parsedState.values.loanDownPayment ??
+              defaultValues.loanDownPayment,
             loanMonthlyPayment:
               parsedState.values.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
             loanPaymentMode:
-              parsedState.values.loanPaymentMode ?? defaultValues.loanPaymentMode,
+              parsedState.values.loanPaymentMode ??
+              defaultValues.loanPaymentMode,
             includeFinancing: parsedState.values.includeFinancing ?? 0,
           });
           setRecurringType(parsedState.recurringType);
@@ -830,16 +841,19 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       return;
     }
 
-    loanDetailsModalInstanceRef.current = M.Modal.init(loanDetailsModalRef.current, {
-      dismissible: true,
-      preventScrolling: false,
-      onOpenStart: () => {
-        cleanupModalArtifacts();
+    loanDetailsModalInstanceRef.current = M.Modal.init(
+      loanDetailsModalRef.current,
+      {
+        dismissible: true,
+        preventScrolling: false,
+        onOpenStart: () => {
+          cleanupModalArtifacts();
+        },
+        onCloseEnd: () => {
+          cleanupModalArtifacts();
+        },
       },
-      onCloseEnd: () => {
-        cleanupModalArtifacts();
-      },
-    });
+    );
 
     return () => {
       cleanupModalArtifacts();
@@ -871,14 +885,73 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     values,
   ]);
 
-  const handleChange =
-    (name: keyof CarCostValues) =>
+  const getNumericDraftValue = (key: string, actualValue: number) =>
+    Object.prototype.hasOwnProperty.call(numericInputDrafts, key)
+      ? numericInputDrafts[key]
+      : String(actualValue);
+
+  const clearNumericDraft = (key: string) => {
+    setNumericInputDrafts((current) => {
+      if (!Object.prototype.hasOwnProperty.call(current, key)) {
+        return current;
+      }
+
+      const nextDrafts = { ...current };
+      delete nextDrafts[key];
+      return nextDrafts;
+    });
+  };
+
+  const handleNumericFieldChange =
+    (name: keyof CarCostValues, draftKey = String(name)) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const nextValue = Number(event.target.value);
+      const rawValue = event.target.value;
+      setNumericInputDrafts((current) => ({
+        ...current,
+        [draftKey]: rawValue,
+      }));
+
+      if (
+        rawValue === "" ||
+        rawValue === "-" ||
+        rawValue === "." ||
+        rawValue === "-."
+      ) {
+        return;
+      }
+
+      const parsedValue = Number(rawValue);
+      if (Number.isNaN(parsedValue)) {
+        return;
+      }
+
       setValues((current) => ({
         ...current,
-        [name]: Number.isNaN(nextValue) ? 0 : nextValue,
+        [name]: parsedValue,
       }));
+    };
+
+  const handleNumericFieldBlur =
+    (name: keyof CarCostValues, draftKey = String(name)) =>
+    (event: React.FocusEvent<HTMLInputElement>) => {
+      const rawValue = (
+        Object.prototype.hasOwnProperty.call(numericInputDrafts, draftKey)
+          ? numericInputDrafts[draftKey]
+          : event.target.value
+      ).trim();
+      const parsedValue =
+        rawValue === "" ||
+        rawValue === "-" ||
+        rawValue === "." ||
+        rawValue === "-."
+          ? 0
+          : Number(rawValue);
+
+      setValues((current) => ({
+        ...current,
+        [name]: Number.isNaN(parsedValue) ? current[name] : parsedValue,
+      }));
+      clearNumericDraft(draftKey);
     };
 
   const handleToggleChange =
@@ -991,7 +1064,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const handleMiscMaintenanceBasisChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
-    const nextBasis = event.target.value as CarCostValues["miscMaintenanceBasis"];
+    const nextBasis = event.target
+      .value as CarCostValues["miscMaintenanceBasis"];
     setValues((current) => ({
       ...current,
       miscMaintenanceBasis: nextBasis,
@@ -1125,6 +1199,66 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }));
   };
 
+  const handleAnnualMileageDraftChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const rawValue = event.target.value;
+    setNumericInputDrafts((current) => ({
+      ...current,
+      annualMileageVehicleCost: rawValue,
+    }));
+
+    if (
+      rawValue === "" ||
+      rawValue === "-" ||
+      rawValue === "." ||
+      rawValue === "-."
+    ) {
+      return;
+    }
+
+    const parsedValue = Number(rawValue);
+    if (Number.isNaN(parsedValue)) {
+      return;
+    }
+
+    handleAnnualMileageChange({
+      ...event,
+      target: { ...event.target, value: String(parsedValue) },
+    } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  const handleAnnualMileageBlur = (
+    event: React.FocusEvent<HTMLInputElement>,
+  ) => {
+    const rawValue = (
+      Object.prototype.hasOwnProperty.call(
+        numericInputDrafts,
+        "annualMileageVehicleCost",
+      )
+        ? numericInputDrafts.annualMileageVehicleCost
+        : event.target.value
+    ).trim();
+    const parsedValue =
+      rawValue === "" ||
+      rawValue === "-" ||
+      rawValue === "." ||
+      rawValue === "-."
+        ? 0
+        : Number(rawValue);
+
+    handleAnnualMileageChange({
+      ...event,
+      target: {
+        ...event.target,
+        value: String(
+          Number.isNaN(parsedValue) ? calculations.annualMileage : parsedValue,
+        ),
+      },
+    } as unknown as React.ChangeEvent<HTMLInputElement>);
+    clearNumericDraft("annualMileageVehicleCost");
+  };
+
   const calculations = useMemo(() => {
     const tripMultiplier = tripType === "oneWay" ? 2 : 1;
     const selectedTripDistance = values.tripDistance * tripMultiplier;
@@ -1192,7 +1326,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       ? depreciationValueChange
       : 0;
     const monthsOwned = Math.max(0, Math.round(ownershipYears * 12));
-    const financedAmount = Math.max(values.purchasePrice - values.loanDownPayment, 0);
+    const financedAmount = Math.max(
+      values.purchasePrice - values.loanDownPayment,
+      0,
+    );
     const monthlyRate = values.loanApr / 100 / 12;
     const normalizedLoanTermMonths = Math.max(
       0,
@@ -1211,9 +1348,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     let totalLoanPaymentsMade = 0;
     let totalInterestPaid = 0;
     let payoffMonth: number | null = financedAmount > 0 ? null : 0;
-    const loanPaydownPoints: { month: number; balance: number; interestPaid: number }[] = [
-      { month: 0, balance: financedAmount, interestPaid: 0 },
-    ];
+    const loanPaydownPoints: {
+      month: number;
+      balance: number;
+      interestPaid: number;
+    }[] = [{ month: 0, balance: financedAmount, interestPaid: 0 }];
 
     if (isToggleEnabled(values.includeFinancing) && financedAmount > 0) {
       const simulationMonths =
@@ -1282,10 +1421,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       year: annualMileage * variableCostPerMile,
     };
     const recurringTrueCosts = {
-      day: recurringDrivingCosts.day + annualFixedCosts / 365 + annualFinanceCost / 365,
-      week: recurringDrivingCosts.week + annualFixedCosts / 52 + annualFinanceCost / 52,
+      day:
+        recurringDrivingCosts.day +
+        annualFixedCosts / 365 +
+        annualFinanceCost / 365,
+      week:
+        recurringDrivingCosts.week +
+        annualFixedCosts / 52 +
+        annualFinanceCost / 52,
       month:
-        recurringDrivingCosts.month + annualFixedCosts / 12 + annualFinanceCost / 12,
+        recurringDrivingCosts.month +
+        annualFixedCosts / 12 +
+        annualFinanceCost / 12,
       year: recurringDrivingCosts.year + annualFixedCosts + annualFinanceCost,
     };
     const equityAtSale = values.resaleValue - remainingLoanBalance;
@@ -1297,7 +1444,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       oil: oilCostPerMile * ownershipMiles,
       tires: tireCostPerMile * ownershipMiles,
       misc: miscCostPerMile * ownershipMiles,
-      depreciation: Math.max(depreciationTotal, 0),
+      depreciation: depreciationTotal,
       ownership: annualFixedCosts * ownershipYears,
       financing: Math.max(totalInterestPaid, 0),
     };
@@ -1329,7 +1476,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       effectiveLoanTermMonths:
         values.loanPaymentMode === "months"
           ? normalizedLoanTermMonths
-          : payoffMonth ?? monthsOwned,
+          : (payoffMonth ?? monthsOwned),
       totalLoanPaymentsMade,
       remainingLoanBalance,
       totalInterestPaid,
@@ -1432,7 +1579,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     const getOwnershipFactor = (modeKey: BreakdownMode, miles: number) => {
       switch (modeKey) {
         case "mile":
-          return calculations.annualMileage > 0 ? 1 / calculations.annualMileage : 0;
+          return calculations.annualMileage > 0
+            ? 1 / calculations.annualMileage
+            : 0;
         case "trip":
           return calculations.annualMileage > 0
             ? calculations.selectedTripDistance / calculations.annualMileage
@@ -1493,7 +1642,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         },
       ].filter((segment) => segment.value > 0);
 
-    const buildModeItems = (modeKey: BreakdownMode, modeLabel: string, unitLabel: string, miles: number) => {
+    const buildModeItems = (
+      modeKey: BreakdownMode,
+      modeLabel: string,
+      unitLabel: string,
+      miles: number,
+    ) => {
+      const vehicleValueLabel =
+        calculations.depreciationTotal < 0 ? "Appreciation" : "Depreciation";
       const fuelValue =
         modeKey === "overall"
           ? calculations.overallItems.fuel
@@ -1513,12 +1669,16 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       const depreciationValue =
         modeKey === "overall"
           ? calculations.overallItems.depreciation
-          : calculations.depreciationCostPerMile * miles;
+          : modeKey === "trip"
+            ? Math.max(calculations.depreciationCostPerMile, 0) * miles
+            : calculations.depreciationCostPerMile * miles;
       const ownershipValue =
         modeKey === "overall"
           ? calculations.overallItems.ownership
           : recurringModeMeta[modeKey as "day" | "week" | "month" | "year"]
-            ? recurringOwnershipByPeriod[modeKey as "day" | "week" | "month" | "year"]
+            ? recurringOwnershipByPeriod[
+                modeKey as "day" | "week" | "month" | "year"
+              ]
             : modeKey === "trip"
               ? calculations.fixedCostPerMile * miles
               : modeKey === "mile"
@@ -1528,7 +1688,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         modeKey === "overall"
           ? calculations.overallItems.financing
           : recurringModeMeta[modeKey as "day" | "week" | "month" | "year"]
-            ? recurringFinanceByPeriod[modeKey as "day" | "week" | "month" | "year"]
+            ? recurringFinanceByPeriod[
+                modeKey as "day" | "week" | "month" | "year"
+              ]
             : modeKey === "trip"
               ? calculations.financeCostPerMile * miles
               : modeKey === "mile"
@@ -1553,12 +1715,22 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         return {
           equivalent,
           metrics: [
-            { label: `Cost in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(costValue) },
-            { label: `${serviceIntervalLabel}`, value: `${formatNumber(serviceIntervalValue)} ${unitNoun}` },
-            { label: "Equivalent services used", value: formatNumber(equivalent, 2) },
+            {
+              label: `Cost in this ${modeLabel.toLowerCase()} view`,
+              value: formatCurrency(costValue),
+            },
+            {
+              label: `${serviceIntervalLabel}`,
+              value: `${formatNumber(serviceIntervalValue)} ${unitNoun}`,
+            },
+            {
+              label: "Equivalent services used",
+              value: formatNumber(equivalent, 2),
+            },
             { label: "Completed full services", value: formatNumber(whole) },
             {
-              label: equivalent >= 1 ? "Next service used" : "Single service used",
+              label:
+                equivalent >= 1 ? "Next service used" : "Single service used",
               value: `${formatNumber(partialPercent, 1)}%`,
             },
           ],
@@ -1577,22 +1749,36 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 ? `Energy usage for ${unitLabel}.`
                 : `Fuel usage for ${unitLabel}.`,
             metrics: [
-              { label: `Cost in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(fuelValue) },
               {
-                label: values.fuelType === "electric" ? "Estimated kWh used" : "Estimated gallons used",
+                label: `Cost in this ${modeLabel.toLowerCase()} view`,
+                value: formatCurrency(fuelValue),
+              },
+              {
+                label:
+                  values.fuelType === "electric"
+                    ? "Estimated kWh used"
+                    : "Estimated gallons used",
                 value: formatNumber(
-                  values.fuelUnitPrice > 0 ? fuelValue / values.fuelUnitPrice : 0,
+                  values.fuelUnitPrice > 0
+                    ? fuelValue / values.fuelUnitPrice
+                    : 0,
                   2,
                 ),
               },
               {
-                label: values.fuelType === "electric" ? "Electricity rate" : "Fuel price",
+                label:
+                  values.fuelType === "electric"
+                    ? "Electricity rate"
+                    : "Fuel price",
                 value: `${formatCurrency(values.fuelUnitPrice)} per ${
                   values.fuelType === "electric" ? "kWh" : "gallon"
                 }`,
               },
               {
-                label: values.fuelType === "electric" ? "Efficiency" : "Fuel mileage",
+                label:
+                  values.fuelType === "electric"
+                    ? "Efficiency"
+                    : "Fuel mileage",
                 value: `${formatNumber(values.fuelEfficiency, 1)} ${
                   values.fuelType === "electric" ? "mi/kWh" : "mpg"
                 }`,
@@ -1620,7 +1806,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               values.oilChangeInterval,
               "miles",
             ).metrics.concat([
-              { label: "Oil change cost", value: formatCurrency(values.oilChangeCost) },
+              {
+                label: "Oil change cost",
+                value: formatCurrency(values.oilChangeCost),
+              },
             ]),
             steps: [
               `Equivalent oil changes = ${formatCurrency(oilValue)} / ${formatCurrency(
@@ -1646,7 +1835,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               "Tire interval",
               values.tireInterval,
               "miles",
-            ).metrics.concat([{ label: "Tire set cost", value: formatCurrency(values.tireCost) }]),
+            ).metrics.concat([
+              {
+                label: "Tire set cost",
+                value: formatCurrency(values.tireCost),
+              },
+            ]),
             steps: [
               `Equivalent tire sets = ${formatCurrency(tireValue)} / ${formatCurrency(
                 values.tireCost,
@@ -1673,7 +1867,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   ? "months"
                   : "years",
             ).metrics.concat([
-              { label: "Maintenance event cost", value: formatCurrency(values.miscMaintenanceCost) },
+              {
+                label: "Maintenance event cost",
+                value: formatCurrency(values.miscMaintenanceCost),
+              },
               {
                 label: "Basis",
                 value:
@@ -1693,19 +1890,31 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           },
         },
         {
-          label: "Depreciation",
+          label: vehicleValueLabel,
           value: depreciationValue,
           color: colors.depreciation,
           detail: {
-            title: `Depreciation for ${modeLabel.toLowerCase()}`,
+            title: `${vehicleValueLabel} for ${modeLabel.toLowerCase()}`,
             subtitle:
               "Shows the vehicle’s expected value change over your ownership horizon, with financing shown alongside it for context.",
             metrics: [
-              { label: `Depreciation in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(depreciationValue) },
-              { label: "Purchase price", value: formatCurrency(values.purchasePrice) },
-              { label: "Expected resale value", value: formatCurrency(values.resaleValue) },
               {
-                label: values.depreciationBasis === "miles" ? "Ownership miles assumed" : "Ownership years assumed",
+                label: `${vehicleValueLabel} in this ${modeLabel.toLowerCase()} view`,
+                value: formatCurrency(depreciationValue),
+              },
+              {
+                label: "Purchase price",
+                value: formatCurrency(values.purchasePrice),
+              },
+              {
+                label: "Expected resale value",
+                value: formatCurrency(values.resaleValue),
+              },
+              {
+                label:
+                  values.depreciationBasis === "miles"
+                    ? "Ownership miles assumed"
+                    : "Ownership years assumed",
                 value:
                   values.depreciationBasis === "miles"
                     ? `${formatNumber(values.depreciationInterval)} miles`
@@ -1715,13 +1924,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             pieTitle: "Vehicle cost context",
             pieSegments: [
               {
-                label: "Depreciation",
-                value: Math.max(depreciationValue, 0),
+                label: vehicleValueLabel,
+                value: Math.abs(depreciationValue),
                 color: colors.depreciation,
               },
             ].filter((segment) => segment.value > 0),
             steps: [
-              `Expected depreciation = ${formatCurrency(values.purchasePrice)} - ${formatCurrency(
+              `Expected value change = ${formatCurrency(values.purchasePrice)} - ${formatCurrency(
                 values.resaleValue,
               )} = ${formatCurrency(calculations.depreciationTotal)}.`,
               `That total is spread across your selected ownership horizon and allocated into this ${modeLabel.toLowerCase()} view.`,
@@ -1736,9 +1945,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             title: `Ownership overhead for ${modeLabel.toLowerCase()}`,
             subtitle: `Annual fixed ownership costs scaled into ${unitLabel}.`,
             metrics: [
-              { label: `Overhead in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(ownershipValue) },
-              { label: "Annual fixed ownership total", value: formatCurrency(calculations.annualFixedCosts) },
-              { label: "Annual miles assumed", value: formatNumber(calculations.annualMileage) },
+              {
+                label: `Overhead in this ${modeLabel.toLowerCase()} view`,
+                value: formatCurrency(ownershipValue),
+              },
+              {
+                label: "Annual fixed ownership total",
+                value: formatCurrency(calculations.annualFixedCosts),
+              },
+              {
+                label: "Annual miles assumed",
+                value: formatNumber(calculations.annualMileage),
+              },
             ],
             pieTitle: "Ownership overhead breakdown",
             pieSegments: ownershipSegments,
@@ -1753,11 +1971,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           color: colors.financing,
           detail: {
             title: `Financing detail for ${modeLabel.toLowerCase()}`,
-            subtitle: "Interest cost is calculated from the amortized loan schedule, not by multiplying APR directly across the full purchase price forever.",
+            subtitle:
+              "Interest cost is calculated from the amortized loan schedule, not by multiplying APR directly across the full purchase price forever.",
             metrics: [
-              { label: `Interest in this ${modeLabel.toLowerCase()} view`, value: formatCurrency(financingValue) },
-              { label: "Amount financed", value: formatCurrency(calculations.financedAmount) },
-              { label: "Down payment", value: formatCurrency(values.loanDownPayment) },
+              {
+                label: `Interest in this ${modeLabel.toLowerCase()} view`,
+                value: formatCurrency(financingValue),
+              },
+              {
+                label: "Amount financed",
+                value: formatCurrency(calculations.financedAmount),
+              },
+              {
+                label: "Down payment",
+                value: formatCurrency(values.loanDownPayment),
+              },
               {
                 label: "Monthly payment",
                 value: formatCurrency(calculations.effectiveMonthlyPayment),
@@ -1766,8 +1994,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 label: "Loan term",
                 value: `${formatNumber(calculations.effectiveLoanTermMonths)} months`,
               },
-              { label: "Total interest while owned", value: formatCurrency(calculations.totalInterestPaid) },
-              { label: "Payments made while owned", value: formatCurrency(calculations.totalLoanPaymentsMade) },
+              {
+                label: "Total interest while owned",
+                value: formatCurrency(calculations.totalInterestPaid),
+              },
+              {
+                label: "Payments made while owned",
+                value: formatCurrency(calculations.totalLoanPaymentsMade),
+              },
             ],
             steps: [
               `Amount financed = purchase price (${formatCurrency(values.purchasePrice)}) - down payment (${formatCurrency(
@@ -1808,7 +2042,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           description: recurringModeMeta[key].description,
           unitLabel: recurringModeMeta[key].unitLabel,
           total: calculations.recurringTrueCosts[key],
-          items: buildModeItems(key, recurringModeMeta[key].label, recurringModeMeta[key].unitLabel, miles),
+          items: buildModeItems(
+            key,
+            recurringModeMeta[key].label,
+            recurringModeMeta[key].unitLabel,
+            miles,
+          ),
         };
       },
     );
@@ -1966,6 +2205,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         )} miles of ownership.`;
   const parkingTooltip =
     "Most people do not have this cost, but some do in dense urban settings. It is treated as part of annual ownership cost rather than a mileage-based expense.";
+  const resaleWarningTooltip =
+    "Your expected resale value is higher than the purchase price, so this will be treated as appreciation instead of depreciation. Double-check this if you did not intend that. While SOME vehicles may appreciate in swings of the economy or where the vehicle is a collectible, this is rare.";
 
   const solidPrimaryButtonStyle: React.CSSProperties = {
     marginTop: "1rem",
@@ -2006,7 +2247,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     boxShadow: "none",
   });
 
-  const compactMetricCardPadding = isMobileView ? "0.8rem 0.9rem" : "1rem 1.1rem";
+  const compactMetricCardPadding = isMobileView
+    ? "0.8rem 0.9rem"
+    : "1rem 1.1rem";
   const compactMetricValueSize = isMobileView ? "1.15rem" : "1.5rem";
   const compactMetricLabelStyle: React.CSSProperties = {
     display: "block",
@@ -2550,9 +2793,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         >
           <h4 style={{ marginTop: 0 }}>Financing details</h4>
           <p style={{ color: palette.muted, lineHeight: 1.5 }}>
-            This view shows how the loan is paid down during the time you expect to own the
-            vehicle, including payments made, interest paid, and the remaining principal balance
-            at sale.
+            This view shows how the loan is paid down during the time you expect
+            to own the vehicle, including payments made, interest paid, and the
+            remaining principal balance at sale.
           </p>
           <LoanPaydownDetails
             purchasePrice={values.purchasePrice}
@@ -2817,7 +3060,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 {primarySummaryCard.label}
               </span>
               <strong
-                style={{ fontSize: isMobileView ? "1.7rem" : "2.1rem", lineHeight: 1 }}
+                style={{
+                  fontSize: isMobileView ? "1.7rem" : "2.1rem",
+                  lineHeight: 1,
+                }}
               >
                 {formatCurrency(primarySummaryCard.value)}
               </strong>
@@ -2908,14 +3154,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         : section.title === "Vehicle cost" &&
                             !isToggleEnabled(values.includeFinancing) &&
                             !isToggleEnabled(values.includeDepreciation)
-                        ? 0.58
-                        : 1,
+                          ? 0.58
+                          : 1,
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>{section.title}</h3>
-                <p style={sectionDescriptionStyle}>
-                  {section.description}
-                </p>
+                <p style={sectionDescriptionStyle}>{section.description}</p>
                 {section.title === "Vehicle cost" ? (
                   <div style={{ marginBottom: "1rem" }}>
                     <label
@@ -3039,8 +3283,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           type="number"
                           min="0"
                           step="0.1"
-                          value={values.fuelEfficiency}
-                          onChange={handleChange("fuelEfficiency")}
+                          value={getNumericDraftValue(
+                            "fuelEfficiency",
+                            values.fuelEfficiency,
+                          )}
+                          onChange={handleNumericFieldChange("fuelEfficiency")}
+                          onBlur={handleNumericFieldBlur("fuelEfficiency")}
                           onFocus={handleNumericInputFocus}
                           style={inputStyle}
                         />
@@ -3076,8 +3324,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           type="number"
                           min="0"
                           step="0.01"
-                          value={values.fuelUnitPrice}
-                          onChange={handleChange("fuelUnitPrice")}
+                          value={getNumericDraftValue(
+                            "fuelUnitPrice",
+                            values.fuelUnitPrice,
+                          )}
+                          onChange={handleNumericFieldChange("fuelUnitPrice")}
+                          onBlur={handleNumericFieldBlur("fuelUnitPrice")}
                           onFocus={handleNumericInputFocus}
                           style={inputStyle}
                         />
@@ -3089,7 +3341,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   {section.items.map((field) => (
                     <div key={field.name}>
                       <div style={{ marginBottom: "0.38rem" }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.45rem",
+                          }}
+                        >
                           <span style={fieldLabelStyle}>
                             {field.name === "miscMaintenanceInterval"
                               ? values.miscMaintenanceBasis === "miles"
@@ -3101,7 +3359,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                 ? values.depreciationBasis === "miles"
                                   ? "Depreciation interval (miles)"
                                   : "Ownership length (years)"
-                              : field.label}
+                                : field.label}
                           </span>
                           {field.name === "depreciationInterval" ? (
                             <i
@@ -3129,21 +3387,53 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                               info_outline
                             </i>
                           ) : null}
+                          {field.name === "resaleValue" &&
+                          values.resaleValue > values.purchasePrice ? (
+                            <i
+                              className="material-icons tiny tooltipped"
+                              data-position="top"
+                              data-tooltip={resaleWarningTooltip}
+                              style={{
+                                color: "#d28a33",
+                                cursor: "help",
+                              }}
+                            >
+                              warning_amber
+                            </i>
+                          ) : null}
                         </span>
                       </div>
                       {field.name === "miscMaintenanceInterval" ? (
-                        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "0.75rem" }}>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "minmax(0, 0.9fr) minmax(0, 1.1fr)",
+                            gap: "0.75rem",
+                          }}
+                        >
                           <div>
-                            <label htmlFor="miscMaintenanceBasis" style={subFieldLabelStyle}>
+                            <label
+                              htmlFor="miscMaintenanceBasis"
+                              style={subFieldLabelStyle}
+                            >
                               Based on
                             </label>
-                            <div style={{ ...inputContainerStyle, position: "relative" }}>
+                            <div
+                              style={{
+                                ...inputContainerStyle,
+                                position: "relative",
+                              }}
+                            >
                               <select
                                 id="miscMaintenanceBasis"
                                 className="browser-default"
                                 value={values.miscMaintenanceBasis}
                                 onChange={handleMiscMaintenanceBasisChange}
-                                style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                                style={{
+                                  ...selectStyle,
+                                  paddingRight: "2.75rem",
+                                }}
                               >
                                 <option value="miles">Miles</option>
                                 <option value="month">Months</option>
@@ -3166,7 +3456,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             </div>
                           </div>
                           <div>
-                            <label htmlFor={field.name} style={subFieldLabelStyle}>
+                            <label
+                              htmlFor={field.name}
+                              style={subFieldLabelStyle}
+                            >
                               Every
                             </label>
                             <div style={inputContainerStyle}>
@@ -3175,8 +3468,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                 type="number"
                                 min="0"
                                 step={field.step}
-                                value={values[field.name]}
-                                onChange={handleChange(field.name)}
+                                value={getNumericDraftValue(
+                                  field.name,
+                                  Number(values[field.name]),
+                                )}
+                                onChange={handleNumericFieldChange(field.name)}
+                                onBlur={handleNumericFieldBlur(field.name)}
                                 onFocus={handleNumericInputFocus}
                                 style={inputStyle}
                               />
@@ -3185,74 +3482,112 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </div>
                       ) : field.name === "depreciationInterval" ? (
                         <>
-                        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "0.75rem" }}>
-                          <div>
-                            <label htmlFor="depreciationBasis" style={subFieldLabelStyle}>
-                              Based on
-                            </label>
-                            <div style={{ ...inputContainerStyle, position: "relative" }}>
-                              <select
-                                id="depreciationBasis"
-                                className="browser-default"
-                                value={values.depreciationBasis}
-                                onChange={handleDepreciationBasisChange}
-                                style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns:
+                                "minmax(0, 0.9fr) minmax(0, 1.1fr)",
+                              gap: "0.75rem",
+                            }}
+                          >
+                            <div>
+                              <label
+                                htmlFor="depreciationBasis"
+                                style={subFieldLabelStyle}
                               >
-                                <option value="miles">Miles</option>
-                                <option value="years">Years owned</option>
-                              </select>
-                              <span
-                                aria-hidden="true"
+                                Based on
+                              </label>
+                              <div
                                 style={{
-                                  position: "absolute",
-                                  right: "1rem",
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                  color: palette.muted,
-                                  fontSize: "0.85rem",
-                                  pointerEvents: "none",
+                                  ...inputContainerStyle,
+                                  position: "relative",
                                 }}
                               >
-                                ▼
-                              </span>
+                                <select
+                                  id="depreciationBasis"
+                                  className="browser-default"
+                                  value={values.depreciationBasis}
+                                  onChange={handleDepreciationBasisChange}
+                                  style={{
+                                    ...selectStyle,
+                                    paddingRight: "2.75rem",
+                                  }}
+                                >
+                                  <option value="miles">Miles</option>
+                                  <option value="years">Years owned</option>
+                                </select>
+                                <span
+                                  aria-hidden="true"
+                                  style={{
+                                    position: "absolute",
+                                    right: "1rem",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    color: palette.muted,
+                                    fontSize: "0.85rem",
+                                    pointerEvents: "none",
+                                  }}
+                                >
+                                  ▼
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={field.name}
+                                style={subFieldLabelStyle}
+                              >
+                                {values.depreciationBasis === "miles"
+                                  ? "Every"
+                                  : "For"}
+                              </label>
+                              <div style={inputContainerStyle}>
+                                <input
+                                  id={field.name}
+                                  type="number"
+                                  min="0"
+                                  step={field.step}
+                                  value={getNumericDraftValue(
+                                    field.name,
+                                    Number(values[field.name]),
+                                  )}
+                                  onChange={handleNumericFieldChange(
+                                    field.name,
+                                  )}
+                                  onBlur={handleNumericFieldBlur(field.name)}
+                                  onFocus={handleNumericInputFocus}
+                                  disabled={
+                                    !isToggleEnabled(values.includeDepreciation)
+                                  }
+                                  style={inputStyle}
+                                />
+                              </div>
                             </div>
                           </div>
-                          <div>
-                            <label htmlFor={field.name} style={subFieldLabelStyle}>
-                              {values.depreciationBasis === "miles" ? "Every" : "For"}
+                          <div style={{ marginTop: "0.75rem" }}>
+                            <label
+                              htmlFor="annualMileageVehicleCost"
+                              style={subFieldLabelStyle}
+                            >
+                              Annual miles driven
                             </label>
                             <div style={inputContainerStyle}>
                               <input
-                                id={field.name}
+                                id="annualMileageVehicleCost"
                                 type="number"
                                 min="0"
-                                step={field.step}
-                                value={values[field.name]}
-                                onChange={handleChange(field.name)}
+                                step="1"
+                                value={getNumericDraftValue(
+                                  "annualMileageVehicleCost",
+                                  Math.round(calculations.annualMileage),
+                                )}
+                                onChange={handleAnnualMileageDraftChange}
+                                onBlur={handleAnnualMileageBlur}
                                 onFocus={handleNumericInputFocus}
-                                disabled={!isToggleEnabled(values.includeDepreciation)}
                                 style={inputStyle}
                               />
                             </div>
                           </div>
-                        </div>
-                        <div style={{ marginTop: "0.75rem" }}>
-                          <label htmlFor="annualMileageVehicleCost" style={subFieldLabelStyle}>
-                            Annual miles driven
-                          </label>
-                          <div style={inputContainerStyle}>
-                            <input
-                              id="annualMileageVehicleCost"
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={Math.round(calculations.annualMileage)}
-                              onChange={handleAnnualMileageChange}
-                              onFocus={handleNumericInputFocus}
-                              style={inputStyle}
-                            />
-                          </div>
-                        </div>
                         </>
                       ) : (
                         <div style={inputContainerStyle}>
@@ -3264,8 +3599,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                             type="number"
                             min="0"
                             step={field.step}
-                            value={values[field.name]}
-                            onChange={handleChange(field.name)}
+                            value={getNumericDraftValue(
+                              field.name,
+                              Number(values[field.name]),
+                            )}
+                            onChange={handleNumericFieldChange(field.name)}
+                            onBlur={handleNumericFieldBlur(field.name)}
                             onFocus={handleNumericInputFocus}
                             disabled={
                               (section.title === "Vehicle cost" &&
@@ -3277,7 +3616,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                           />
                         </div>
                       )}
-                      {field.name === "purchasePrice" && section.title === "Vehicle cost" ? (
+                      {field.name === "purchasePrice" &&
+                      section.title === "Vehicle cost" ? (
                         <div
                           style={{
                             marginTop: "0.85rem",
@@ -3314,7 +3654,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                               }}
                             >
                               <div>
-                                <label htmlFor="loanDownPayment" style={subFieldLabelStyle}>
+                                <label
+                                  htmlFor="loanDownPayment"
+                                  style={subFieldLabelStyle}
+                                >
                                   Down payment
                                 </label>
                                 <div style={inputContainerStyle}>
@@ -3324,15 +3667,26 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    value={values.loanDownPayment}
-                                    onChange={handleChange("loanDownPayment")}
+                                    value={getNumericDraftValue(
+                                      "loanDownPayment",
+                                      values.loanDownPayment,
+                                    )}
+                                    onChange={handleNumericFieldChange(
+                                      "loanDownPayment",
+                                    )}
+                                    onBlur={handleNumericFieldBlur(
+                                      "loanDownPayment",
+                                    )}
                                     onFocus={handleNumericInputFocus}
                                     style={inputStyle}
                                   />
                                 </div>
                               </div>
                               <div>
-                                <label htmlFor="loanApr" style={subFieldLabelStyle}>
+                                <label
+                                  htmlFor="loanApr"
+                                  style={subFieldLabelStyle}
+                                >
                                   APR (%)
                                 </label>
                                 <div style={inputContainerStyle}>
@@ -3341,27 +3695,48 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    value={values.loanApr}
-                                    onChange={handleChange("loanApr")}
+                                    value={getNumericDraftValue(
+                                      "loanApr",
+                                      values.loanApr,
+                                    )}
+                                    onChange={handleNumericFieldChange(
+                                      "loanApr",
+                                    )}
+                                    onBlur={handleNumericFieldBlur("loanApr")}
                                     onFocus={handleNumericInputFocus}
                                     style={inputStyle}
                                   />
                                 </div>
                               </div>
                               <div>
-                                <label htmlFor="loanPaymentMode" style={subFieldLabelStyle}>
+                                <label
+                                  htmlFor="loanPaymentMode"
+                                  style={subFieldLabelStyle}
+                                >
                                   Based on
                                 </label>
-                                <div style={{ ...inputContainerStyle, position: "relative" }}>
+                                <div
+                                  style={{
+                                    ...inputContainerStyle,
+                                    position: "relative",
+                                  }}
+                                >
                                   <select
                                     id="loanPaymentMode"
                                     className="browser-default"
                                     value={values.loanPaymentMode}
                                     onChange={handleLoanPaymentModeChange}
-                                    style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                                    style={{
+                                      ...selectStyle,
+                                      paddingRight: "2.75rem",
+                                    }}
                                   >
-                                    <option value="months">Months financed</option>
-                                    <option value="payment">Monthly payment</option>
+                                    <option value="months">
+                                      Months financed
+                                    </option>
+                                    <option value="payment">
+                                      Monthly payment
+                                    </option>
                                   </select>
                                   <span
                                     aria-hidden="true"
@@ -3404,16 +3779,39 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                     }
                                     type="number"
                                     min="0"
-                                    step={values.loanPaymentMode === "months" ? "1" : "0.01"}
+                                    step={
+                                      values.loanPaymentMode === "months"
+                                        ? "1"
+                                        : "0.01"
+                                    }
                                     value={
                                       values.loanPaymentMode === "months"
-                                        ? values.loanTermMonths
-                                        : values.loanMonthlyPayment
+                                        ? getNumericDraftValue(
+                                            "loanTermMonths",
+                                            values.loanTermMonths,
+                                          )
+                                        : getNumericDraftValue(
+                                            "loanMonthlyPayment",
+                                            values.loanMonthlyPayment,
+                                          )
                                     }
                                     onChange={
                                       values.loanPaymentMode === "months"
-                                        ? handleChange("loanTermMonths")
-                                        : handleChange("loanMonthlyPayment")
+                                        ? handleNumericFieldChange(
+                                            "loanTermMonths",
+                                          )
+                                        : handleNumericFieldChange(
+                                            "loanMonthlyPayment",
+                                          )
+                                    }
+                                    onBlur={
+                                      values.loanPaymentMode === "months"
+                                        ? handleNumericFieldBlur(
+                                            "loanTermMonths",
+                                          )
+                                        : handleNumericFieldBlur(
+                                            "loanMonthlyPayment",
+                                          )
                                     }
                                     onFocus={handleNumericInputFocus}
                                     style={inputStyle}
@@ -3428,7 +3826,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                                   lineHeight: 1.35,
                                 }}
                               >
-                                Amount financed: {formatCurrency(calculations.financedAmount)}
+                                Amount financed:{" "}
+                                {formatCurrency(calculations.financedAmount)}
                                 <br />
                                 {values.loanPaymentMode === "months"
                                   ? `Estimated payment: ${formatCurrency(
@@ -3525,8 +3924,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   type="number"
                   min="0"
                   step="1"
-                  value={values.tripDistance}
-                  onChange={handleChange("tripDistance")}
+                  value={getNumericDraftValue(
+                    "tripDistance",
+                    values.tripDistance,
+                  )}
+                  onChange={handleNumericFieldChange("tripDistance")}
+                  onBlur={handleNumericFieldBlur("tripDistance")}
                   onFocus={handleNumericInputFocus}
                   style={inputStyle}
                 />
@@ -3632,8 +4035,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       type="number"
                       min="0"
                       step="1"
-                      value={values.recurringMiles}
-                      onChange={handleChange("recurringMiles")}
+                      value={getNumericDraftValue(
+                        "recurringMiles",
+                        values.recurringMiles,
+                      )}
+                      onChange={handleNumericFieldChange("recurringMiles")}
+                      onBlur={handleNumericFieldBlur("recurringMiles")}
                       onFocus={handleNumericInputFocus}
                       style={inputStyle}
                     />
@@ -3733,7 +4140,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                       >
                         Per {key}
                       </span>
-                      <strong style={{ fontSize: isMobileView ? "1.25rem" : "1.6rem", lineHeight: 1 }}>
+                      <strong
+                        style={{
+                          fontSize: isMobileView ? "1.25rem" : "1.6rem",
+                          lineHeight: 1,
+                        }}
+                      >
                         {formatCurrency(calculations.recurringTrueCosts[key])}
                       </strong>
                       <small
@@ -3755,7 +4167,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 ))}
               </div>
 
-              <div className="row" style={{ marginTop: "1rem", marginBottom: 0 }}>
+              <div
+                className="row"
+                style={{ marginTop: "1rem", marginBottom: 0 }}
+              >
                 <div
                   className={`col s6 ${isToggleEnabled(values.includeFinancing) ? "m4" : "m6"}`}
                   style={{ marginBottom: "1rem" }}
@@ -3857,15 +4272,27 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
               >
                 <div>
                   <h3 style={{ margin: 0 }}>Overall ownership estimate</h3>
-                  <p style={{ color: palette.muted, margin: "0.35rem 0 0", lineHeight: 1.5 }}>
-                    Uses your annual miles and depreciation timeline to estimate total cost over
-                    the time you own the vehicle.
+                  <p
+                    style={{
+                      color: palette.muted,
+                      margin: "0.35rem 0 0",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Uses your annual miles and depreciation timeline to estimate
+                    total cost over the time you own the vehicle.
                   </p>
                 </div>
               </div>
               <div className="row" style={{ marginBottom: 0 }}>
                 <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                  <article
+                    style={{
+                      ...cardStyle,
+                      padding: compactMetricCardPadding,
+                      height: "100%",
+                    }}
+                  >
                     <span style={compactMetricLabelStyle}>
                       Ownership length
                     </span>
@@ -3875,7 +4302,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   </article>
                 </div>
                 <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                  <article
+                    style={{
+                      ...cardStyle,
+                      padding: compactMetricCardPadding,
+                      height: "100%",
+                    }}
+                  >
                     <span style={compactMetricLabelStyle}>
                       Estimated ownership miles
                     </span>
@@ -3885,7 +4318,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   </article>
                 </div>
                 <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                  <article
+                    style={{
+                      ...cardStyle,
+                      padding: compactMetricCardPadding,
+                      height: "100%",
+                    }}
+                  >
                     <span style={compactMetricLabelStyle}>
                       Net vehicle cost after sale
                     </span>
@@ -3895,7 +4334,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   </article>
                 </div>
                 <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                  <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                  <article
+                    style={{
+                      ...cardStyle,
+                      padding: compactMetricCardPadding,
+                      height: "100%",
+                    }}
+                  >
                     <span style={compactMetricLabelStyle}>
                       Total estimated ownership cost
                     </span>
@@ -3906,7 +4351,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 </div>
                 {isToggleEnabled(values.includeFinancing) ? (
                   <>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
                       <article
                         style={{
                           ...cardStyle,
@@ -3936,7 +4384,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
                       <article
                         style={{
                           ...cardStyle,
@@ -3966,8 +4417,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Remaining balance at sale
                         </span>
@@ -3976,8 +4436,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Expected sale price
                         </span>
@@ -3986,8 +4455,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Equity at sale
                         </span>
@@ -3996,15 +4474,25 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Average cost per year
                         </span>
                         <strong style={compactMetricValueStyle}>
                           {formatCurrency(
                             calculations.ownershipYears > 0
-                              ? calculations.overallCost / calculations.ownershipYears
+                              ? calculations.overallCost /
+                                  calculations.ownershipYears
                               : 0,
                           )}
                         </strong>
@@ -4013,8 +4501,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                   </>
                 ) : (
                   <>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Purchase price
                         </span>
@@ -4023,8 +4520,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Expected sale price
                         </span>
@@ -4033,8 +4539,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Value change at sale
                         </span>
@@ -4043,15 +4558,25 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                         </strong>
                       </article>
                     </div>
-                    <div className="col s6 m6 xl3" style={{ marginBottom: "1rem" }}>
-                      <article style={{ ...cardStyle, padding: compactMetricCardPadding, height: "100%" }}>
+                    <div
+                      className="col s6 m6 xl3"
+                      style={{ marginBottom: "1rem" }}
+                    >
+                      <article
+                        style={{
+                          ...cardStyle,
+                          padding: compactMetricCardPadding,
+                          height: "100%",
+                        }}
+                      >
                         <span style={compactMetricLabelStyle}>
                           Average cost per year
                         </span>
                         <strong style={compactMetricValueStyle}>
                           {formatCurrency(
                             calculations.ownershipYears > 0
-                              ? calculations.overallCost / calculations.ownershipYears
+                              ? calculations.overallCost /
+                                  calculations.ownershipYears
                               : 0,
                           )}
                         </strong>

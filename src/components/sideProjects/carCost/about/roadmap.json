@@ -79,6 +79,21 @@
       "status": "Done",
       "title": "Fix custom-vehicle validation feedback and mobile placeholder styling",
       "points": 3
+    },
+    {
+      "status": "Done",
+      "title": "Review and tighten labels across the page for clarity and consistency",
+      "points": 3
+    },
+    {
+      "status": "Done",
+      "title": "Support financed vehicles with APR, down payment, term or payment modes, and payoff math",
+      "points": 8
+    },
+    {
+      "status": "Done",
+      "title": "Add overall ownership estimate, financing summaries, and loan payoff drill-downs",
+      "points": 5
     }
   ],
   "backlog": [
@@ -101,11 +116,6 @@
       "status": "Todo",
       "title": "Add internationalization for English, Spanish, and French across North and South American audiences",
       "points": 8
-    },
-    {
-      "status": "Todo",
-      "title": "Review and tighten labels across the page for clarity and consistency",
-      "points": 3
     },
     {
       "status": "Todo",
@@ -154,13 +164,8 @@
     },
     {
       "status": "Todo",
-      "title": "Support other ownership types such as rental, lease, and finance",
+      "title": "Support other ownership types such as rental and lease",
       "points": 8
-    },
-    {
-      "status": "Todo",
-      "title": "Incorporate APR into the equation for financed vehicles",
-      "points": 5
     }
   ]
 }

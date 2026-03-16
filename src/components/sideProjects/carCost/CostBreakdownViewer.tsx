@@ -169,12 +169,16 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
       return [];
     }
 
+    const magnitudeTotal = currentMode.items.reduce(
+      (sum, item) => sum + Math.abs(item.value),
+      0
+    );
     let cumulativePercentage = 0;
 
     return currentMode.items
-      .filter((item) => item.value > 0)
+      .filter((item) => item.value !== 0)
       .map((item) => {
-        const percentage = currentMode.total > 0 ? item.value / currentMode.total : 0;
+        const percentage = magnitudeTotal > 0 ? Math.abs(item.value) / magnitudeTotal : 0;
         const path = buildPieSlice(percentage, cumulativePercentage, 44);
         const midpointPercentage = cumulativePercentage + percentage / 2;
         const midAngle = midpointPercentage * Math.PI * 2 - Math.PI / 2;
@@ -487,7 +491,7 @@ const CostBreakdownViewer: React.FC<CostBreakdownViewerProps> = ({
                         lineHeight: 1.3,
                       }}
                     >
-                      {formatPercent(slice.percentage * 100)} of {currentMode.label.toLowerCase()}
+                      {formatPercent(slice.percentage * 100)} of impact
                     </small>
                   </article>
                 </div>
