@@ -94,27 +94,47 @@
       "status": "Done",
       "title": "Add overall ownership estimate, financing summaries, and loan payoff drill-downs",
       "points": 5
+    },
+    {
+      "status": "Done",
+      "title": "Add major-version-aware saved state handling so users are notified when data is outdated and it can be migrated or cleared safely",
+      "points": 8
+    },
+    {
+      "status": "Done",
+      "title": "Add share support by generating a URL with serialized state",
+      "points": 8
     }
   ],
   "backlog": [
     {
       "status": "Todo",
-      "title": "Add major-version-aware saved state handling so users are notified when data is outdated and it can be migrated or cleared safely",
-      "points": 8
+      "title": "Add a help section explaining how local state, shared links, and saved data are managed",
+      "points": 3
     },
     {
       "status": "Todo",
-      "title": "Add a guided step-by-step experience similar to a tax-prep flow using modal-based prompts",
-      "points": 8
+      "title": "Add more expense categories",
+      "points": 3
     },
     {
       "status": "Todo",
-      "title": "Support multiple unit systems, including metric",
+      "title": "Pull vehicle fuel economy automatically when possible",
       "points": 5
     },
     {
       "status": "Todo",
-      "title": "Add internationalization for English, Spanish, and French across North and South American audiences",
+      "title": "Fix remaining mobile-friendly bugs",
+      "points": 5
+    },
+    {
+      "status": "Todo",
+      "title": "Add support for maintaining a personal garage of up to 3 vehicles with vehicle-specific annual miles and ownership assumptions",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Treat shared links as temporary imports so users can view, compare, or save them without overwriting their personal garage or workspace",
       "points": 8
     },
     {
@@ -124,33 +144,8 @@
     },
     {
       "status": "Todo",
-      "title": "Add share support by generating a URL with serialized state",
+      "title": "Add fleet-style annual ownership summaries across saved vehicles",
       "points": 8
-    },
-    {
-      "status": "Todo",
-      "title": "Add support for maintaining up to 3 personal vehicles",
-      "points": 5
-    },
-    {
-      "status": "Todo",
-      "title": "Add a help section explaining how local state and saved data are managed",
-      "points": 3
-    },
-    {
-      "status": "Todo",
-      "title": "Fix remaining mobile-friendly bugs",
-      "points": 5
-    },
-    {
-      "status": "Todo",
-      "title": "Pull vehicle data from year / make / model",
-      "points": 8
-    },
-    {
-      "status": "Todo",
-      "title": "Pull vehicle fuel economy automatically when possible",
-      "points": 5
     },
     {
       "status": "Todo",
@@ -159,12 +154,27 @@
     },
     {
       "status": "Todo",
-      "title": "Add more expense categories",
-      "points": 3
+      "title": "Support multiple unit systems, including metric",
+      "points": 5
+    },
+    {
+      "status": "Todo",
+      "title": "Add a guided step-by-step experience similar to a tax-prep flow using modal-based prompts",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Pull vehicle data from year / make / model",
+      "points": 8
     },
     {
       "status": "Todo",
       "title": "Support other ownership types such as rental and lease",
+      "points": 8
+    },
+    {
+      "status": "Todo",
+      "title": "Add internationalization for English, Spanish, and French across North and South American audiences",
       "points": 8
     }
   ]
