@@ -1,27 +1,55 @@
 import { defaultValues } from "../../config/constants";
 import {
-  applyPlannerValues,
+  applySessionScopedValues,
   getDraftFromVehicle,
-  getPlannerValues,
+  getSessionScopedValues,
   normalizeCarCostValues,
   normalizeVehicleTemplate,
   parseSavedCustomVehicle,
+  stripSessionScopedValues,
 } from "../state";
 
 describe("state utils", () => {
-  it("gets and reapplies planner values without changing the rest", () => {
-    const planner = getPlannerValues({
+  it("gets and reapplies session-scoped values without changing the rest", () => {
+    const sessionValues = getSessionScopedValues({
       ...defaultValues,
       tripDistance: 123,
       recurringMiles: 456,
+      annualInsurance: 3333,
+      includeVehicleCost: 0,
     });
 
-    expect(planner).toEqual({ tripDistance: 123, recurringMiles: 456 });
+    expect(sessionValues).toEqual({
+      tripDistance: 123,
+      recurringMiles: 456,
+      annualInsurance: 3333,
+      annualRegistration: defaultValues.annualRegistration,
+      annualParking: defaultValues.annualParking,
+      annualInspection: defaultValues.annualInspection,
+      annualRoadside: defaultValues.annualRoadside,
+      includeVehicleCost: 0,
+      includeAnnualOwnership: defaultValues.includeAnnualOwnership,
+    });
 
-    const next = applyPlannerValues(defaultValues, planner);
+    const next = applySessionScopedValues(defaultValues, sessionValues);
     expect(next.tripDistance).toBe(123);
     expect(next.recurringMiles).toBe(456);
+    expect(next.annualInsurance).toBe(3333);
+    expect(next.includeVehicleCost).toBe(0);
     expect(next.purchasePrice).toBe(defaultValues.purchasePrice);
+  });
+
+  it("strips session-scoped values from template-like payloads", () => {
+    const stripped = stripSessionScopedValues({
+      tripDistance: 90,
+      recurringMiles: 12,
+      annualInsurance: 999,
+      includeVehicleCost: 0,
+      includeAnnualOwnership: 0,
+      purchasePrice: 22000,
+    });
+
+    expect(stripped).toEqual({ purchasePrice: 22000 });
   });
 
   it("normalizes template values and legacy fuel mileage", () => {
@@ -49,12 +77,16 @@ describe("state utils", () => {
         ...defaultValues,
         fuelType: "regular",
         fuelEfficiency: 32,
+        annualInsurance: 999,
+        includeVehicleCost: 0,
       },
     });
 
     expect(template.values.fuelEfficiency).toBe(32);
     expect(template.values.fuelType).toBe("regular");
     expect(template.values.oilChangeCost).toBe(defaultValues.oilChangeCost);
+    expect(template.values.annualInsurance).toBe(defaultValues.annualInsurance);
+    expect(template.values.includeVehicleCost).toBe(defaultValues.includeVehicleCost);
   });
 
   it("builds a draft from a custom vehicle", () => {
@@ -89,6 +121,7 @@ describe("state utils", () => {
         values: {
           fuelType: "premium",
           fuelEfficiency: 24,
+          annualInsurance: 1,
         },
       }),
     );
@@ -96,6 +129,7 @@ describe("state utils", () => {
     expect(parsed?.title).toBe("2018 Subaru WRX");
     expect(parsed?.values.fuelEfficiency).toBe(24);
     expect(parsed?.values.oilChangeCost).toBe(defaultValues.oilChangeCost);
+    expect(parsed?.values.annualInsurance).toBe(defaultValues.annualInsurance);
   });
 
   it("cleans up invalid saved custom vehicle JSON", () => {

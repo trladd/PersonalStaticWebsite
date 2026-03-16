@@ -85,6 +85,19 @@ export type CustomVehicleField = "year" | "make" | "model";
 
 export type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;
 
+export type SessionScopedCarCostValues = Pick<
+  CarCostValues,
+  | "tripDistance"
+  | "recurringMiles"
+  | "annualInsurance"
+  | "annualRegistration"
+  | "annualParking"
+  | "annualInspection"
+  | "annualRoadside"
+  | "includeVehicleCost"
+  | "includeAnnualOwnership"
+>;
+
 export type InsightDefinition = {
   id: string;
   label: string;

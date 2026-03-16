@@ -52,13 +52,14 @@ import {
   subFieldLabelStyle,
 } from "./utils/presentation";
 import {
-  applyPlannerValues,
+  applySessionScopedValues,
   cleanupModalArtifacts,
   getDraftFromVehicle,
-  getPlannerValues,
   normalizeCarCostValues,
   normalizeVehicleTemplate,
   parseSavedCustomVehicle,
+  getSessionScopedValues,
+  stripSessionScopedValues,
 } from "./utils/state";
 import {
   buildFuelLabels,
@@ -542,24 +543,24 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       return;
     }
 
-    const plannerValues = getPlannerValues(values);
+    const sessionValues = getSessionScopedValues(values);
     applySelection(
       "template",
-      applyPlannerValues(matchingTemplate.values, plannerValues),
+      applySessionScopedValues(matchingTemplate.values, sessionValues),
       recurringType,
       matchingTemplate.id,
     );
   };
 
   const handleTemplateSwitch = (nextValue: string) => {
-    const plannerValues = getPlannerValues(values);
+    const sessionValues = getSessionScopedValues(values);
     if (nextValue === "custom") {
       if (!savedCustomVehicle) {
         return;
       }
       setSelectedSource("custom");
       setSelectedTemplateId("custom");
-      setValues(applyPlannerValues(savedCustomVehicle.values, plannerValues));
+      setValues(applySessionScopedValues(savedCustomVehicle.values, sessionValues));
       return;
     }
 
@@ -570,7 +571,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
     setSelectedSource("template");
     setSelectedTemplateId(template.id);
-    setValues(applyPlannerValues(template.values, plannerValues));
+    setValues(applySessionScopedValues(template.values, sessionValues));
   };
 
   const handleFuelTypeChange = (
@@ -676,10 +677,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       make: trimmedMake,
       model: trimmedModel,
       title: `${parsedCustomVehicleYear} ${trimmedMake} ${trimmedModel}`,
-      values: normalizeCarCostValues({
+      values: normalizeCarCostValues(
+        stripSessionScopedValues({
         fuelType: customVehicleDraft.fuelType,
         fuelUnitPrice: DEFAULT_FUEL_PRICES[customVehicleDraft.fuelType],
-      }),
+        }),
+      ),
     };
 
     setSavedCustomVehicle(nextCustomVehicle);

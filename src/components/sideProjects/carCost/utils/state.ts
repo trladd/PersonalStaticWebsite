@@ -10,23 +10,59 @@ import {
   CarCostValues,
   CustomVehicle,
   CustomVehicleDraft,
-  PlannerValues,
   PartialTemplateValues,
+  SessionScopedCarCostValues,
   VehicleTemplate,
 } from "../types";
 
-export const getPlannerValues = (values: CarCostValues): PlannerValues => ({
+const SESSION_SCOPED_VALUE_KEYS = [
+  "tripDistance",
+  "recurringMiles",
+  "annualInsurance",
+  "annualRegistration",
+  "annualParking",
+  "annualInspection",
+  "annualRoadside",
+  "includeVehicleCost",
+  "includeAnnualOwnership",
+] as const;
+
+export const getSessionScopedValues = (
+  values: CarCostValues,
+): SessionScopedCarCostValues => ({
   tripDistance: values.tripDistance,
   recurringMiles: values.recurringMiles,
+  annualInsurance: values.annualInsurance,
+  annualRegistration: values.annualRegistration,
+  annualParking: values.annualParking,
+  annualInspection: values.annualInspection,
+  annualRoadside: values.annualRoadside,
+  includeVehicleCost: values.includeVehicleCost,
+  includeAnnualOwnership: values.includeAnnualOwnership,
 });
 
-export const applyPlannerValues = (
+export const applySessionScopedValues = (
   baseValues: CarCostValues,
-  plannerValues: PlannerValues,
+  sessionValues: SessionScopedCarCostValues,
 ): CarCostValues => ({
   ...baseValues,
-  ...plannerValues,
+  ...sessionValues,
 });
+
+export const stripSessionScopedValues = (
+  rawValues?: PartialTemplateValues,
+): PartialTemplateValues => {
+  if (!rawValues) {
+    return {};
+  }
+
+  const strippedValues = { ...rawValues };
+  SESSION_SCOPED_VALUE_KEYS.forEach((key) => {
+    delete strippedValues[key];
+  });
+
+  return strippedValues;
+};
 
 export const getDraftFromVehicle = (
   vehicle: CustomVehicle | null,
@@ -84,7 +120,7 @@ export const normalizeVehicleTemplate = (
   template: VehicleTemplate & { values: PartialTemplateValues },
 ): VehicleTemplate => ({
   ...template,
-  values: normalizeCarCostValues(template.values),
+  values: normalizeCarCostValues(stripSessionScopedValues(template.values)),
 });
 
 export const parseSavedCustomVehicle = (savedCustom: string | null) => {
@@ -97,7 +133,9 @@ export const parseSavedCustomVehicle = (savedCustom: string | null) => {
     if (parsedCustom?.title && parsedCustom?.values) {
       return {
         ...parsedCustom,
-        values: normalizeCarCostValues(parsedCustom.values),
+        values: normalizeCarCostValues(
+          stripSessionScopedValues(parsedCustom.values),
+        ),
       } as CustomVehicle;
     }
 
