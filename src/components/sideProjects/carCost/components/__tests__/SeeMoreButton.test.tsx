@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import SeeMoreButton from "./SeeMoreButton";
+import SeeMoreButton from "../SeeMoreButton";
 
 describe("SeeMoreButton", () => {
   it("shows the label on desktop and calls click handler", () => {

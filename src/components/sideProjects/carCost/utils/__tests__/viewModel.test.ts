@@ -1,5 +1,5 @@
-import { defaultValues } from "../config/constants";
-import { calculateCarCost } from "./calculations";
+import { defaultValues } from "../../config/constants";
+import { calculateCarCost } from "../calculations";
 import {
   buildFuelLabels,
   buildInsights,
@@ -9,7 +9,7 @@ import {
   filterModalInsights,
   getCurrentVehicleLabel,
   getRecurringBreakdownMode,
-} from "./viewModel";
+} from "../viewModel";
 
 describe("viewModel utils", () => {
   it("builds fuel labels based on fuel type", () => {

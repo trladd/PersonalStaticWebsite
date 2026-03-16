@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import VehicleStickyBar from "./VehicleStickyBar";
+import VehicleStickyBar from "../VehicleStickyBar";
 
 describe("VehicleStickyBar", () => {
   const originalRect = HTMLElement.prototype.getBoundingClientRect;

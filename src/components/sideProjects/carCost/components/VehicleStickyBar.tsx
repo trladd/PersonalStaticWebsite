@@ -31,6 +31,7 @@ type BarMetrics = {
 };
 
 const HORIZONTAL_INSET = 5;
+const FALLBACK_BAR_HEIGHT = 96;
 
 const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
   palette,
@@ -61,11 +62,11 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
         return;
       }
 
-      setMetrics({
+      setMetrics((current) => ({
         left: slotRect.left + HORIZONTAL_INSET,
         width: Math.max(slotRect.width - HORIZONTAL_INSET * 2, 0),
-        height: cardRect?.height ?? metrics?.height ?? 96,
-      });
+        height: cardRect?.height ?? current?.height ?? FALLBACK_BAR_HEIGHT,
+      }));
     };
 
     updateMetrics();
@@ -74,14 +75,23 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
     return () => {
       window.removeEventListener("resize", updateMetrics);
     };
-  }, [isMobileView, stickyTop, currentVehicleLabel, selectedSource, selectedTemplateId, templateOptions.length, metrics?.height]);
+  }, [
+    isMobileView,
+    stickyTop,
+    currentVehicleLabel,
+    selectedSource,
+    selectedTemplateId,
+    templateOptions.length,
+  ]);
 
   return (
     <div className="row" style={{ marginBottom: 0 }}>
       <div className="col s12" ref={slotRef}>
         <div
           style={{
-            height: metrics?.height ? `${metrics.height + (isMobileView ? 16 : 20)}px` : undefined,
+            height: metrics?.height
+              ? `${metrics.height + (isMobileView ? 16 : 20)}px`
+              : undefined,
           }}
         />
         <div
@@ -127,7 +137,11 @@ const VehicleStickyBar: React.FC<VehicleStickyBarProps> = ({
               {!isMobileView ? (
                 <label
                   htmlFor="vehicleTemplateSwitcher"
-                  style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+                  style={{
+                    display: "block",
+                    fontWeight: 600,
+                    marginBottom: "0.45rem",
+                  }}
                 >
                   Switch vehicle
                 </label>

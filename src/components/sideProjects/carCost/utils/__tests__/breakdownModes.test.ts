@@ -1,6 +1,6 @@
-import { defaultValues } from "../config/constants";
-import { calculateCarCost } from "./calculations";
-import { buildBreakdownModes } from "./breakdownModes";
+import { defaultValues } from "../../config/constants";
+import { calculateCarCost } from "../calculations";
+import { buildBreakdownModes } from "../breakdownModes";
 
 describe("buildBreakdownModes", () => {
   it("includes appreciation in non-trip modes but keeps trip totals depreciation-only", () => {

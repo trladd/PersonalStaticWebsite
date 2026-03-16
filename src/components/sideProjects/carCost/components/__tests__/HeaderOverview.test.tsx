@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import HeaderOverview from "./HeaderOverview";
+import HeaderOverview from "../HeaderOverview";
 
 describe("HeaderOverview", () => {
   it("renders hero copy and primary summary card", () => {

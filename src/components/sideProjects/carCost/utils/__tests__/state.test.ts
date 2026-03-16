@@ -1,4 +1,4 @@
-import { defaultValues } from "../config/constants";
+import { defaultValues } from "../../config/constants";
 import {
   applyPlannerValues,
   getDraftFromVehicle,
@@ -6,7 +6,7 @@ import {
   normalizeCarCostValues,
   normalizeVehicleTemplate,
   parseSavedCustomVehicle,
-} from "./state";
+} from "../state";
 
 describe("state utils", () => {
   it("gets and reapplies planner values without changing the rest", () => {

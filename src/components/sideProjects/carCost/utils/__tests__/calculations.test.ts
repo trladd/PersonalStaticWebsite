@@ -1,5 +1,5 @@
-import { defaultValues } from "../config/constants";
-import { calculateCarCost } from "./calculations";
+import { defaultValues } from "../../config/constants";
+import { calculateCarCost } from "../calculations";
 
 describe("calculateCarCost", () => {
   it("doubles one-way trip distance but leaves round trip as entered", () => {
