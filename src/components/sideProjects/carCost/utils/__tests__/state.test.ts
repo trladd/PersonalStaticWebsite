@@ -135,6 +135,25 @@ describe("state utils", () => {
     expect(draft.trim).toBe("Camry Hybrid LE::47243");
   });
 
+  it("preserves manual trim text for manual vehicle entries", () => {
+    const draft = getDraftFromVehicle({
+      id: "custom",
+      year: 2024,
+      make: "Ford",
+      model: "F-550",
+      trim: "6.7L Power Stroke / XL",
+      title: "2024 Ford F-550",
+      manualVehicleEntry: true,
+      values: {
+        ...defaultValues,
+        fuelType: "diesel",
+      },
+    });
+
+    expect(draft.trim).toBe("6.7L Power Stroke / XL");
+    expect(draft.manualVehicleEntry).toBe(true);
+  });
+
   it("parses valid saved custom vehicle JSON", () => {
     const parsed = parseSavedCustomVehicle(
       JSON.stringify({

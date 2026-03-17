@@ -1671,7 +1671,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         ...current,
         drivingMileage: {
           ...current.drivingMileage,
-          n: Number.isNaN(parsedValue) ? current.drivingMileage.n : parsedValue,
+          n: Number.isNaN(parsedValue)
+            ? current.drivingMileage.n
+            : Math.max(parsedValue, 0),
         },
       }));
       clearNumericDraft(draftKey);
