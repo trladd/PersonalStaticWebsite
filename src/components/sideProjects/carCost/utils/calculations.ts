@@ -1,5 +1,7 @@
-import { CarCostValues, RecurringType, TripType } from "../types";
+import { CarCostValues, TripTireSet, TripType } from "../types";
 import { isToggleEnabled } from "./formatters";
+import { getAnnualMileageFromSetting } from "./drivingMileage";
+import { getAnnualizedIntervalCost } from "./intervals";
 
 export type LoanPaydownPoint = {
   month: number;
@@ -9,11 +11,33 @@ export type LoanPaydownPoint = {
 
 export type CarCostCalculations = {
   fuelCostPerMile: number;
+  tripFuelCostPerMile: number;
+  tripFuelEfficiencyUsed: number;
   oilCostPerMile: number;
+  oilEffectiveIntervalMiles: number;
+  oilChangesUsedOverOwnership: number;
+  oilRemainingLifePercentAtSale: number;
   tireCostPerMile: number;
+  tripTireCostPerMile: number;
+  primaryTireCostPerMile: number;
+  winterTireCostPerMile: number;
   miscCostPerMile: number;
+  miscAnnualCost: number;
+  brakeAnnualCost: number;
+  batteryAnnualCost: number;
+  majorServiceAnnualCost: number;
+  repairBufferAnnualCost: number;
+  primaryTireAnnualCost: number;
+  winterTireAnnualCost: number;
+  primaryTireEffectiveMiles: number;
+  winterTireEffectiveMiles: number;
+  primaryTireSetsUsedOverOwnership: number;
+  winterTireSetsUsedOverOwnership: number;
+  primaryTireRemainingTreadPercentAtSale: number;
+  winterTireRemainingTreadPercentAtSale: number;
   depreciationCostPerMile: number;
   variableCostPerMile: number;
+  tripVariableCostPerMile: number;
   annualMileage: number;
   ownershipYears: number;
   ownershipMiles: number;
@@ -52,28 +76,129 @@ export type CarCostCalculations = {
 
 export const calculateCarCost = (
   values: CarCostValues,
-  recurringType: RecurringType,
   tripType: TripType,
+  tripTireSet: TripTireSet,
 ): CarCostCalculations => {
   const includesVehicleCost = isToggleEnabled(values.includeVehicleCost);
   const tripMultiplier = tripType === "oneWay" ? 2 : 1;
   const selectedTripDistance = values.tripDistance * tripMultiplier;
   const fuelCostPerMile =
     values.fuelEfficiency > 0 ? values.fuelUnitPrice / values.fuelEfficiency : 0;
+  const tripFuelEfficiencyUsed =
+    isToggleEnabled(values.includeTripFuelOverride) && values.tripFuelEfficiency > 0
+      ? values.tripFuelEfficiency
+      : values.fuelEfficiency;
+  const tripFuelCostPerMile =
+    tripFuelEfficiencyUsed > 0
+      ? values.fuelUnitPrice / tripFuelEfficiencyUsed
+      : 0;
+
+  const annualMileage = getAnnualMileageFromSetting(values.drivingMileage);
+  const oilAgeLimitMiles =
+    values.oilChangeMaxMonths > 0 && annualMileage > 0
+      ? annualMileage * (values.oilChangeMaxMonths / 12)
+      : Number.POSITIVE_INFINITY;
+  const oilEffectiveIntervalMiles = Math.min(
+    values.oilChangeInterval > 0 ? values.oilChangeInterval : Number.POSITIVE_INFINITY,
+    oilAgeLimitMiles,
+  );
   const oilCostPerMile =
-    values.oilChangeInterval > 0 ? values.oilChangeCost / values.oilChangeInterval : 0;
-  const tireCostPerMile =
-    values.tireInterval > 0 ? values.tireCost / values.tireInterval : 0;
+    Number.isFinite(oilEffectiveIntervalMiles) &&
+    oilEffectiveIntervalMiles > 0 &&
+    values.oilChangeCost > 0
+      ? values.oilChangeCost / oilEffectiveIntervalMiles
+      : 0;
+  const winterUsageShare = isToggleEnabled(values.includeWinterTires)
+    ? Math.min(Math.max(values.winterTireMonths, 1), 11) / 12
+    : 0;
+  const primaryUsageShare = Math.max(0, 1 - winterUsageShare);
+  const primaryAnnualMileage = annualMileage * primaryUsageShare;
+  const winterAnnualMileage = annualMileage * winterUsageShare;
+  const getTireCostPerMile = (
+    tireCost: number,
+    tireInterval: number,
+    tireMaxAgeYears: number,
+    annualTireMileage: number,
+  ) => {
+    const mileageLimit =
+      tireInterval > 0 ? tireInterval : Number.POSITIVE_INFINITY;
+    const ageLimitMiles =
+      tireMaxAgeYears > 0 && annualTireMileage > 0
+        ? annualTireMileage * tireMaxAgeYears
+        : Number.POSITIVE_INFINITY;
+    const effectiveMiles = Math.min(mileageLimit, ageLimitMiles);
 
-  const annualMileageByType: Record<RecurringType, number> = {
-    day: values.recurringMiles * 365,
-    week: values.recurringMiles * 52,
-    month: values.recurringMiles * 12,
-    year: values.recurringMiles,
-    weekday: values.recurringMiles * 5 * 52,
+    if (!Number.isFinite(effectiveMiles) || effectiveMiles <= 0 || tireCost <= 0) {
+      return 0;
+    }
+
+    return tireCost / effectiveMiles;
   };
+  const getEffectiveLifecycleMiles = (
+    mileageLimit: number,
+    annualDrivenMiles: number,
+    maxAgeYears: number,
+  ) => {
+    const treadLifeMiles =
+      mileageLimit > 0 ? mileageLimit : Number.POSITIVE_INFINITY;
+    const ageLimitMiles =
+      maxAgeYears > 0 && annualDrivenMiles > 0
+        ? annualDrivenMiles * maxAgeYears
+        : Number.POSITIVE_INFINITY;
 
-  const annualMileage = annualMileageByType[recurringType];
+    return Math.min(treadLifeMiles, ageLimitMiles);
+  };
+  const getLifecycleUsageMetrics = (
+    ownershipMilesDriven: number,
+    effectiveMiles: number,
+  ) => {
+    if (!Number.isFinite(effectiveMiles) || effectiveMiles <= 0 || ownershipMilesDriven <= 0) {
+      return { setsUsed: 0, remainingPercent: 100 };
+    }
+
+    const setsUsed = ownershipMilesDriven / effectiveMiles;
+    const usedFraction = setsUsed % 1;
+    const remainingPercent =
+      usedFraction === 0 ? 0 : Math.max(0, (1 - usedFraction) * 100);
+
+    return { setsUsed, remainingPercent };
+  };
+  const primaryTireEffectiveMiles = getEffectiveLifecycleMiles(
+    values.tireInterval,
+    primaryAnnualMileage,
+    values.tireMaxAgeYears,
+  );
+  const winterTireEffectiveMiles = isToggleEnabled(values.includeWinterTires)
+    ? getEffectiveLifecycleMiles(
+        values.winterTireInterval,
+        winterAnnualMileage,
+        values.winterTireMaxAgeYears,
+      )
+    : 0;
+  const primaryTireCostPerMile = getTireCostPerMile(
+    values.tireCost,
+    values.tireInterval,
+    values.tireMaxAgeYears,
+    primaryAnnualMileage,
+  );
+  const winterTireCostPerMile = isToggleEnabled(values.includeWinterTires)
+    ? getTireCostPerMile(
+        values.winterTireCost,
+        values.winterTireInterval,
+        values.winterTireMaxAgeYears,
+        winterAnnualMileage,
+      )
+    : 0;
+  const primaryTireAnnualCost = primaryTireCostPerMile * primaryAnnualMileage;
+  const winterTireAnnualCost = winterTireCostPerMile * winterAnnualMileage;
+  const tireCostPerMile =
+    annualMileage > 0
+      ? (primaryTireAnnualCost + winterTireAnnualCost) / annualMileage
+      : 0;
+  const tripTireCostPerMile =
+    isToggleEnabled(values.includeWinterTires) && tripTireSet === "winter"
+      ? winterTireCostPerMile
+      : primaryTireCostPerMile;
   const ownershipYears =
     values.depreciationBasis === "years"
       ? values.depreciationInterval
@@ -84,6 +209,18 @@ export const calculateCarCost = (
     values.depreciationBasis === "miles"
       ? values.depreciationInterval
       : annualMileage * values.depreciationInterval;
+  const primaryTireUsageMetrics = getLifecycleUsageMetrics(
+    primaryUsageShare * ownershipMiles,
+    primaryTireEffectiveMiles,
+  );
+  const winterTireUsageMetrics = getLifecycleUsageMetrics(
+    winterUsageShare * ownershipMiles,
+    winterTireEffectiveMiles,
+  );
+  const oilUsageMetrics = getLifecycleUsageMetrics(
+    ownershipMiles,
+    oilEffectiveIntervalMiles,
+  );
   const depreciationValueChange = values.purchasePrice - values.resaleValue;
   const depreciationCostPerMile =
     includesVehicleCost &&
@@ -91,22 +228,58 @@ export const calculateCarCost = (
     ownershipMiles > 0
       ? depreciationValueChange / ownershipMiles
       : 0;
+  const miscAnnualCost = getAnnualizedIntervalCost(
+    values.miscMaintenanceCost,
+    values.miscMaintenanceSchedule,
+    annualMileage,
+  );
+  const brakeAnnualCost = isToggleEnabled(values.showAdvancedMaintenance)
+    ? getAnnualizedIntervalCost(
+        values.brakeServiceCost,
+        values.brakeServiceSchedule,
+        annualMileage,
+      )
+    : 0;
+  const batteryAnnualCost = isToggleEnabled(values.showAdvancedMaintenance)
+    ? getAnnualizedIntervalCost(
+        values.batteryReplacementCost,
+        values.batteryReplacementSchedule,
+        annualMileage,
+      )
+    : 0;
+  const majorServiceAnnualCost = isToggleEnabled(values.showAdvancedMaintenance)
+    ? getAnnualizedIntervalCost(
+        values.majorServiceCost,
+        values.majorServiceSchedule,
+        annualMileage,
+      )
+    : 0;
+  const repairBufferAnnualCost = isToggleEnabled(values.showAdvancedMaintenance)
+    ? getAnnualizedIntervalCost(
+        values.repairBufferCost,
+        values.repairBufferSchedule,
+        annualMileage,
+      )
+    : 0;
   const miscCostPerMile =
-    values.miscMaintenanceInterval > 0
-      ? values.miscMaintenanceBasis === "miles"
-        ? values.miscMaintenanceCost / values.miscMaintenanceInterval
-        : annualMileage > 0
-          ? (values.miscMaintenanceCost *
-              (values.miscMaintenanceBasis === "month"
-                ? 12 / values.miscMaintenanceInterval
-                : 1 / values.miscMaintenanceInterval)) /
-            annualMileage
-          : 0
+    annualMileage > 0
+      ? (miscAnnualCost +
+          brakeAnnualCost +
+          batteryAnnualCost +
+          majorServiceAnnualCost +
+          repairBufferAnnualCost) /
+        annualMileage
       : 0;
   const variableCostPerMile =
     fuelCostPerMile +
     oilCostPerMile +
     tireCostPerMile +
+    miscCostPerMile +
+    depreciationCostPerMile;
+  const tripVariableCostPerMile =
+    tripFuelCostPerMile +
+    oilCostPerMile +
+    tripTireCostPerMile +
     miscCostPerMile +
     depreciationCostPerMile;
   const annualFixedCosts = isToggleEnabled(values.includeAnnualOwnership)
@@ -203,7 +376,7 @@ export const calculateCarCost = (
     includesVehicleCost && ownershipMiles > 0 ? totalInterestPaid / ownershipMiles : 0;
   const trueCostPerMile =
     variableCostPerMile + fixedCostPerMile + financeCostPerMile;
-  const tripCost = selectedTripDistance * trueCostPerMile;
+  const tripCost = selectedTripDistance * tripVariableCostPerMile;
   const recurringDrivingCosts = {
     day: (annualMileage * variableCostPerMile) / 365,
     week: (annualMileage * variableCostPerMile) / 52,
@@ -227,8 +400,14 @@ export const calculateCarCost = (
   const overallItems = {
     fuel: fuelCostPerMile * ownershipMiles,
     oil: oilCostPerMile * ownershipMiles,
-    tires: tireCostPerMile * ownershipMiles,
-    misc: miscCostPerMile * ownershipMiles,
+    tires: (primaryTireAnnualCost + winterTireAnnualCost) * ownershipYears,
+    misc:
+      (miscAnnualCost +
+        brakeAnnualCost +
+        batteryAnnualCost +
+        majorServiceAnnualCost +
+        repairBufferAnnualCost) *
+      ownershipYears,
     depreciation: depreciationTotal,
     ownership: annualFixedCosts * ownershipYears,
     financing: Math.max(totalInterestPaid, 0),
@@ -244,11 +423,35 @@ export const calculateCarCost = (
 
   return {
     fuelCostPerMile,
+    tripFuelCostPerMile,
+    tripFuelEfficiencyUsed,
     oilCostPerMile,
+    oilEffectiveIntervalMiles,
+    oilChangesUsedOverOwnership: oilUsageMetrics.setsUsed,
+    oilRemainingLifePercentAtSale: oilUsageMetrics.remainingPercent,
     tireCostPerMile,
+    tripTireCostPerMile,
+    primaryTireCostPerMile,
+    winterTireCostPerMile,
     miscCostPerMile,
+    miscAnnualCost,
+    brakeAnnualCost,
+    batteryAnnualCost,
+    majorServiceAnnualCost,
+    repairBufferAnnualCost,
+    primaryTireAnnualCost,
+    winterTireAnnualCost,
+    primaryTireEffectiveMiles,
+    winterTireEffectiveMiles,
+    primaryTireSetsUsedOverOwnership: primaryTireUsageMetrics.setsUsed,
+    winterTireSetsUsedOverOwnership: winterTireUsageMetrics.setsUsed,
+    primaryTireRemainingTreadPercentAtSale:
+      primaryTireUsageMetrics.remainingPercent,
+    winterTireRemainingTreadPercentAtSale:
+      winterTireUsageMetrics.remainingPercent,
     depreciationCostPerMile,
     variableCostPerMile,
+    tripVariableCostPerMile,
     annualMileage,
     ownershipYears,
     ownershipMiles,

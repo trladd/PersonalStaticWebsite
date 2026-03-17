@@ -1,24 +1,23 @@
 import { InsightCardData } from "../components/InsightsCard";
 import { FUEL_TYPE_LABELS } from "../config/constants";
 import { CarCostCalculations } from "./calculations";
+import { getRecurringBreakdownModeFromDrivingMileage } from "./drivingMileage";
 import { formatCurrency, formatNumber } from "./formatters";
 import {
   CarCostValues,
   CustomVehicle,
   InsightCategory,
   InsightDefinition,
-  RecurringType,
   VehicleLookupSummary,
   VehicleTemplate,
 } from "../types";
-import { BreakdownMode } from "../components/CostBreakdownViewer";
 
 export const buildSummaryCards = (calculations: CarCostCalculations) =>
   [
     { label: "Fuel", value: calculations.fuelCostPerMile },
     { label: "Oil changes", value: calculations.oilCostPerMile },
     { label: "Tires", value: calculations.tireCostPerMile },
-    { label: "Misc. maintenance", value: calculations.miscCostPerMile },
+    { label: "Additional maintenance", value: calculations.miscCostPerMile },
     { label: "Depreciation", value: calculations.depreciationCostPerMile },
     { label: "Ownership overhead", value: calculations.fixedCostPerMile },
     { label: "Financing", value: calculations.financeCostPerMile },
@@ -59,8 +58,8 @@ export const getCurrentVehicleLabel = (
           : "Vehicle template";
       })();
 
-export const getRecurringBreakdownMode = (recurringType: RecurringType): BreakdownMode =>
-  recurringType === "weekday" ? "day" : recurringType;
+export const getRecurringBreakdownMode = (values: CarCostValues) =>
+  getRecurringBreakdownModeFromDrivingMileage(values.drivingMileage.u);
 
 export const buildFuelLabels = (
   values: CarCostValues,

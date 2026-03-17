@@ -16,27 +16,24 @@ describe("state utils", () => {
     const sessionValues = getSessionScopedValues({
       ...defaultValues,
       tripDistance: 123,
-      recurringMiles: 456,
-      annualInsurance: 3333,
+      drivingMileage: { n: 456, u: "yr" as const },
       includeVehicleCost: 0,
     });
 
     expect(sessionValues).toEqual({
       tripDistance: 123,
-      recurringMiles: 456,
-      annualInsurance: 3333,
-      annualRegistration: defaultValues.annualRegistration,
-      annualParking: defaultValues.annualParking,
-      annualInspection: defaultValues.annualInspection,
-      annualRoadside: defaultValues.annualRoadside,
+      includeTripFuelOverride: defaultValues.includeTripFuelOverride,
+      tripFuelEfficiency: defaultValues.tripFuelEfficiency,
+      drivingMileage: { n: 456, u: "yr" },
       includeVehicleCost: 0,
       includeAnnualOwnership: defaultValues.includeAnnualOwnership,
     });
 
     const next = applySessionScopedValues(defaultValues, sessionValues);
     expect(next.tripDistance).toBe(123);
-    expect(next.recurringMiles).toBe(456);
-    expect(next.annualInsurance).toBe(3333);
+    expect(next.includeTripFuelOverride).toBe(defaultValues.includeTripFuelOverride);
+    expect(next.drivingMileage).toEqual({ n: 456, u: "yr" });
+    expect(next.annualInsurance).toBe(defaultValues.annualInsurance);
     expect(next.includeVehicleCost).toBe(0);
     expect(next.purchasePrice).toBe(defaultValues.purchasePrice);
   });
@@ -44,14 +41,19 @@ describe("state utils", () => {
   it("strips session-scoped values from template-like payloads", () => {
     const stripped = stripSessionScopedValues({
       tripDistance: 90,
-      recurringMiles: 12,
-      annualInsurance: 999,
+      includeTripFuelOverride: 1,
+      tripFuelEfficiency: 29,
+      drivingMileage: { n: 12, u: "yr" as const },
       includeVehicleCost: 0,
       includeAnnualOwnership: 0,
+      annualInsurance: 999,
       purchasePrice: 22000,
     });
 
-    expect(stripped).toEqual({ purchasePrice: 22000 });
+    expect(stripped).toEqual({
+      annualInsurance: 999,
+      purchasePrice: 22000,
+    });
   });
 
   it("normalizes template values and legacy fuel mileage", () => {
@@ -87,7 +89,7 @@ describe("state utils", () => {
     expect(template.values.fuelEfficiency).toBe(32);
     expect(template.values.fuelType).toBe("regular");
     expect(template.values.oilChangeCost).toBe(defaultValues.oilChangeCost);
-    expect(template.values.annualInsurance).toBe(defaultValues.annualInsurance);
+    expect(template.values.annualInsurance).toBe(999);
     expect(template.values.includeVehicleCost).toBe(defaultValues.includeVehicleCost);
   });
 
@@ -111,6 +113,8 @@ describe("state utils", () => {
       model: "Mustang",
       trim: "Mustang::12345",
       fuelType: "regular",
+      vehicleClassBucket: "",
+      manualVehicleEntry: false,
     });
   });
 
@@ -129,6 +133,25 @@ describe("state utils", () => {
     });
 
     expect(draft.trim).toBe("Camry Hybrid LE::47243");
+  });
+
+  it("preserves manual trim text for manual vehicle entries", () => {
+    const draft = getDraftFromVehicle({
+      id: "custom",
+      year: 2024,
+      make: "Ford",
+      model: "F-550",
+      trim: "6.7L Power Stroke / XL",
+      title: "2024 Ford F-550",
+      manualVehicleEntry: true,
+      values: {
+        ...defaultValues,
+        fuelType: "diesel",
+      },
+    });
+
+    expect(draft.trim).toBe("6.7L Power Stroke / XL");
+    expect(draft.manualVehicleEntry).toBe(true);
   });
 
   it("parses valid saved custom vehicle JSON", () => {
@@ -150,7 +173,7 @@ describe("state utils", () => {
     expect(parsed?.title).toBe("2018 Subaru WRX");
     expect(parsed?.values.fuelEfficiency).toBe(24);
     expect(parsed?.values.oilChangeCost).toBe(defaultValues.oilChangeCost);
-    expect(parsed?.values.annualInsurance).toBe(defaultValues.annualInsurance);
+    expect(parsed?.values.annualInsurance).toBe(1);
   });
 
   it("cleans up invalid saved custom vehicle JSON", () => {
@@ -162,7 +185,7 @@ describe("state utils", () => {
     removeItemSpy.mockRestore();
   });
 
-  it("migrates legacy persisted state to the current version with a notice", () => {
+  it("resets legacy persisted state on breaking version changes with a notice", () => {
     const result = migratePersistedCarCostState(
       JSON.stringify({
         selectedSource: "template",
@@ -171,19 +194,21 @@ describe("state utils", () => {
           fuelType: "regular",
           fuelEfficiency: 33,
         },
-        recurringType: "year",
         tripType: "roundTrip",
         updatedAt: "2026-03-15T00:00:00.000Z",
       }),
     );
 
     expect(result.migratedState?.version).toBe(CAR_COST_STATE_VERSION);
-    expect(result.migratedState?.selectedTemplateId).toBe("camry");
-    expect(result.migratedState?.values.fuelEfficiency).toBe(33);
-    expect(result.startupNotice).toContain("older version");
+    expect(result.migratedState?.selectedTemplateId).toBeNull();
+    expect(result.migratedState?.values.fuelEfficiency).toBe(
+      defaultValues.fuelEfficiency,
+    );
+    expect(result.startupNotice).toContain("breaking calculator changes");
+    expect(result.discardSavedCustomVehicle).toBe(true);
   });
 
-  it("falls back to session-level values when a future version cannot be migrated directly", () => {
+  it("resets future incompatible versions to defaults", () => {
     const result = migratePersistedCarCostState(
       JSON.stringify({
         version: 999,
@@ -191,12 +216,11 @@ describe("state utils", () => {
         selectedTemplateId: "future-car",
         values: {
           tripDistance: 321,
-          recurringMiles: 222,
+          drivingMileage: { n: 222, u: "yr" as const },
           annualInsurance: 1900,
           includeVehicleCost: 0,
           purchasePrice: 99999,
         },
-        recurringType: "year",
         tripType: "roundTrip",
         updatedAt: "2026-03-15T00:00:00.000Z",
       }),
@@ -204,10 +228,15 @@ describe("state utils", () => {
 
     expect(result.migratedState?.version).toBe(CAR_COST_STATE_VERSION);
     expect(result.migratedState?.selectedSource).toBe("default");
-    expect(result.migratedState?.values.tripDistance).toBe(321);
-    expect(result.migratedState?.values.annualInsurance).toBe(1900);
+    expect(result.migratedState?.values.tripDistance).toBe(
+      defaultValues.tripDistance,
+    );
+    expect(result.migratedState?.values.annualInsurance).toBe(
+      defaultValues.annualInsurance,
+    );
     expect(result.migratedState?.values.purchasePrice).toBe(defaultValues.purchasePrice);
-    expect(result.startupNotice).toContain("could only keep");
+    expect(result.startupNotice).toContain("could not safely migrate");
+    expect(result.discardSavedCustomVehicle).toBe(true);
   });
 
   it("parses admin analytics state from its dedicated storage object", () => {

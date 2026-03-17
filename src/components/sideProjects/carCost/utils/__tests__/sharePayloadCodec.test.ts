@@ -31,7 +31,7 @@ const regressionFixturePayload = {
       resaleValue: 18000,
       depreciationInterval: 100000,
       tripDistance: 250,
-      recurringMiles: 12000,
+      drivingMileage: { n: 12000, u: "yr" },
       annualInsurance: 2100,
       annualRegistration: 175,
       annualParking: 0,
@@ -47,8 +47,8 @@ const regressionFixturePayload = {
       includeAnnualOwnership: 1,
       includeFinancing: 0,
     },
-    recurringType: "year",
     tripType: "oneWay",
+    tripTireSet: "allSeason",
     updatedAt: "2026-03-17T00:43:03.657Z",
   },
   savedCustomVehicle: {
@@ -73,7 +73,7 @@ const regressionFixturePayload = {
       resaleValue: 18000,
       depreciationInterval: 100000,
       tripDistance: 250,
-      recurringMiles: 12000,
+      drivingMileage: { n: 12000, u: "yr" },
       annualInsurance: 2100,
       annualRegistration: 175,
       annualParking: 0,
@@ -113,8 +113,8 @@ describe("sharePayloadCodec", () => {
         selectedSource: "custom",
         selectedTemplateId: "custom",
         values: defaultValues,
-        recurringType: "year",
         tripType: "oneWay",
+        tripTireSet: "allSeason",
         updatedAt: "2026-03-16T00:00:00.000Z",
       },
       savedCustomVehicle: {
@@ -158,7 +158,7 @@ describe("sharePayloadCodec", () => {
     // format. Once a field receives a shortened token, that token must stay
     // stable forever so previously shared URLs keep decoding correctly.
     const expectedMinifiedJson =
-      '{"a":1,"b":{"a":1,"d":false,"disableAnalyticsLogging":false,"e":"custom","f":"custom","g":{"p":"regular","q":25,"r":2.92,"s":75,"t":7500,"u":900,"v":50000,"w":600,"x":"miles","y":15000,"z":"miles","A":32000,"B":18000,"C":100000,"D":250,"E":12000,"F":2100,"G":175,"H":0,"I":0,"J":100,"K":4000,"L":6.56,"M":72,"N":748,"O":"months","P":1,"Q":1,"R":1,"S":0},"h":"year","i":"oneWay","j":"2026-03-17T00:43:03.657Z"},"c":{"k":"custom","l":2020,"m":"a","n":"sdf","o":"2020 a sdf","g":{"p":"regular","q":25,"r":2.92,"s":75,"t":7500,"u":900,"v":50000,"w":600,"x":"miles","y":15000,"z":"miles","A":32000,"B":18000,"C":100000,"D":250,"E":12000,"F":2100,"G":175,"H":0,"I":0,"J":100,"K":4000,"L":6.56,"M":72,"N":748,"O":"months","P":1,"Q":1,"R":1,"S":0}}}';
+      '{"a":1,"b":{"a":1,"d":false,"disableAnalyticsLogging":false,"e":"custom","f":"custom","g":{"p":"regular","q":25,"r":2.92,"s":75,"t":7500,"u":900,"v":50000,"w":600,"x":"miles","y":15000,"z":"miles","A":32000,"B":18000,"C":100000,"D":250,"aj":{"ae":12000,"af":"yr"},"F":2100,"G":175,"H":0,"I":0,"J":100,"K":4000,"L":6.56,"M":72,"N":748,"O":"months","P":1,"Q":1,"R":1,"S":0},"i":"oneWay","U":"allSeason","j":"2026-03-17T00:43:03.657Z"},"c":{"k":"custom","l":2020,"m":"a","n":"sdf","o":"2020 a sdf","g":{"p":"regular","q":25,"r":2.92,"s":75,"t":7500,"u":900,"v":50000,"w":600,"x":"miles","y":15000,"z":"miles","A":32000,"B":18000,"C":100000,"D":250,"aj":{"ae":12000,"af":"yr"},"F":2100,"G":175,"H":0,"I":0,"J":100,"K":4000,"L":6.56,"M":72,"N":748,"O":"months","P":1,"Q":1,"R":1,"S":0}}}';
 
     expect(JSON.stringify(minifySharePayloadKeys(regressionFixturePayload))).toBe(
       expectedMinifiedJson,
@@ -181,8 +181,8 @@ describe("sharePayloadCodec", () => {
         selectedSource: "custom" as const,
         selectedTemplateId: "custom",
         values: defaultValues,
-        recurringType: "year" as const,
         tripType: "oneWay" as const,
+        tripTireSet: "allSeason" as const,
         updatedAt: "2026-03-16T00:00:00.000Z",
       },
       savedCustomVehicle: {

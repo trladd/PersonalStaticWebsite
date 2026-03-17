@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { defaultValues } from "../config/constants";
 import {
   CustomVehicleDraft,
-  CustomVehicleField,
   SelectedVehicleLookupDetails,
   VehicleLookupOption,
 } from "../types";
@@ -15,7 +14,13 @@ import {
   getVehicleLookupYears,
 } from "./vehicleData";
 
-type VehicleLookupField = Extract<CustomVehicleField, "year" | "make" | "model" | "trim">;
+type VehicleLookupField =
+  | "year"
+  | "make"
+  | "model"
+  | "trim"
+  | "vehicleClassBucket"
+  | "manualVehicleEntry";
 
 type VehicleLookupProps = {
   draft: CustomVehicleDraft;
@@ -39,6 +44,10 @@ export const useVehicleLookup = ({
   const [isLoadingVehicleDetails, setIsLoadingVehicleDetails] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [trimNotRequired, setTrimNotRequired] = useState(false);
+  const [requiresManualCategory, setRequiresManualCategory] = useState(false);
+  const [manualCategoryMessage, setManualCategoryMessage] = useState<string | null>(
+    null,
+  );
 
   const yearOptions = useMemo(
     () =>
@@ -51,6 +60,10 @@ export const useVehicleLookup = ({
 
   useEffect(() => {
     const parsedYear = Number(draft.year);
+    if (draft.manualVehicleEntry) {
+      setMakeOptions(EMPTY_OPTIONS);
+      return;
+    }
     if (!draft.year || !Number.isInteger(parsedYear)) {
       setMakeOptions(EMPTY_OPTIONS);
       return;
@@ -85,10 +98,14 @@ export const useVehicleLookup = ({
     return () => {
       isMounted = false;
     };
-  }, [draft.year]);
+  }, [draft.manualVehicleEntry, draft.year]);
 
   useEffect(() => {
     const parsedYear = Number(draft.year);
+    if (draft.manualVehicleEntry) {
+      setModelOptions(EMPTY_OPTIONS);
+      return;
+    }
     if (!draft.year || !draft.make || !Number.isInteger(parsedYear)) {
       setModelOptions(EMPTY_OPTIONS);
       return;
@@ -123,14 +140,26 @@ export const useVehicleLookup = ({
     return () => {
       isMounted = false;
     };
-  }, [draft.make, draft.year]);
+  }, [draft.make, draft.manualVehicleEntry, draft.year]);
 
   useEffect(() => {
     const parsedYear = Number(draft.year);
+    if (draft.manualVehicleEntry) {
+      setTrimOptions(EMPTY_OPTIONS);
+      setSelectedVehicleDetails(null);
+      setTrimNotRequired(true);
+      setRequiresManualCategory(true);
+      setManualCategoryMessage(
+        "That is okay. If your vehicle is not in the free government data sets, you can enter it manually. Choose the closest category and provide fuel economy details, and the calculator will still work well with a little more manual attention.",
+      );
+      return;
+    }
     if (!draft.year || !draft.make || !draft.model || !Number.isInteger(parsedYear)) {
       setTrimOptions(EMPTY_OPTIONS);
       setSelectedVehicleDetails(null);
       setTrimNotRequired(false);
+      setRequiresManualCategory(false);
+      setManualCategoryMessage(null);
       return;
     }
 
@@ -139,6 +168,8 @@ export const useVehicleLookup = ({
     setLookupError(null);
     setSelectedVehicleDetails(null);
     setTrimNotRequired(false);
+    setRequiresManualCategory(false);
+    setManualCategoryMessage(null);
 
     fetchVehicleTrimOptions(parsedYear, draft.make, draft.model)
       .then((options) => {
@@ -157,6 +188,10 @@ export const useVehicleLookup = ({
 
         if (options.length === 0) {
           setTrimNotRequired(true);
+          setRequiresManualCategory(true);
+          setManualCategoryMessage(
+            "We could not find EPA trim-level fuel economy data for this vehicle. This often happens for heavier-duty trucks or less-complete government records. Choose the closest vehicle category so we can set rough defaults, then review the numbers manually.",
+          );
         }
       })
       .catch(() => {
@@ -165,8 +200,10 @@ export const useVehicleLookup = ({
         }
 
         setTrimOptions(EMPTY_OPTIONS);
-        setLookupError(
-          "We couldn't resolve trim-level fuel economy data for that model.",
+        setTrimNotRequired(true);
+        setRequiresManualCategory(true);
+        setManualCategoryMessage(
+          "We could not resolve EPA trim-level fuel economy data for this vehicle. Choose the closest vehicle category so we can set rough defaults, then review the details manually.",
         );
       })
       .finally(() => {
@@ -178,11 +215,19 @@ export const useVehicleLookup = ({
     return () => {
       isMounted = false;
     };
-  }, [draft.make, draft.model, draft.trim, draft.year, setDraft]);
+  }, [draft.make, draft.manualVehicleEntry, draft.model, draft.trim, draft.year, setDraft]);
 
   useEffect(() => {
+    if (draft.manualVehicleEntry) {
+      setSelectedVehicleDetails(null);
+      return;
+    }
     if (!draft.trim) {
       setSelectedVehicleDetails(null);
+      if (!trimNotRequired) {
+        setRequiresManualCategory(false);
+        setManualCategoryMessage(null);
+      }
       return;
     }
 
@@ -197,9 +242,12 @@ export const useVehicleLookup = ({
         }
 
         setSelectedVehicleDetails(details);
+        setRequiresManualCategory(false);
+        setManualCategoryMessage(null);
         setDraft((current) => ({
           ...current,
           fuelType: details.fuelType,
+          vehicleClassBucket: details.lookupSummary.vehicleClassBucket,
         }));
       })
       .catch(() => {
@@ -208,7 +256,10 @@ export const useVehicleLookup = ({
         }
 
         setSelectedVehicleDetails(null);
-        setLookupError("We couldn't load the detailed fuel economy for that trim.");
+        setRequiresManualCategory(true);
+        setManualCategoryMessage(
+          "We found the vehicle, but the free EPA detail record is incomplete for this trim. Choose the closest vehicle category so we can apply rough defaults, then review the entered values manually.",
+        );
       })
       .finally(() => {
         if (isMounted) {
@@ -219,7 +270,7 @@ export const useVehicleLookup = ({
     return () => {
       isMounted = false;
     };
-  }, [draft.trim, setDraft]);
+  }, [draft.manualVehicleEntry, draft.trim, setDraft, trimNotRequired]);
 
   const setLookupField = (field: VehicleLookupField, value: string) => {
     setLookupError(null);
@@ -232,6 +283,7 @@ export const useVehicleLookup = ({
           model: "",
           trim: "",
           fuelType: defaultValues.fuelType,
+          vehicleClassBucket: "",
         };
       }
 
@@ -242,6 +294,7 @@ export const useVehicleLookup = ({
           model: "",
           trim: "",
           fuelType: defaultValues.fuelType,
+          vehicleClassBucket: "",
         };
       }
 
@@ -251,6 +304,27 @@ export const useVehicleLookup = ({
           model: value,
           trim: "",
           fuelType: defaultValues.fuelType,
+          vehicleClassBucket: "",
+        };
+      }
+
+      if (field === "vehicleClassBucket") {
+        return {
+          ...current,
+          vehicleClassBucket: value as typeof current.vehicleClassBucket,
+        };
+      }
+
+      if (field === "manualVehicleEntry") {
+        const isEnabled = value === "1";
+        return {
+          ...current,
+          manualVehicleEntry: isEnabled,
+          make: isEnabled ? current.make : "",
+          model: isEnabled ? current.model : "",
+          trim: isEnabled ? current.trim : "",
+          vehicleClassBucket: isEnabled ? current.vehicleClassBucket : "",
+          fuelType: isEnabled ? current.fuelType : defaultValues.fuelType,
         };
       }
 
@@ -267,6 +341,8 @@ export const useVehicleLookup = ({
     modelOptions,
     trimOptions,
     trimNotRequired,
+    requiresManualCategory,
+    manualCategoryMessage,
     selectedVehicleDetails,
     selectedVehicleSummary: buildVehicleDetailsSummary(selectedVehicleDetails),
     isLoadingMakes,

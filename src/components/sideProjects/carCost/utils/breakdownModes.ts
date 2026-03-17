@@ -1,8 +1,9 @@
 import { BreakdownMode, CostBreakdownViewerMode } from "../components/CostBreakdownViewer";
-import { CarCostValues } from "../types";
+import { CarCostValues, VehicleLookupSummary } from "../types";
 import { BreakdownItemDetail } from "../components/BreakdownItemDetailModal";
 import { CarCostCalculations } from "./calculations";
 import { formatCurrency, formatNumber, isToggleEnabled } from "./formatters";
+import { buildFuelDetailSections } from "./fuelInsights";
 
 type BreakdownItem = CostBreakdownViewerMode["items"][number];
 
@@ -144,6 +145,95 @@ const buildOwnershipSegments = (values: CarCostValues, factor: number) =>
     },
   ].filter((segment) => segment.value > 0);
 
+const getOilReplacementTrigger = (
+  values: CarCostValues,
+  calculations: CarCostCalculations,
+) => {
+  const timeLimitedMiles =
+    values.oilChangeMaxMonths > 0
+      ? calculations.annualMileage * (values.oilChangeMaxMonths / 12)
+      : Number.POSITIVE_INFINITY;
+
+  return timeLimitedMiles < values.oilChangeInterval ? "Time" : "Mileage";
+};
+
+const getTireReplacementTrigger = (
+  treadLifeMiles: number,
+  maxAgeYears: number,
+  annualDrivenMiles: number,
+) => {
+  const ageLimitedMiles =
+    maxAgeYears > 0 && annualDrivenMiles > 0
+      ? annualDrivenMiles * maxAgeYears
+      : Number.POSITIVE_INFINITY;
+
+  return ageLimitedMiles < treadLifeMiles ? "Age" : "Tread";
+};
+
+const getAnnualMileageThresholdForTreadLimit = (
+  treadLifeMiles: number,
+  maxAgeYears: number,
+  usageShare: number,
+) => {
+  if (treadLifeMiles <= 0 || maxAgeYears <= 0 || usageShare <= 0) {
+    return null;
+  }
+
+  const threshold = treadLifeMiles / (maxAgeYears * usageShare);
+  return Number.isFinite(threshold) && threshold > 0 ? threshold : null;
+};
+
+const buildAgeLimitedTireCallout = ({
+  setLabel,
+  trigger,
+  treadLifeMiles,
+  maxAgeYears,
+  annualMileage,
+  usageShare,
+  mentionCalendarParity = false,
+}: {
+  setLabel: string;
+  trigger: "Age" | "Tread";
+  treadLifeMiles: number;
+  maxAgeYears: number;
+  annualMileage: number;
+  usageShare: number;
+  mentionCalendarParity?: boolean;
+}) => {
+  if (trigger !== "Age") {
+    return undefined;
+  }
+
+  const threshold = getAnnualMileageThresholdForTreadLimit(
+    treadLifeMiles,
+    maxAgeYears,
+    usageShare,
+  );
+
+  if (!threshold || threshold <= annualMileage) {
+    return undefined;
+  }
+
+  const additionalMileage = threshold - annualMileage;
+  const shareNote =
+    usageShare > 0 && usageShare < 1
+      ? ` At your current seasonal split, that assumes about ${formatNumber(
+          threshold * usageShare,
+        )} miles per year on this set.`
+      : "";
+  const calendarNote = mentionCalendarParity
+    ? " Because the limit is calendar age, this set can show a similar replacement count to your primary tires even though it sees fewer miles."
+    : "";
+
+  return {
+    title: `${setLabel} are aging out first`,
+    body: `You could drive about ${formatNumber(
+      additionalMileage,
+    )} more miles per year overall before tread would overtake age as the replacement limit for this set.${shareNote}${calendarNote}`,
+    tone: "success" as const,
+  };
+};
+
 const buildServiceMetrics = ({
   costValue,
   serviceCost,
@@ -188,6 +278,7 @@ const buildServiceMetrics = ({
 const buildModeItems = (
   values: CarCostValues,
   calculations: CarCostCalculations,
+  vehicleLookupSummary: VehicleLookupSummary | null | undefined,
   recurringOwnershipByPeriod: ReturnType<typeof buildRecurringOwnershipByPeriod>,
   recurringFinanceByPeriod: ReturnType<typeof buildRecurringFinanceByPeriod>,
   modeKey: BreakdownMode,
@@ -208,7 +299,9 @@ const buildModeItems = (
   const tireValue =
     modeKey === "overall"
       ? calculations.overallItems.tires
-      : calculations.tireCostPerMile * miles;
+      : modeKey === "trip"
+        ? calculations.tripTireCostPerMile * miles
+        : calculations.tireCostPerMile * miles;
   const miscValue =
     modeKey === "overall"
       ? calculations.overallItems.misc
@@ -223,7 +316,7 @@ const buildModeItems = (
     modeKey === "overall"
       ? calculations.overallItems.ownership
       : modeKey === "trip"
-        ? calculations.fixedCostPerMile * miles
+        ? 0
         : modeKey === "mile"
           ? calculations.fixedCostPerMile
           : recurringOwnershipByPeriod[modeKey as "day" | "week" | "month" | "year"];
@@ -231,13 +324,29 @@ const buildModeItems = (
     modeKey === "overall"
       ? calculations.overallItems.financing
       : modeKey === "trip"
-        ? calculations.financeCostPerMile * miles
+        ? 0
         : modeKey === "mile"
           ? calculations.financeCostPerMile
           : recurringFinanceByPeriod[modeKey as "day" | "week" | "month" | "year"];
 
   const ownershipFactor = getOwnershipFactor(calculations, modeKey, miles);
   const ownershipSegments = buildOwnershipSegments(values, ownershipFactor);
+  const winterUsageShare = isToggleEnabled(values.includeWinterTires)
+    ? Math.min(Math.max(values.winterTireMonths, 1), 11) / 12
+    : 0;
+  const primaryUsageShare = Math.max(0, 1 - winterUsageShare);
+  const primaryAnnualSetMiles = calculations.annualMileage * primaryUsageShare;
+  const winterAnnualSetMiles = calculations.annualMileage * winterUsageShare;
+  const primaryTireTrigger = getTireReplacementTrigger(
+    values.tireInterval,
+    values.tireMaxAgeYears,
+    primaryAnnualSetMiles,
+  );
+  const winterTireTrigger = getTireReplacementTrigger(
+    values.winterTireInterval,
+    values.winterTireMaxAgeYears,
+    winterAnnualSetMiles,
+  );
 
   const depreciationDetail: BreakdownItemDetail = {
     title: `${vehicleValueLabel} for ${modeLabel.toLowerCase()}`,
@@ -288,35 +397,19 @@ const buildModeItems = (
           values.fuelType === "electric"
             ? `Energy usage for ${unitLabel}.`
             : `Fuel usage for ${unitLabel}.`,
-        metrics: [
-          {
-            label: `Cost in this ${modeLabel.toLowerCase()} view`,
-            value: formatCurrency(fuelValue),
-          },
-          {
-            label:
-              values.fuelType === "electric"
-                ? "Estimated kWh used"
-                : "Estimated gallons used",
-            value: formatNumber(
-              values.fuelUnitPrice > 0 ? fuelValue / values.fuelUnitPrice : 0,
-              2,
-            ),
-          },
-          {
-            label:
-              values.fuelType === "electric" ? "Electricity rate" : "Fuel price",
-            value: `${formatCurrency(values.fuelUnitPrice)} per ${
-              values.fuelType === "electric" ? "kWh" : "gallon"
-            }`,
-          },
-          {
-            label: values.fuelType === "electric" ? "Efficiency" : "Fuel mileage",
-            value: `${formatNumber(values.fuelEfficiency, 1)} ${
-              values.fuelType === "electric" ? "mi/kWh" : "mpg"
-            }`,
-          },
-        ],
+        sections: buildFuelDetailSections({
+          fuelValue,
+          modeLabel,
+          miles,
+          fuelUnitPrice: values.fuelUnitPrice,
+          fuelEfficiencyUsed:
+            modeKey === "trip"
+              ? calculations.tripFuelEfficiencyUsed
+              : values.fuelEfficiency,
+          vehicleLookupSummary,
+          isTripOverrideActive:
+            modeKey === "trip" && isToggleEnabled(values.includeTripFuelOverride),
+        }),
         steps: [
           values.fuelType === "electric"
             ? "The calculator estimates total energy used, then multiplies by your electricity cost per kWh."
@@ -335,11 +428,33 @@ const buildModeItems = (
         metrics: buildServiceMetrics({
           costValue: oilValue,
           serviceCost: values.oilChangeCost,
-          serviceIntervalLabel: "Oil change interval",
-          serviceIntervalValue: values.oilChangeInterval,
+          serviceIntervalLabel: "Effective oil interval",
+          serviceIntervalValue: calculations.oilEffectiveIntervalMiles,
           unitNoun: "miles",
           modeLabel,
-        }).concat([{ label: "Oil change cost", value: formatCurrency(values.oilChangeCost) }]),
+        }).concat([
+          { label: "Oil change cost", value: formatCurrency(values.oilChangeCost) },
+          {
+            label: "Mileage-based interval",
+            value: `${formatNumber(values.oilChangeInterval)} miles`,
+          },
+          {
+            label: "Max time",
+            value: `${formatNumber(values.oilChangeMaxMonths)} months`,
+          },
+          {
+            label: "Replacement trigger",
+            value: getOilReplacementTrigger(values, calculations),
+          },
+          {
+            label: "Oil changes over ownership",
+            value: formatNumber(calculations.oilChangesUsedOverOwnership, 2),
+          },
+          {
+            label: "Oil life remaining at sale",
+            value: `${formatNumber(calculations.oilRemainingLifePercentAtSale, 1)}%`,
+          },
+        ]),
         steps: [
           `Equivalent oil changes = ${formatCurrency(oilValue)} / ${formatCurrency(
             values.oilChangeCost,
@@ -347,6 +462,11 @@ const buildModeItems = (
             values.oilChangeCost > 0 ? oilValue / values.oilChangeCost : 0,
             2,
           )}.`,
+          `The calculator uses whichever comes first: ${formatNumber(
+            values.oilChangeInterval,
+          )} miles or about ${formatNumber(values.oilChangeMaxMonths)} months, which works out to roughly ${formatNumber(
+            calculations.oilEffectiveIntervalMiles,
+          )} miles at your current annual driving pace.`,
           `That tells you what share of one oil change, or how many full oil changes, this ${modeLabel.toLowerCase()} uses.`,
         ],
       },
@@ -357,62 +477,223 @@ const buildModeItems = (
       color: colors.tires,
       detail: {
         title: `Tire detail for ${modeLabel.toLowerCase()}`,
-        subtitle: `How much of a tire set this ${unitLabel} uses up.`,
-        metrics: buildServiceMetrics({
-          costValue: tireValue,
-          serviceCost: values.tireCost,
-          serviceIntervalLabel: "Tire interval",
-          serviceIntervalValue: values.tireInterval,
-          unitNoun: "miles",
-          modeLabel,
-        }).concat([{ label: "Tire set cost", value: formatCurrency(values.tireCost) }]),
+        subtitle:
+          "Shows which tire set is limiting cost, whether age or tread is causing replacement, and how much usable life remains at sale.",
+        sections: [
+          {
+            title: "Overview",
+            eyebrow: "At a glance",
+            fullWidth: true,
+            rows: [
+              {
+                label: `Cost in this ${modeLabel.toLowerCase()} view`,
+                value: formatCurrency(tireValue),
+              },
+              {
+                label: "Primary tire usage",
+                value: `${formatNumber(primaryAnnualSetMiles)} miles / year`,
+                hint: isToggleEnabled(values.includeWinterTires)
+                  ? `${formatNumber(primaryUsageShare * 100, 1)}% of your annual driving is assigned to the primary set.`
+                  : "All annual miles are assigned to the primary set.",
+              },
+              ...(isToggleEnabled(values.includeWinterTires)
+                ? [
+                    {
+                      label: "Winter tire usage",
+                      value: `${formatNumber(winterAnnualSetMiles)} miles / year`,
+                      hint: `${formatNumber(values.winterTireMonths)} months of winter usage assigns ${formatNumber(
+                        winterUsageShare * 100,
+                        1,
+                      )}% of yearly driving to the winter set.`,
+                    },
+                  ]
+                : []),
+            ],
+          },
+          {
+            title: "Primary tires",
+            eyebrow: "All-season or summer set",
+            rows: [
+              {
+                label: "Replacement trigger",
+                value: primaryTireTrigger,
+                hint:
+                  primaryTireTrigger === "Age"
+                    ? "Calendar age will force replacement before the tread is fully consumed."
+                    : "Tread wear will consume this set before age does.",
+              },
+              {
+                label: "Effective life",
+                value: `${formatNumber(calculations.primaryTireEffectiveMiles)} miles`,
+                hint: `Compared against ${formatNumber(values.tireInterval)} miles of tread life and a ${formatNumber(
+                  values.tireMaxAgeYears,
+                )}-year age cap.`,
+              },
+              {
+                label: "Sets used over ownership",
+                value: formatNumber(calculations.primaryTireSetsUsedOverOwnership, 2),
+              },
+              {
+                label: "Remaining tread at sale",
+                value: `${formatNumber(
+                  calculations.primaryTireRemainingTreadPercentAtSale,
+                  1,
+                )}%`,
+              },
+            ],
+            callout: buildAgeLimitedTireCallout({
+              setLabel: "Primary tires",
+              trigger: primaryTireTrigger,
+              treadLifeMiles: values.tireInterval,
+              maxAgeYears: values.tireMaxAgeYears,
+              annualMileage: calculations.annualMileage,
+              usageShare: primaryUsageShare,
+            }),
+          },
+          ...(isToggleEnabled(values.includeWinterTires)
+            ? [
+                {
+                  title: "Winter tires",
+                  eyebrow: "Seasonal set",
+                  rows: [
+                    {
+                      label: "Replacement trigger",
+                      value: winterTireTrigger,
+                      hint:
+                        winterTireTrigger === "Age"
+                          ? "Calendar age is forcing winter-tire replacement before the tread is worn out."
+                          : "Winter tread wear will consume this set before age does.",
+                    },
+                    {
+                      label: "Effective life",
+                      value: `${formatNumber(calculations.winterTireEffectiveMiles)} miles`,
+                      hint: `Compared against ${formatNumber(
+                        values.winterTireInterval,
+                      )} miles of winter tread life and a ${formatNumber(
+                        values.winterTireMaxAgeYears,
+                      )}-year age cap.`,
+                    },
+                    {
+                      label: "Sets used over ownership",
+                      value: formatNumber(
+                        calculations.winterTireSetsUsedOverOwnership,
+                        2,
+                      ),
+                    },
+                    {
+                      label: "Remaining tread at sale",
+                      value: `${formatNumber(
+                        calculations.winterTireRemainingTreadPercentAtSale,
+                        1,
+                      )}%`,
+                    },
+                  ],
+                  callout: buildAgeLimitedTireCallout({
+                    setLabel: "Winter tires",
+                    trigger: winterTireTrigger,
+                    treadLifeMiles: values.winterTireInterval,
+                    maxAgeYears: values.winterTireMaxAgeYears,
+                    annualMileage: calculations.annualMileage,
+                    usageShare: winterUsageShare,
+                    mentionCalendarParity:
+                      primaryTireTrigger === "Age" && winterTireTrigger === "Age",
+                  }),
+                },
+              ]
+            : []),
+        ],
         steps: [
-          `Equivalent tire sets = ${formatCurrency(tireValue)} / ${formatCurrency(
-            values.tireCost,
-          )}.`,
-          "This tells you the percentage of one set used, or how many full sets would be consumed over this view.",
+          "Each tire set is replaced by whichever comes first: tread wear or maximum age.",
+          isToggleEnabled(values.includeWinterTires)
+            ? "Recurring and ownership views split mileage between the primary and winter sets using your winter-month setting, then evaluate each set on its own tread life and max age."
+            : "This shows how many primary tire sets you are likely to consume over ownership and how much tread is likely to remain when you sell.",
         ],
       },
     },
     {
-      label: "Misc. maintenance",
+      label: "Additional maintenance",
       value: miscValue,
       color: colors.misc,
       detail: {
-        title: `Misc. maintenance detail for ${modeLabel.toLowerCase()}`,
-        subtitle: `How the miscellaneous maintenance allowance contributes to this ${modeLabel.toLowerCase()}.`,
-        metrics: buildServiceMetrics({
-          costValue: miscValue,
-          serviceCost: values.miscMaintenanceCost,
-          serviceIntervalLabel: "Maintenance interval",
-          serviceIntervalValue: values.miscMaintenanceInterval,
-          unitNoun:
-            values.miscMaintenanceBasis === "miles"
-              ? "miles"
-              : values.miscMaintenanceBasis === "month"
-                ? "months"
-                : "years",
-          modeLabel,
-        }).concat([
+        title: `Additional maintenance detail for ${modeLabel.toLowerCase()}`,
+        subtitle:
+          "Breaks long-term upkeep into routine additional maintenance and any advanced categories you turned on.",
+        sections: [
           {
-            label: "Maintenance event cost",
-            value: formatCurrency(values.miscMaintenanceCost),
+            title: "Additional maintenance",
+            eyebrow: "Base upkeep",
+            rows: [
+              {
+                label: "Cost in this view",
+                value: formatCurrency(miscValue),
+              },
+              {
+                label: "Maintenance event cost",
+                value: formatCurrency(values.miscMaintenanceCost),
+              },
+              {
+                label: "Cadence",
+                value: `${formatNumber(values.miscMaintenanceSchedule.v.n)} ${
+                  values.miscMaintenanceSchedule.t === "d"
+                    ? "miles"
+                    : values.miscMaintenanceSchedule.v.u === "month"
+                      ? "months"
+                      : "years"
+                }`,
+              },
+              {
+                label: "Annualized base upkeep",
+                value: formatCurrency(calculations.miscAnnualCost),
+              },
+            ],
           },
-          {
-            label: "Basis",
-            value:
-              values.miscMaintenanceBasis === "miles"
-                ? "Mileage-based"
-                : values.miscMaintenanceBasis === "month"
-                  ? "Month-based"
-                  : "Year-based",
-          },
-        ]),
+          ...(isToggleEnabled(values.showAdvancedMaintenance)
+            ? [
+                {
+                  title: "Advanced maintenance",
+                  eyebrow: "Longer-cycle service",
+                  fullWidth: true,
+                  rows: [
+                    {
+                      label: "Brakes annualized",
+                      value: formatCurrency(calculations.brakeAnnualCost),
+                      hint:
+                        "Brake service can include pads, rotors, hardware, wear sensors, and sometimes brake fluid.",
+                    },
+                    {
+                      label: "Battery annualized",
+                      value: formatCurrency(calculations.batteryAnnualCost),
+                    },
+                    {
+                      label: "Major service annualized",
+                      value: formatCurrency(calculations.majorServiceAnnualCost),
+                      hint:
+                        "Major service is a good place for transmission fluid, differential fluid, coolant, brake fluid, spark plugs, or other milestone maintenance.",
+                    },
+                    {
+                      label: "Repair buffer annualized",
+                      value: formatCurrency(calculations.repairBufferAnnualCost),
+                      hint:
+                        "This reserve helps represent irregular repair items like sensors, AC work, bearings, leaks, and suspension parts.",
+                    },
+                  ],
+                },
+              ]
+            : []),
+        ],
+        pieTitle: "Maintenance category mix",
+        pieSegments: [
+          { label: "Additional maintenance", value: calculations.miscAnnualCost, color: colors.misc },
+          { label: "Brakes", value: calculations.brakeAnnualCost, color: "#c98b4a" },
+          { label: "Battery", value: calculations.batteryAnnualCost, color: "#d7a76b" },
+          { label: "Major service", value: calculations.majorServiceAnnualCost, color: "#8f633c" },
+          { label: "Repair buffer", value: calculations.repairBufferAnnualCost, color: "#b56f53" },
+        ].filter((segment) => segment.value > 0),
         steps: [
-          `Equivalent maintenance events = ${formatCurrency(miscValue)} / ${formatCurrency(
-            values.miscMaintenanceCost,
-          )}.`,
-          "The same allowance can be spread by miles, months, or years depending on how you track maintenance.",
+          "Additional maintenance is for recurring upkeep that does not belong in oil or tires, such as filters, small fluids, alignments, and similar routine items.",
+          isToggleEnabled(values.showAdvancedMaintenance)
+            ? "Advanced maintenance adds brakes, battery replacements, major milestone services, and a repair reserve so longer-cycle work is represented instead of surprising you later."
+            : "Turn on advanced maintenance to also include brakes, battery, major service, and a repair buffer here.",
         ],
       },
     },
@@ -520,6 +801,7 @@ const buildModeItems = (
 export const buildBreakdownModes = (
   values: CarCostValues,
   calculations: CarCostCalculations,
+  vehicleLookupSummary?: VehicleLookupSummary | null,
 ): CostBreakdownViewerMode[] => {
   const recurringMilesByPeriod = buildRecurringMilesByPeriod(
     calculations.annualMileage,
@@ -542,11 +824,12 @@ export const buildBreakdownModes = (
         unitLabel: recurringModeMeta[key].unitLabel,
         total: calculations.recurringTrueCosts[key],
         items: buildModeItems(
-          values,
-          calculations,
-          recurringOwnershipByPeriod,
-          recurringFinanceByPeriod,
-          key,
+        values,
+        calculations,
+        vehicleLookupSummary,
+        recurringOwnershipByPeriod,
+        recurringFinanceByPeriod,
+        key,
           recurringModeMeta[key].label,
           recurringModeMeta[key].unitLabel,
           miles,
@@ -566,6 +849,7 @@ export const buildBreakdownModes = (
       items: buildModeItems(
         values,
         calculations,
+        vehicleLookupSummary,
         recurringOwnershipByPeriod,
         recurringFinanceByPeriod,
         "mile",
@@ -579,12 +863,13 @@ export const buildBreakdownModes = (
       label: "Trip",
       description: `This allocates the selected trip distance of ${formatNumber(
         calculations.selectedTripDistance,
-      )} miles across fuel, maintenance, depreciation, and ownership overhead.`,
+      )} miles across fuel, maintenance, tire wear, and depreciation.`,
       unitLabel: `${formatNumber(calculations.selectedTripDistance)} mi trip`,
       total: calculations.tripCost,
       items: buildModeItems(
         values,
         calculations,
+        vehicleLookupSummary,
         recurringOwnershipByPeriod,
         recurringFinanceByPeriod,
         "trip",
@@ -610,6 +895,7 @@ export const buildBreakdownModes = (
       items: buildModeItems(
         values,
         calculations,
+        vehicleLookupSummary,
         recurringOwnershipByPeriod,
         recurringFinanceByPeriod,
         "overall",
