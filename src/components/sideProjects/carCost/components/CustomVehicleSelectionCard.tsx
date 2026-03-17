@@ -60,10 +60,18 @@ type Props = {
   startupAnnualMileageValue: string;
   startupAnnualMileageTouched: boolean;
   startupAnnualMileageError: string;
+  startupPurchasePriceValue: string;
+  startupPurchasePriceTouched: boolean;
+  startupPurchasePriceError: string;
   handleStartupAnnualMileageChange: (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => void;
   handleStartupAnnualMileageBlur: () => void;
+  handleStartupPurchasePriceChange: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void;
+  handleStartupPurchasePriceFocus: () => void;
+  handleStartupPurchasePriceBlur: () => void;
   setCustomVehicleTouched: React.Dispatch<
     React.SetStateAction<Record<CustomVehicleField, boolean>>
   >;
@@ -113,12 +121,46 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
   startupAnnualMileageValue,
   startupAnnualMileageTouched,
   startupAnnualMileageError,
+  startupPurchasePriceValue,
+  startupPurchasePriceTouched,
+  startupPurchasePriceError,
   handleStartupAnnualMileageChange,
   handleStartupAnnualMileageBlur,
+  handleStartupPurchasePriceChange,
+  handleStartupPurchasePriceFocus,
+  handleStartupPurchasePriceBlur,
   setCustomVehicleTouched,
   setShowCustomVehicleValidation,
   handleStartWithOwnCar,
 }) => {
+  const tooltipIconStyle: React.CSSProperties = {
+    fontSize: "0.95rem",
+    marginLeft: "0.35rem",
+    verticalAlign: "middle",
+    cursor: "help",
+    color: palette.muted,
+  };
+
+  const renderTooltipLabel = (
+    htmlFor: string,
+    label: string,
+    tooltip: string,
+  ) => (
+    <label
+      htmlFor={htmlFor}
+      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+    >
+      {label}
+      <i
+        className="material-icons tiny tooltipped"
+        data-tooltip={tooltip}
+        style={tooltipIconStyle}
+      >
+        info_outline
+      </i>
+    </label>
+  );
+
   const renderSelectField = (
     field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
     label: string,
@@ -243,12 +285,43 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
             )
           : null}
         <div className="col s12">
-          <label
-            htmlFor="startupAnnualMiles"
-            style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+          {renderTooltipLabel(
+            "startupPurchasePrice",
+            "Purchase price",
+            "Why do we need this? It helps us estimate depreciation and overall ownership cost. You can change it later.",
+          )}
+          <div
+            style={
+              startupPurchasePriceTouched && startupPurchasePriceError
+                ? styles.invalidInputContainerStyle
+                : styles.inputContainerStyle
+            }
           >
-            Annual miles driven
-          </label>
+            <input
+              id="startupPurchasePrice"
+              type="text"
+              inputMode="decimal"
+              value={startupPurchasePriceValue}
+              onChange={handleStartupPurchasePriceChange}
+              onFocus={handleStartupPurchasePriceFocus}
+              onBlur={handleStartupPurchasePriceBlur}
+              placeholder="$32,000.00"
+              style={styles.inputStyle}
+              className="car-cost-placeholder"
+            />
+          </div>
+          {startupPurchasePriceTouched && startupPurchasePriceError ? (
+            <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+              {startupPurchasePriceError}
+            </small>
+          ) : null}
+        </div>
+        <div className="col s12">
+          {renderTooltipLabel(
+            "startupAnnualMiles",
+            "Annual miles driven",
+            "Why do we need this? It helps convert ownership costs into meaningful per-mile estimates. You can change it later.",
+          )}
           <div
             style={
               startupAnnualMileageTouched && startupAnnualMileageError
@@ -269,9 +342,6 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
               className="car-cost-placeholder"
             />
           </div>
-          <small style={{ display: "block", color: palette.muted, marginTop: "0.35rem" }}>
-            This uses the same annual driving assumption as the main calculator.
-          </small>
           {startupAnnualMileageTouched && startupAnnualMileageError ? (
             <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
               {startupAnnualMileageError}
@@ -326,13 +396,6 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
                 )}`
               : ""}
           </p>
-          <p style={{ margin: "0.35rem 0 0", color: palette.muted, fontSize: "0.92rem" }}>
-            {selectedVehicleSummary.purchasePrice !== null
-              ? `MSRP defaulted to ${formatCurrency(
-                  selectedVehicleSummary.purchasePrice,
-                )}.`
-              : "MSRP was not available from the free data source, so purchase price will stay on the calculator default."}
-          </p>
         </div>
       ) : null}
       {showCustomVehicleValidation && !isCustomVehicleValid ? (
@@ -351,6 +414,7 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
             });
             setShowCustomVehicleValidation(true);
             handleStartupAnnualMileageBlur();
+            handleStartupPurchasePriceBlur();
           }
         }}
         onTouchStart={() => {
@@ -363,6 +427,7 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
             });
             setShowCustomVehicleValidation(true);
             handleStartupAnnualMileageBlur();
+            handleStartupPurchasePriceBlur();
           }
         }}
       >

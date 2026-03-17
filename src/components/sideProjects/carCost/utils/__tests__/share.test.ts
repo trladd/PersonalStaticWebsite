@@ -29,6 +29,7 @@ describe("share utils", () => {
         values: defaultValues,
         recurringType: "year",
         tripType: "oneWay",
+        tripTireSet: "allSeason",
         updatedAt: "2026-03-16T00:00:00.000Z",
       },
     });
@@ -51,6 +52,7 @@ describe("share utils", () => {
       values: defaultValues,
       recurringType: "year" as const,
       tripType: "oneWay" as const,
+      tripTireSet: "allSeason" as const,
       updatedAt: "2026-03-16T00:00:00.000Z",
     };
     const savedCustomVehicle = {

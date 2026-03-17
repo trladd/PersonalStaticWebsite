@@ -154,6 +154,11 @@
     },
     {
       "status": "Todo",
+      "title": "Set more default cost categories from fetched vehicle class data when a reliable source is available",
+      "points": 5
+    },
+    {
+      "status": "Todo",
       "title": "Support multiple unit systems, including metric",
       "points": 5
     },

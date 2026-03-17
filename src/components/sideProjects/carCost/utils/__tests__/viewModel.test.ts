@@ -74,6 +74,7 @@ describe("viewModel utils", () => {
       },
       "year",
       "roundTrip",
+      "allSeason",
     );
 
     const tooltips = buildVehicleTooltips(
@@ -90,7 +91,12 @@ describe("viewModel utils", () => {
   });
 
   it("builds insights and filters them by associated category", () => {
-    const calculations = calculateCarCost(defaultValues, "year", "roundTrip");
+    const calculations = calculateCarCost(
+      defaultValues,
+      "year",
+      "roundTrip",
+      "allSeason",
+    );
     const insights = buildInsights(calculations, [
       {
         id: "irs",

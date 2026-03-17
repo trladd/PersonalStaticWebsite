@@ -76,10 +76,18 @@ type StartupModalProps = {
   startupAnnualMileageValue: string;
   startupAnnualMileageTouched: boolean;
   startupAnnualMileageError: string;
+  startupPurchasePriceValue: string;
+  startupPurchasePriceTouched: boolean;
+  startupPurchasePriceError: string;
   handleStartupAnnualMileageChange: (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => void;
   handleStartupAnnualMileageBlur: () => void;
+  handleStartupPurchasePriceChange: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void;
+  handleStartupPurchasePriceFocus: () => void;
+  handleStartupPurchasePriceBlur: () => void;
   handleContinueFromSavedState: () => void;
   handleOpenInstallModal: () => void;
   setCustomVehicleTouched: React.Dispatch<
@@ -141,8 +149,14 @@ const StartupModal: React.FC<StartupModalProps> = ({
   startupAnnualMileageValue,
   startupAnnualMileageTouched,
   startupAnnualMileageError,
+  startupPurchasePriceValue,
+  startupPurchasePriceTouched,
+  startupPurchasePriceError,
   handleStartupAnnualMileageChange,
   handleStartupAnnualMileageBlur,
+  handleStartupPurchasePriceChange,
+  handleStartupPurchasePriceFocus,
+  handleStartupPurchasePriceBlur,
   handleContinueFromSavedState,
   handleOpenInstallModal,
   setCustomVehicleTouched,
@@ -346,8 +360,14 @@ const StartupModal: React.FC<StartupModalProps> = ({
               startupAnnualMileageValue={startupAnnualMileageValue}
               startupAnnualMileageTouched={startupAnnualMileageTouched}
               startupAnnualMileageError={startupAnnualMileageError}
+              startupPurchasePriceValue={startupPurchasePriceValue}
+              startupPurchasePriceTouched={startupPurchasePriceTouched}
+              startupPurchasePriceError={startupPurchasePriceError}
               handleStartupAnnualMileageChange={handleStartupAnnualMileageChange}
               handleStartupAnnualMileageBlur={handleStartupAnnualMileageBlur}
+              handleStartupPurchasePriceChange={handleStartupPurchasePriceChange}
+              handleStartupPurchasePriceFocus={handleStartupPurchasePriceFocus}
+              handleStartupPurchasePriceBlur={handleStartupPurchasePriceBlur}
               setCustomVehicleTouched={setCustomVehicleTouched}
               setShowCustomVehicleValidation={setShowCustomVehicleValidation}
               handleStartWithOwnCar={handleStartWithOwnCar}

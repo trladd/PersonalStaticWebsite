@@ -18,7 +18,7 @@ export const buildSummaryCards = (calculations: CarCostCalculations) =>
     { label: "Fuel", value: calculations.fuelCostPerMile },
     { label: "Oil changes", value: calculations.oilCostPerMile },
     { label: "Tires", value: calculations.tireCostPerMile },
-    { label: "Misc. maintenance", value: calculations.miscCostPerMile },
+    { label: "Additional maintenance", value: calculations.miscCostPerMile },
     { label: "Depreciation", value: calculations.depreciationCostPerMile },
     { label: "Ownership overhead", value: calculations.fixedCostPerMile },
     { label: "Financing", value: calculations.financeCostPerMile },

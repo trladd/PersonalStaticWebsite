@@ -2,10 +2,15 @@ import {
   CAR_COST_ADMIN_STORAGE_KEY,
   CAR_COST_CUSTOM_KEY,
   CAR_COST_STATE_VERSION,
+  DEFAULT_BATTERY_REPLACEMENT_SCHEDULE,
+  DEFAULT_BRAKE_SERVICE_SCHEDULE,
   DEFAULT_FUEL_PRICES,
+  DEFAULT_MAJOR_SERVICE_SCHEDULE,
+  DEFAULT_MISC_MAINTENANCE_SCHEDULE,
   DEFAULT_NEW_CAR_APR,
   DEFAULT_NEW_CAR_PAYMENT,
   DEFAULT_NEW_CAR_TERM_MONTHS,
+  DEFAULT_REPAIR_BUFFER_SCHEDULE,
   defaultValues,
 } from "../config/constants";
 import {
@@ -19,9 +24,12 @@ import {
   SessionScopedCarCostValues,
   VehicleTemplate,
 } from "../types";
+import { normalizeIntervalSetting } from "./intervals";
 
 const SESSION_SCOPED_VALUE_KEYS = [
   "tripDistance",
+  "includeTripFuelOverride",
+  "tripFuelEfficiency",
   "recurringMiles",
   "annualInsurance",
   "annualRegistration",
@@ -36,6 +44,8 @@ export const getSessionScopedValues = (
   values: CarCostValues,
 ): SessionScopedCarCostValues => ({
   tripDistance: values.tripDistance,
+  includeTripFuelOverride: values.includeTripFuelOverride,
+  tripFuelEfficiency: values.tripFuelEfficiency,
   recurringMiles: values.recurringMiles,
   annualInsurance: values.annualInsurance,
   annualRegistration: values.annualRegistration,
@@ -107,22 +117,58 @@ export const normalizeCarCostValues = (
     rawValues?.fuelEfficiency ??
     rawValues?.fuelMileage ??
     defaultValues.fuelEfficiency,
-  miscMaintenanceBasis:
-    rawValues?.miscMaintenanceBasis ?? defaultValues.miscMaintenanceBasis,
+  miscMaintenanceSchedule: normalizeIntervalSetting({
+    rawInterval: rawValues?.miscMaintenanceSchedule,
+    fallback: DEFAULT_MISC_MAINTENANCE_SCHEDULE,
+    legacyBasis: rawValues?.miscMaintenanceBasis,
+    legacyInterval: rawValues?.miscMaintenanceInterval,
+  }),
+  brakeServiceSchedule: normalizeIntervalSetting({
+    rawInterval: rawValues?.brakeServiceSchedule,
+    fallback: DEFAULT_BRAKE_SERVICE_SCHEDULE,
+  }),
+  batteryReplacementSchedule: normalizeIntervalSetting({
+    rawInterval: rawValues?.batteryReplacementSchedule,
+    fallback: DEFAULT_BATTERY_REPLACEMENT_SCHEDULE,
+  }),
+  majorServiceSchedule: normalizeIntervalSetting({
+    rawInterval: rawValues?.majorServiceSchedule,
+    fallback: DEFAULT_MAJOR_SERVICE_SCHEDULE,
+  }),
+  repairBufferSchedule: normalizeIntervalSetting({
+    rawInterval: rawValues?.repairBufferSchedule,
+    fallback: DEFAULT_REPAIR_BUFFER_SCHEDULE,
+  }),
   depreciationBasis:
     rawValues?.depreciationBasis ?? defaultValues.depreciationBasis,
   fuelUnitPrice:
     rawValues?.fuelUnitPrice ??
     DEFAULT_FUEL_PRICES[rawValues?.fuelType ?? defaultValues.fuelType],
+  includeTripFuelOverride:
+    rawValues?.includeTripFuelOverride ?? defaultValues.includeTripFuelOverride,
+  tripFuelEfficiency:
+    rawValues?.tripFuelEfficiency ?? defaultValues.tripFuelEfficiency,
   includeVehicleCost: rawValues?.includeVehicleCost ?? 1,
   includeDepreciation: rawValues?.includeDepreciation ?? 1,
   includeAnnualOwnership: rawValues?.includeAnnualOwnership ?? 1,
+  showAdvancedMaintenance: rawValues?.showAdvancedMaintenance ?? 0,
   loanApr: rawValues?.loanApr ?? DEFAULT_NEW_CAR_APR,
   loanTermMonths: rawValues?.loanTermMonths ?? DEFAULT_NEW_CAR_TERM_MONTHS,
   loanDownPayment: rawValues?.loanDownPayment ?? defaultValues.loanDownPayment,
   loanMonthlyPayment: rawValues?.loanMonthlyPayment ?? DEFAULT_NEW_CAR_PAYMENT,
   loanPaymentMode: rawValues?.loanPaymentMode ?? defaultValues.loanPaymentMode,
   includeFinancing: rawValues?.includeFinancing ?? 0,
+  oilChangeMaxMonths: rawValues?.oilChangeMaxMonths ?? defaultValues.oilChangeMaxMonths,
+  tireMaxAgeYears: rawValues?.tireMaxAgeYears ?? defaultValues.tireMaxAgeYears,
+  includeWinterTires:
+    rawValues?.includeWinterTires ?? defaultValues.includeWinterTires,
+  winterTireCost: rawValues?.winterTireCost ?? defaultValues.winterTireCost,
+  winterTireInterval:
+    rawValues?.winterTireInterval ?? defaultValues.winterTireInterval,
+  winterTireMaxAgeYears:
+    rawValues?.winterTireMaxAgeYears ?? defaultValues.winterTireMaxAgeYears,
+  winterTireMonths:
+    rawValues?.winterTireMonths ?? defaultValues.winterTireMonths,
 });
 
 export const normalizeVehicleTemplate = (
@@ -168,6 +214,7 @@ const buildPersistedCarCostState = (
   values: normalizeCarCostValues(rawState.values),
   recurringType: rawState.recurringType ?? "year",
   tripType: rawState.tripType ?? "oneWay",
+  tripTireSet: rawState.tripTireSet ?? "allSeason",
   updatedAt: rawState.updatedAt ?? new Date(0).toISOString(),
 });
 
@@ -175,7 +222,11 @@ export const migratePersistedCarCostState = (
   savedState: string | null,
 ): PersistedStateMigrationResult => {
   if (!savedState) {
-    return { migratedState: null, startupNotice: null };
+    return {
+      migratedState: null,
+      startupNotice: null,
+      discardSavedCustomVehicle: false,
+    };
   }
 
   try {
@@ -185,7 +236,11 @@ export const migratePersistedCarCostState = (
     };
 
     if (!parsedState?.values || !parsedState?.recurringType) {
-      return { migratedState: null, startupNotice: null };
+      return {
+        migratedState: null,
+        startupNotice: null,
+        discardSavedCustomVehicle: false,
+      };
     }
 
     const parsedVersion =
@@ -195,20 +250,9 @@ export const migratePersistedCarCostState = (
       return {
         migratedState: buildPersistedCarCostState(parsedState),
         startupNotice: null,
+        discardSavedCustomVehicle: false,
       };
     }
-
-    if (parsedVersion < CAR_COST_STATE_VERSION) {
-      return {
-        migratedState: buildPersistedCarCostState(parsedState),
-        startupNotice:
-          "We found a saved car cost setup from an older version of this page. We migrated the parts that still fit the current calculator.",
-      };
-    }
-
-    const partialValues = getSessionScopedValues(
-      normalizeCarCostValues(parsedState.values),
-    );
 
     return {
       migratedState: {
@@ -216,16 +260,24 @@ export const migratePersistedCarCostState = (
         isSharedSession: false,
         selectedSource: "default",
         selectedTemplateId: null,
-        values: applySessionScopedValues(defaultValues, partialValues),
-        recurringType: parsedState.recurringType ?? "year",
-        tripType: parsedState.tripType ?? "oneWay",
-        updatedAt: parsedState.updatedAt ?? new Date().toISOString(),
+        values: defaultValues,
+        recurringType: "year",
+        tripType: "oneWay",
+        tripTireSet: "allSeason",
+        updatedAt: new Date().toISOString(),
       },
       startupNotice:
-        "We found saved car cost data from a newer or incompatible version of this page. We could only keep the session-level planning pieces and reset the rest to current defaults.",
+        parsedVersion < CAR_COST_STATE_VERSION
+          ? "We found saved car cost data from an older version of this page. This update includes breaking calculator changes, so some of your saved state was reset to current defaults."
+          : "We found saved car cost data from a newer or incompatible version of this page. This update could not safely migrate that saved state, so the calculator was reset to current defaults.",
+      discardSavedCustomVehicle: true,
     };
   } catch (error) {
-    return { migratedState: null, startupNotice: null };
+    return {
+      migratedState: null,
+      startupNotice: null,
+      discardSavedCustomVehicle: false,
+    };
   }
 };
 

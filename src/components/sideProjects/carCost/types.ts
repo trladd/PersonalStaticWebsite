@@ -12,10 +12,20 @@ export type FuelType =
 
 export type RecurringType = "day" | "week" | "month" | "year" | "weekday";
 export type TripType = "oneWay" | "roundTrip";
+export type TripTireSet = "allSeason" | "winter";
 export type InsightCategory =
   | "global"
   | "tripEstimate"
   | "recurringDrivingTotals";
+
+export type IntervalUnit = "mile" | "month" | "year";
+export type IntervalSetting = {
+  t: "d" | "t";
+  v: {
+    n: number;
+    u: IntervalUnit;
+  };
+};
 
 export interface CarCostProps {
   navWrapperRef?: React.RefObject<HTMLDivElement>;
@@ -25,13 +35,30 @@ export type CarCostValues = {
   fuelType: FuelType;
   fuelEfficiency: number;
   fuelUnitPrice: number;
+  includeTripFuelOverride: number;
+  tripFuelEfficiency: number;
   oilChangeCost: number;
   oilChangeInterval: number;
+  oilChangeMaxMonths: number;
   tireCost: number;
   tireInterval: number;
+  tireMaxAgeYears: number;
+  includeWinterTires: number;
+  winterTireCost: number;
+  winterTireInterval: number;
+  winterTireMaxAgeYears: number;
+  winterTireMonths: number;
   miscMaintenanceCost: number;
-  miscMaintenanceBasis: "miles" | "month" | "year";
-  miscMaintenanceInterval: number;
+  miscMaintenanceSchedule: IntervalSetting;
+  showAdvancedMaintenance: number;
+  brakeServiceCost: number;
+  brakeServiceSchedule: IntervalSetting;
+  batteryReplacementCost: number;
+  batteryReplacementSchedule: IntervalSetting;
+  majorServiceCost: number;
+  majorServiceSchedule: IntervalSetting;
+  repairBufferCost: number;
+  repairBufferSchedule: IntervalSetting;
   depreciationBasis: "miles" | "years";
   purchasePrice: number;
   resaleValue: number;
@@ -62,12 +89,14 @@ export type PersistedCarCostState = {
   values: CarCostValues;
   recurringType: RecurringType;
   tripType: TripType;
+  tripTireSet: TripTireSet;
   updatedAt: string;
 };
 
 export type PersistedStateMigrationResult = {
   migratedState: PersistedCarCostState | null;
   startupNotice: string | null;
+  discardSavedCustomVehicle: boolean;
 };
 
 export type PersistedCarCostAdminState = {
@@ -139,6 +168,8 @@ export type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles
 export type SessionScopedCarCostValues = Pick<
   CarCostValues,
   | "tripDistance"
+  | "includeTripFuelOverride"
+  | "tripFuelEfficiency"
   | "recurringMiles"
   | "annualInsurance"
   | "annualRegistration"
@@ -163,4 +194,6 @@ export type InsightDefinition = {
 
 export type PartialTemplateValues = Partial<CarCostValues> & {
   fuelMileage?: number;
+  miscMaintenanceBasis?: "miles" | "month" | "year";
+  miscMaintenanceInterval?: number;
 };

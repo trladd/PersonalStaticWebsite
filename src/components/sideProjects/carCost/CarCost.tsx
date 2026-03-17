@@ -38,9 +38,11 @@ import {
   FuelType,
   InsightCategory,
   InsightDefinition,
+  IntervalSetting,
   PartialTemplateValues,
   PersistedCarCostState,
   RecurringType,
+  TripTireSet,
   TripType,
   VehicleLookupSummary,
   VehicleTemplate,
@@ -84,12 +86,18 @@ import {
   getCurrentVehicleLabel,
   getRecurringBreakdownMode,
 } from "./utils/viewModel";
+import { formatCurrency } from "./utils/formatters";
 import {
   buildShareableCarCostUrl,
   parseSharedCarCostPayload,
 } from "./utils/share";
 import { fetchVehicleLookupDetails } from "./utils/vehicleData";
 import { useVehicleLookup } from "./utils/useVehicleLookup";
+import { updateIntervalSelection, updateIntervalValue } from "./utils/intervals";
+import {
+  buildMainFuelEconomyWarning,
+  buildTripFuelEconomyTip,
+} from "./utils/fuelInsights";
 import {
   buildAnalyticsVehicleFromCustomDraft,
   buildAnalyticsVehicleFromSavedCustom,
@@ -118,6 +126,16 @@ const getAnnualMileageFromRecurring = (
   return annualMileageByType[recurringType];
 };
 
+const parseCurrencyInputValue = (rawValue: string) => {
+  const sanitizedValue = rawValue.replace(/[$,\s]/g, "");
+  if (sanitizedValue.trim().length === 0) {
+    return null;
+  }
+
+  const parsedValue = Number(sanitizedValue);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+};
+
 const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   type BeforeInstallPromptEvent = Event & {
     prompt: () => Promise<void>;
@@ -137,6 +155,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const [values, setValues] = useState<CarCostValues>(defaultValues);
   const [recurringType, setRecurringType] = useState<RecurringType>("year");
   const [tripType, setTripType] = useState<TripType>("oneWay");
+  const [tripTireSet, setTripTireSet] = useState<TripTireSet>("allSeason");
   const [hasResolvedStartupChoice, setHasResolvedStartupChoice] =
     useState(false);
   const [selectedSource, setSelectedSource] = useState<
@@ -171,6 +190,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const [startupAnnualMileageValue, setStartupAnnualMileageValue] =
     useState("");
   const [startupAnnualMileageTouched, setStartupAnnualMileageTouched] =
+    useState(false);
+  const [startupPurchasePriceValue, setStartupPurchasePriceValue] = useState("");
+  const [startupPurchasePriceTouched, setStartupPurchasePriceTouched] =
     useState(false);
   const [startupNotice, setStartupNotice] = useState<string | null>(null);
   const [startupMode, setStartupMode] = useState<
@@ -235,6 +257,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
                 getAnnualMileageFromRecurring(recurringMilesValue, recurringMode),
               ),
             ),
+      );
+    },
+    [],
+  );
+  const syncStartupPurchasePriceFromState = useCallback(
+    (purchasePrice: number, requireManualEntry: boolean) => {
+      setStartupPurchasePriceTouched(false);
+      setStartupPurchasePriceValue(
+        requireManualEntry || purchasePrice <= 0
+          ? ""
+          : formatCurrency(purchasePrice),
       );
     },
     [],
@@ -373,9 +406,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     values.depreciationInterval,
     values.fuelType,
     values.fuelUnitPrice,
+    values.includeWinterTires,
+    values.showAdvancedMaintenance,
+    values.oilChangeMaxMonths,
     values.purchasePrice,
     values.resaleValue,
     values.recurringMiles,
+    values.tireMaxAgeYears,
+    values.winterTireMaxAgeYears,
+    values.winterTireMonths,
     values.includeVehicleCost,
   ]);
 
@@ -537,11 +576,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }
 
     if (sharedPayload?.state) {
-      const { migratedState, startupNotice: migrationNotice } =
+      const {
+        migratedState,
+        startupNotice: migrationNotice,
+        discardSavedCustomVehicle,
+      } =
         migratePersistedCarCostState(JSON.stringify(sharedPayload.state));
 
       let normalizedSharedVehicle: CustomVehicle | null = null;
-      if (sharedPayload.savedCustomVehicle) {
+      if (sharedPayload.savedCustomVehicle && !discardSavedCustomVehicle) {
         normalizedSharedVehicle = {
           ...sharedPayload.savedCustomVehicle,
           id: "custom",
@@ -600,6 +643,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           normalizeCarCostValues(nextSharedState.values),
           nextSharedState.recurringType,
           nextSharedState.tripType ?? "oneWay",
+          nextSharedState.tripTireSet ?? "allSeason",
         );
 
         setValues(normalizeCarCostValues(nextSharedState.values));
@@ -609,7 +653,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           nextSharedState.recurringType,
           false,
         );
+        syncStartupPurchasePriceFromState(
+          nextSharedState.values.purchasePrice,
+          false,
+        );
         setTripType(nextSharedState.tripType ?? "oneWay");
+        setTripTireSet(nextSharedState.tripTireSet ?? "allSeason");
         setIsSharedSession(true);
         setSelectedSource(nextSharedState.selectedSource ?? "default");
         setSelectedTemplateId(nextSharedState.selectedTemplateId ?? null);
@@ -643,12 +692,28 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         setIsSharedSession(true);
         setStartupMode("shared");
         syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
+        syncStartupPurchasePriceFromState(defaultValues.purchasePrice, true);
         initializeStartupModal(true)?.open();
       }
     } else if (savedState) {
       try {
-        const { migratedState, startupNotice: migrationNotice } =
+        const {
+          migratedState,
+          startupNotice: migrationNotice,
+          discardSavedCustomVehicle,
+        } =
           migratePersistedCarCostState(savedState);
+        if (discardSavedCustomVehicle) {
+          localStorage.removeItem(CAR_COST_CUSTOM_KEY);
+          setSavedCustomVehicle(null);
+          setCustomVehicleDraft({
+            year: "",
+            make: "",
+            model: "",
+            trim: "",
+            fuelType: "regular",
+          });
+        }
 
         if (migratedState?.values && migratedState?.recurringType) {
           const savedVehicleLabel =
@@ -664,6 +729,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             normalizeCarCostValues(migratedState.values),
             migratedState.recurringType,
             migratedState.tripType ?? "oneWay",
+            migratedState.tripTireSet ?? "allSeason",
           );
 
           setValues(normalizeCarCostValues(migratedState.values));
@@ -673,7 +739,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             migratedState.recurringType,
             false,
           );
+          syncStartupPurchasePriceFromState(
+            migratedState.values.purchasePrice,
+            false,
+          );
           setTripType(migratedState.tripType ?? "oneWay");
+          setTripTireSet(migratedState.tripTireSet ?? "allSeason");
           setIsSharedSession(migratedState.isSharedSession ?? false);
           setSelectedSource(migratedState.selectedSource ?? "default");
           setSelectedTemplateId(migratedState.selectedTemplateId ?? null);
@@ -705,6 +776,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           setIsSharedSession(false);
           setSharedStartupSummary(null);
           syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
+          syncStartupPurchasePriceFromState(defaultValues.purchasePrice, true);
           initializeStartupModal(false)?.open();
         }
       } catch (error) {
@@ -713,6 +785,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         setIsSharedSession(false);
         setSharedStartupSummary(null);
         syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
+        syncStartupPurchasePriceFromState(defaultValues.purchasePrice, true);
         initializeStartupModal(false)?.open();
       }
     } else {
@@ -720,6 +793,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       setIsSharedSession(false);
       setSharedStartupSummary(null);
       syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
+      syncStartupPurchasePriceFromState(defaultValues.purchasePrice, true);
       initializeStartupModal(false)?.open();
     }
 
@@ -727,7 +801,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       cleanupModalArtifacts();
       modalInstanceRef.current?.destroy();
     };
-  }, [initializeStartupModal, syncStartupAnnualMileageFromState, typedTemplates]);
+  }, [
+    initializeStartupModal,
+    syncStartupAnnualMileageFromState,
+    syncStartupPurchasePriceFromState,
+    typedTemplates,
+  ]);
 
   useEffect(() => {
     if (!breakdownModalRef.current) {
@@ -836,6 +915,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       values,
       recurringType,
       tripType,
+      tripTireSet,
       updatedAt: new Date().toISOString(),
     }),
     [
@@ -843,6 +923,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       recurringType,
       selectedSource,
       selectedTemplateId,
+      tripTireSet,
       tripType,
       values,
     ],
@@ -886,10 +967,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     fuelUnitPrice: "running_costs",
     oilChangeCost: "running_costs",
     oilChangeInterval: "running_costs",
+    oilChangeMaxMonths: "running_costs",
     tireCost: "running_costs",
     tireInterval: "running_costs",
+    tireMaxAgeYears: "running_costs",
+    winterTireCost: "running_costs",
+    winterTireInterval: "running_costs",
+    winterTireMaxAgeYears: "running_costs",
+    winterTireMonths: "running_costs",
     miscMaintenanceCost: "running_costs",
-    miscMaintenanceInterval: "running_costs",
+    brakeServiceCost: "running_costs",
+    batteryReplacementCost: "running_costs",
+    majorServiceCost: "running_costs",
+    repairBufferCost: "running_costs",
+    showAdvancedMaintenance: "running_costs",
+    includeWinterTires: "running_costs",
     purchasePrice: "vehicle_cost",
     resaleValue: "vehicle_cost",
     depreciationInterval: "vehicle_cost",
@@ -902,9 +994,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     loanApr: "vehicle_cost",
     loanTermMonths: "vehicle_cost",
     loanMonthlyPayment: "vehicle_cost",
+    tripFuelEfficiency: "trip_estimate",
+    includeTripFuelOverride: "trip_estimate",
     tripDistance: "trip_estimate",
     recurringMiles: "recurring_driving_totals",
   };
+
+  type IntervalScheduleField =
+    | "miscMaintenanceSchedule"
+    | "brakeServiceSchedule"
+    | "batteryReplacementSchedule"
+    | "majorServiceSchedule"
+    | "repairBufferSchedule";
 
   const clearSharedSessionIfNeeded = () => {
     if (!isSharedSession) {
@@ -985,23 +1086,112 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       clearNumericDraft(draftKey);
     };
 
+  const handleIntervalSettingSelectionChange =
+    (name: IntervalScheduleField) => (selection: "mile" | "month" | "year") => {
+      trackSectionEngagementOnce("running_costs");
+      clearSharedSessionIfNeeded();
+      setValues((current) => ({
+        ...current,
+        [name]: updateIntervalSelection(current[name] as IntervalSetting, selection),
+      }));
+    };
+
+  const handleIntervalSettingValueChange =
+    (name: IntervalScheduleField, draftKey = `${name}Value`) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = event.target.value;
+      setNumericInputDrafts((current) => ({
+        ...current,
+        [draftKey]: rawValue,
+      }));
+
+      if (
+        rawValue === "" ||
+        rawValue === "-" ||
+        rawValue === "." ||
+        rawValue === "-."
+      ) {
+        return;
+      }
+
+      const parsedValue = Number(rawValue);
+      if (Number.isNaN(parsedValue)) {
+        return;
+      }
+
+      trackSectionEngagementOnce("running_costs");
+      clearSharedSessionIfNeeded();
+      setValues((current) => ({
+        ...current,
+        [name]: updateIntervalValue(current[name] as IntervalSetting, parsedValue),
+      }));
+    };
+
+  const handleIntervalSettingValueBlur =
+    (name: IntervalScheduleField, draftKey = `${name}Value`) =>
+    (event: React.FocusEvent<HTMLInputElement>) => {
+      const rawValue = (
+        Object.prototype.hasOwnProperty.call(numericInputDrafts, draftKey)
+          ? numericInputDrafts[draftKey]
+          : event.target.value
+      ).trim();
+      const parsedValue =
+        rawValue === "" ||
+        rawValue === "-" ||
+        rawValue === "." ||
+        rawValue === "-."
+          ? 0
+          : Number(rawValue);
+
+      setValues((current) => ({
+        ...current,
+        [name]: updateIntervalValue(
+          current[name] as IntervalSetting,
+          Number.isNaN(parsedValue) ? (current[name] as IntervalSetting).v.n : parsedValue,
+        ),
+      }));
+      clearNumericDraft(draftKey);
+    };
+
   const handleToggleChange =
     (
       name:
-        | "includeVehicleCost"
-        | "includeDepreciation"
-        | "includeAnnualOwnership"
+      | "showAdvancedMaintenance"
+      | "includeWinterTires"
+      | "includeTripFuelOverride"
+      | "includeVehicleCost"
+      | "includeDepreciation"
+      | "includeAnnualOwnership"
         | "includeFinancing",
     ) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
       trackSectionEngagementOnce(
-        name === "includeAnnualOwnership" ? "annual_ownership" : "vehicle_cost",
+        name === "includeAnnualOwnership"
+          ? "annual_ownership"
+          : name === "includeVehicleCost" ||
+              name === "includeDepreciation" ||
+              name === "includeFinancing"
+            ? "vehicle_cost"
+            : name === "includeTripFuelOverride"
+              ? "trip_estimate"
+              : "running_costs",
       );
       clearSharedSessionIfNeeded();
       setValues((current) => ({
         ...current,
         [name]: event.target.checked ? 1 : 0,
+        ...(name === "includeTripFuelOverride" &&
+        event.target.checked &&
+        current.tripFuelEfficiency <= 0
+          ? { tripFuelEfficiency: current.fuelEfficiency }
+          : {}),
       }));
+      if (name === "includeWinterTires" && !event.target.checked) {
+        setTripTireSet("allSeason");
+      }
+      if (name === "includeTripFuelOverride" && !event.target.checked) {
+        clearNumericDraft("tripFuelEfficiency");
+      }
     };
 
   const handleLoanPaymentModeChange = (
@@ -1038,6 +1228,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       nextRecurringType,
       false,
     );
+    syncStartupPurchasePriceFromState(nextValues.purchasePrice, false);
     if (source === "default") {
       setCustomVehicleDraft({
         year: "",
@@ -1047,6 +1238,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         fuelType: "regular",
       });
       setStartupAnnualMileageTouched(false);
+      setStartupPurchasePriceTouched(false);
     }
     setHasResolvedStartupChoice(true);
     modalInstanceRef.current?.close();
@@ -1132,25 +1324,6 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }));
   };
 
-  const handleMiscMaintenanceBasisChange = (
-    event: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const nextBasis = event.target
-      .value as CarCostValues["miscMaintenanceBasis"];
-    trackSectionEngagementOnce("running_costs");
-    clearSharedSessionIfNeeded();
-    setValues((current) => ({
-      ...current,
-      miscMaintenanceBasis: nextBasis,
-      miscMaintenanceInterval:
-        nextBasis === "miles"
-          ? current.miscMaintenanceInterval || 15000
-          : nextBasis === "month"
-            ? 1
-            : 1,
-    }));
-  };
-
   const handleDepreciationBasisChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
@@ -1184,12 +1357,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       : Number(startupAnnualMileageValue) <= 0
         ? "Annual miles must be greater than zero."
         : "";
+  const startupPurchasePriceNumber =
+    parseCurrencyInputValue(startupPurchasePriceValue);
+  const startupPurchasePriceError =
+    startupPurchasePriceValue.trim().length === 0
+      ? "Enter your purchase price."
+      : startupPurchasePriceNumber === null || startupPurchasePriceNumber <= 0
+        ? "Purchase price must be greater than zero."
+        : "";
   const isCustomVehicleValid =
     customVehicleFieldErrors.year === "" &&
     customVehicleFieldErrors.make === "" &&
     customVehicleFieldErrors.model === "" &&
     customVehicleFieldErrors.trim === "" &&
     startupAnnualMileageError === "" &&
+    startupPurchasePriceError === "" &&
     (trimNotRequired || Boolean(selectedVehicleDetails));
 
   const customVehicleValidationMessage =
@@ -1198,6 +1380,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     customVehicleFieldErrors.model ||
     customVehicleFieldErrors.trim ||
     startupAnnualMileageError ||
+    startupPurchasePriceError ||
     lookupError ||
     "Select a vehicle trim to continue.";
 
@@ -1205,6 +1388,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     if (!isCustomVehicleValid) {
       setCustomVehicleTouched({ year: true, make: true, model: true, trim: true });
       setShowCustomVehicleValidation(true);
+      setStartupAnnualMileageTouched(true);
+      setStartupPurchasePriceTouched(true);
       M.toast({
         html: "Select a complete vehicle trim before continuing",
         displayLength: 2500,
@@ -1230,6 +1415,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             fuelType: customVehicleDraft.fuelType,
             fuelUnitPrice: DEFAULT_FUEL_PRICES[customVehicleDraft.fuelType],
           }),
+          purchasePrice: startupPurchasePriceNumber ?? 0,
+          resaleValue: values.resaleValue,
         }),
       ),
     };
@@ -1261,6 +1448,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setCustomVehicleTouched({ year: false, make: false, model: false, trim: false });
     setShowCustomVehicleValidation(false);
     syncStartupAnnualMileageFromState(values.recurringMiles, recurringType, false);
+    syncStartupPurchasePriceFromState(values.purchasePrice, false);
     initializeStartupModal(true)?.open();
   };
 
@@ -1279,6 +1467,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     clearSharedSessionIfNeeded();
     setTripType((current) =>
       typeof nextTripType === "function" ? nextTripType(current) : nextTripType,
+    );
+  };
+
+  const handleTripTireSetDispatch: React.Dispatch<
+    React.SetStateAction<TripTireSet>
+  > = (nextTripTireSet) => {
+    trackSectionEngagementOnce("trip_estimate");
+    clearSharedSessionIfNeeded();
+    setTripTireSet((current) =>
+      typeof nextTripTireSet === "function"
+        ? nextTripTireSet(current)
+        : nextTripTireSet,
     );
   };
 
@@ -1328,6 +1528,38 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const handleStartupAnnualMileageBlur = () => {
     setStartupAnnualMileageTouched(true);
+  };
+
+  const handleStartupPurchasePriceChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const sanitizedValue = event.target.value.replace(/[^0-9.]/g, "");
+    setStartupPurchasePriceValue(sanitizedValue);
+    setStartupPurchasePriceTouched(true);
+    const parsedValue = parseCurrencyInputValue(sanitizedValue);
+    setValues((current) => ({
+      ...current,
+      purchasePrice: Math.max(parsedValue ?? 0, 0),
+    }));
+  };
+
+  const handleStartupPurchasePriceFocus = () => {
+    const parsedValue = parseCurrencyInputValue(startupPurchasePriceValue);
+    if (parsedValue === null) {
+      return;
+    }
+
+    setStartupPurchasePriceValue(String(parsedValue));
+  };
+
+  const handleStartupPurchasePriceBlur = () => {
+    setStartupPurchasePriceTouched(true);
+    const parsedValue = parseCurrencyInputValue(startupPurchasePriceValue);
+    if (parsedValue === null || parsedValue <= 0) {
+      return;
+    }
+
+    setStartupPurchasePriceValue(formatCurrency(parsedValue));
   };
 
   const handleAnnualMileageDraftChange = (
@@ -1457,13 +1689,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   };
 
   const calculations = useMemo(
-    () => calculateCarCost(values, recurringType, tripType),
-    [recurringType, tripType, values],
+    () => calculateCarCost(values, recurringType, tripType, tripTireSet),
+    [recurringType, tripTireSet, tripType, values],
   );
 
   const breakdownModes = useMemo(
-    () => buildBreakdownModes(values, calculations),
-    [calculations, values],
+    () => buildBreakdownModes(values, calculations, activeCustomVehicleLookupSummary),
+    [activeCustomVehicleLookupSummary, calculations, values],
   );
 
   const filteredBreakdownModalModes = useMemo(
@@ -1518,6 +1750,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     fuelPriceLabel,
     fuelPriceTooltip,
   } = buildFuelLabels(values, activeVehicleLookupSummary, currentVehicleLabel);
+  const fuelEfficiencyWarningTooltip = buildMainFuelEconomyWarning({
+    fuelEfficiencyUsed: values.fuelEfficiency,
+    vehicleLookupSummary: activeVehicleLookupSummary,
+  });
+  const tripFuelEconomyTip = buildTripFuelEconomyTip({
+    fuelEfficiencyUsed: calculations.tripFuelEfficiencyUsed,
+    tripDistance: calculations.selectedTripDistance,
+    vehicleLookupSummary: activeVehicleLookupSummary,
+  });
   const { depreciationIntervalTooltip, parkingTooltip, resaleWarningTooltip } =
     buildVehicleTooltips(values, calculations);
   const {
@@ -1624,8 +1865,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         startupAnnualMileageValue={startupAnnualMileageValue}
         startupAnnualMileageTouched={startupAnnualMileageTouched}
         startupAnnualMileageError={startupAnnualMileageError}
+        startupPurchasePriceValue={startupPurchasePriceValue}
+        startupPurchasePriceTouched={startupPurchasePriceTouched}
+        startupPurchasePriceError={startupPurchasePriceError}
         handleStartupAnnualMileageChange={handleStartupAnnualMileageChange}
         handleStartupAnnualMileageBlur={handleStartupAnnualMileageBlur}
+        handleStartupPurchasePriceChange={handleStartupPurchasePriceChange}
+        handleStartupPurchasePriceFocus={handleStartupPurchasePriceFocus}
+        handleStartupPurchasePriceBlur={handleStartupPurchasePriceBlur}
         handleContinueFromSavedState={handleContinueFromSavedState}
         handleOpenInstallModal={handleOpenInstallModal}
         setCustomVehicleTouched={setCustomVehicleTouched}
@@ -1800,6 +2047,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           isMobileView={isMobileView}
           fuelEfficiencyLabel={fuelEfficiencyLabel}
           fuelEfficiencyTooltip={fuelEfficiencyTooltip}
+          fuelEfficiencyWarningTooltip={fuelEfficiencyWarningTooltip}
           fuelPriceLabel={fuelPriceLabel}
           fuelPriceTooltip={fuelPriceTooltip}
           handleFuelTypeChange={handleFuelTypeChange}
@@ -1811,7 +2059,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           handleNumericFieldBlur={handleNumericFieldBlur}
           handleNumericInputFocus={handleNumericInputFocus}
           handleToggleChange={handleToggleChange}
-          handleMiscMaintenanceBasisChange={handleMiscMaintenanceBasisChange}
+          handleIntervalSettingSelectionChange={handleIntervalSettingSelectionChange}
+          handleIntervalSettingValueChange={handleIntervalSettingValueChange}
+          handleIntervalSettingValueBlur={handleIntervalSettingValueBlur}
           handleDepreciationBasisChange={handleDepreciationBasisChange}
           handleLoanPaymentModeChange={handleLoanPaymentModeChange}
           handleAnnualMileageDraftChange={handleAnnualMileageDraftChange}
@@ -1838,10 +2088,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           compactMetricValueStyle={compactMetricValueStyle}
           isMobileView={isMobileView}
           tripType={tripType}
+          tripTireSet={tripTireSet}
+          tripFuelEconomyTip={tripFuelEconomyTip}
           recurringType={recurringType}
           recurringBreakdownMode={recurringBreakdownMode}
           tripTypeButtonStyle={tripTypeButtonStyle}
           setTripType={handleTripTypeDispatch}
+          setTripTireSet={handleTripTireSetDispatch}
+          handleToggleChange={handleToggleChange}
           setRecurringType={handleRecurringTypeDispatch}
           getNumericDraftValue={getNumericDraftValue}
           handleNumericFieldChange={handleNumericFieldChange}

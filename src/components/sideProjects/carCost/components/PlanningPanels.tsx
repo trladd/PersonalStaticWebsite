@@ -3,7 +3,7 @@ import SeeMoreButton from "./SeeMoreButton";
 import { BreakdownMode } from "./CostBreakdownViewer";
 import { CarCostCalculations } from "../utils/calculations";
 import { formatCurrency, formatNumber, isToggleEnabled } from "../utils/formatters";
-import { CarCostValues, RecurringType, TripType } from "../types";
+import { CarCostValues, RecurringType, TripTireSet, TripType } from "../types";
 
 type Palette = {
   muted: string;
@@ -28,10 +28,16 @@ type PlanningPanelsProps = {
   compactMetricValueStyle: React.CSSProperties;
   isMobileView: boolean;
   tripType: TripType;
+  tripTireSet: TripTireSet;
+  tripFuelEconomyTip: string | null;
   recurringType: RecurringType;
   recurringBreakdownMode: BreakdownMode;
   tripTypeButtonStyle: (isActive: boolean) => React.CSSProperties;
   setTripType: React.Dispatch<React.SetStateAction<TripType>>;
+  setTripTireSet: React.Dispatch<React.SetStateAction<TripTireSet>>;
+  handleToggleChange: (
+    name: "includeTripFuelOverride",
+  ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
   setRecurringType: React.Dispatch<React.SetStateAction<RecurringType>>;
   getNumericDraftValue: (key: string, actualValue: number) => string;
   handleNumericFieldChange: (
@@ -62,10 +68,14 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
   compactMetricValueStyle,
   isMobileView,
   tripType,
+  tripTireSet,
+  tripFuelEconomyTip,
   recurringType,
   recurringBreakdownMode,
   tripTypeButtonStyle,
   setTripType,
+  setTripTireSet,
+  handleToggleChange,
   setRecurringType,
   getNumericDraftValue,
   handleNumericFieldChange,
@@ -96,7 +106,7 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
             />
           </div>
           <p style={{ color: palette.muted, lineHeight: 1.5 }}>
-            Multiply your true cost per mile by a route distance to estimate the total cost of the trip.
+            Estimate trip cost from distance using driving costs and vehicle wear without fixed annual ownership or financing overhead.
           </p>
           <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap", marginBottom: "1rem" }}>
             <button
@@ -116,6 +126,56 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
               Round trip
             </button>
           </div>
+          <p
+            style={{
+              margin: "-0.35rem 0 1rem",
+              color: palette.muted,
+              lineHeight: 1.4,
+              fontSize: "0.86rem",
+            }}
+          >
+            {tripType === "roundTrip"
+              ? `Round trip uses your selected total distance of ${formatNumber(values.tripDistance)} miles.`
+              : `One-way distance is doubled to estimate the full there-and-back trip (${formatNumber(values.tripDistance)} miles each way).`}
+          </p>
+          {isToggleEnabled(values.includeWinterTires) ? (
+            <div style={{ marginBottom: "1rem" }}>
+              <label
+                htmlFor="tripTireSet"
+                style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+              >
+                Tire set for this trip
+              </label>
+              <div style={{ ...inputContainerStyle, position: "relative" }}>
+                <select
+                  id="tripTireSet"
+                  className="browser-default"
+                  value={tripTireSet}
+                  onChange={(event) =>
+                    setTripTireSet(event.target.value as TripTireSet)
+                  }
+                  style={{ ...selectStyle, paddingRight: "2.75rem" }}
+                >
+                  <option value="allSeason">Primary / all-season tires</option>
+                  <option value="winter">Winter tires</option>
+                </select>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    right: "1rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: palette.muted,
+                    fontSize: "0.85rem",
+                    pointerEvents: "none",
+                  }}
+                >
+                  ▼
+                </span>
+              </div>
+            </div>
+          ) : null}
           <label
             htmlFor="tripDistance"
             style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
@@ -137,6 +197,73 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
               style={inputStyle}
             />
           </div>
+          {tripFuelEconomyTip ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "0.45rem",
+                marginTop: "0.55rem",
+                marginBottom: "0.9rem",
+                color: palette.muted,
+                fontSize: "0.84rem",
+                lineHeight: 1.45,
+              }}
+            >
+              <i
+                className="material-icons tiny"
+                style={{ color: palette.accentDark, marginTop: "0.08rem", flex: "0 0 auto" }}
+              >
+                warning_amber
+              </i>
+              <span>{tripFuelEconomyTip}</span>
+            </div>
+          ) : null}
+          <div style={{ marginBottom: "1rem" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                cursor: "pointer",
+                fontWeight: 500,
+                color: palette.text,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isToggleEnabled(values.includeTripFuelOverride)}
+                onChange={handleToggleChange("includeTripFuelOverride")}
+              />
+              <span>Override fuel economy for this trip</span>
+            </label>
+          </div>
+          {isToggleEnabled(values.includeTripFuelOverride) ? (
+            <div style={{ marginBottom: "1rem" }}>
+              <label
+                htmlFor="tripFuelEfficiency"
+                style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+              >
+                Trip fuel economy ({values.fuelType === "electric" ? "mi/kWh" : "MPG"})
+              </label>
+              <div style={inputContainerStyle}>
+                <input
+                  id="tripFuelEfficiency"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={getNumericDraftValue(
+                    "tripFuelEfficiency",
+                    values.tripFuelEfficiency,
+                  )}
+                  onChange={handleNumericFieldChange("tripFuelEfficiency")}
+                  onBlur={handleNumericFieldBlur("tripFuelEfficiency")}
+                  onFocus={handleNumericInputFocus}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          ) : null}
           <div
             style={{
               marginTop: "1.25rem",
@@ -151,18 +278,13 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
             </strong>
             <small style={{ display: "block", color: palette.muted, marginTop: "0.4rem" }}>
               {formatNumber(calculations.selectedTripDistance)} miles at{" "}
-              {formatCurrency(calculations.trueCostPerMile)} per mile
+              {formatCurrency(calculations.tripVariableCostPerMile)}{" "}
+              per mile
             </small>
-            <p style={{ margin: "0.6rem 0 0", color: palette.muted }}>
-              {tripType === "roundTrip"
-                ? `Round trip uses your selected total distance of ${formatNumber(values.tripDistance)} miles.`
-                : `One-way distance is doubled to estimate the full there-and-back trip (${formatNumber(values.tripDistance)} miles each way).`}
-            </p>
             <p style={{ margin: "0.35rem 0 0", color: palette.muted }}>
-              Variable-only trip cost:{" "}
-              {formatCurrency(
-                calculations.selectedTripDistance * calculations.variableCostPerMile,
-              )}
+              Fuel economy used for this trip:{" "}
+              {formatNumber(calculations.tripFuelEfficiencyUsed, 1)}{" "}
+              {values.fuelType === "electric" ? "mi/kWh" : "MPG"}
             </p>
           </div>
         </section>

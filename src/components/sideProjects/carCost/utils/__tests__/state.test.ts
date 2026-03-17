@@ -23,6 +23,8 @@ describe("state utils", () => {
 
     expect(sessionValues).toEqual({
       tripDistance: 123,
+      includeTripFuelOverride: defaultValues.includeTripFuelOverride,
+      tripFuelEfficiency: defaultValues.tripFuelEfficiency,
       recurringMiles: 456,
       annualInsurance: 3333,
       annualRegistration: defaultValues.annualRegistration,
@@ -35,6 +37,7 @@ describe("state utils", () => {
 
     const next = applySessionScopedValues(defaultValues, sessionValues);
     expect(next.tripDistance).toBe(123);
+    expect(next.includeTripFuelOverride).toBe(defaultValues.includeTripFuelOverride);
     expect(next.recurringMiles).toBe(456);
     expect(next.annualInsurance).toBe(3333);
     expect(next.includeVehicleCost).toBe(0);
@@ -44,6 +47,8 @@ describe("state utils", () => {
   it("strips session-scoped values from template-like payloads", () => {
     const stripped = stripSessionScopedValues({
       tripDistance: 90,
+      includeTripFuelOverride: 1,
+      tripFuelEfficiency: 29,
       recurringMiles: 12,
       annualInsurance: 999,
       includeVehicleCost: 0,
@@ -162,7 +167,7 @@ describe("state utils", () => {
     removeItemSpy.mockRestore();
   });
 
-  it("migrates legacy persisted state to the current version with a notice", () => {
+  it("resets legacy persisted state on breaking version changes with a notice", () => {
     const result = migratePersistedCarCostState(
       JSON.stringify({
         selectedSource: "template",
@@ -178,12 +183,15 @@ describe("state utils", () => {
     );
 
     expect(result.migratedState?.version).toBe(CAR_COST_STATE_VERSION);
-    expect(result.migratedState?.selectedTemplateId).toBe("camry");
-    expect(result.migratedState?.values.fuelEfficiency).toBe(33);
-    expect(result.startupNotice).toContain("older version");
+    expect(result.migratedState?.selectedTemplateId).toBeNull();
+    expect(result.migratedState?.values.fuelEfficiency).toBe(
+      defaultValues.fuelEfficiency,
+    );
+    expect(result.startupNotice).toContain("breaking calculator changes");
+    expect(result.discardSavedCustomVehicle).toBe(true);
   });
 
-  it("falls back to session-level values when a future version cannot be migrated directly", () => {
+  it("resets future incompatible versions to defaults", () => {
     const result = migratePersistedCarCostState(
       JSON.stringify({
         version: 999,
@@ -204,10 +212,15 @@ describe("state utils", () => {
 
     expect(result.migratedState?.version).toBe(CAR_COST_STATE_VERSION);
     expect(result.migratedState?.selectedSource).toBe("default");
-    expect(result.migratedState?.values.tripDistance).toBe(321);
-    expect(result.migratedState?.values.annualInsurance).toBe(1900);
+    expect(result.migratedState?.values.tripDistance).toBe(
+      defaultValues.tripDistance,
+    );
+    expect(result.migratedState?.values.annualInsurance).toBe(
+      defaultValues.annualInsurance,
+    );
     expect(result.migratedState?.values.purchasePrice).toBe(defaultValues.purchasePrice);
-    expect(result.startupNotice).toContain("could only keep");
+    expect(result.startupNotice).toContain("could not safely migrate");
+    expect(result.discardSavedCustomVehicle).toBe(true);
   });
 
   it("parses admin analytics state from its dedicated storage object", () => {

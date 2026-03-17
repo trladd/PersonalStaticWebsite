@@ -1,9 +1,28 @@
 import React from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import BreakdownDetailSections from "./BreakdownDetailSections";
 
 export type BreakdownItemDetailMetric = {
   label: string;
   value: string;
+};
+
+export type BreakdownItemDetailSectionRow = {
+  label: string;
+  value: string;
+  hint?: string;
+};
+
+export type BreakdownItemDetailSection = {
+  title: string;
+  eyebrow?: string;
+  rows: BreakdownItemDetailSectionRow[];
+  fullWidth?: boolean;
+  callout?: {
+    title: string;
+    body: string;
+    tone?: "info" | "success";
+  };
 };
 
 export type BreakdownItemDetailSegment = {
@@ -16,6 +35,7 @@ export type BreakdownItemDetail = {
   title: string;
   subtitle?: string;
   metrics?: BreakdownItemDetailMetric[];
+  sections?: BreakdownItemDetailSection[];
   steps?: string[];
   pieTitle?: string;
   pieSegments?: BreakdownItemDetailSegment[];
@@ -118,6 +138,14 @@ const BreakdownItemDetailModal: React.FC<BreakdownItemDetailModalProps> = ({
               </div>
             ))}
           </div>
+        ) : null}
+
+        {detail.sections?.length ? (
+          <BreakdownDetailSections
+            sections={detail.sections}
+            palette={palette}
+            cardStyle={cardStyle}
+          />
         ) : null}
 
         {detail.steps?.length ? (
