@@ -97,6 +97,7 @@ describe("state utils", () => {
       year: 2011,
       make: "Ford",
       model: "Mustang",
+      trimSelectionValue: "Mustang::12345",
       title: "2011 Ford Mustang",
       values: {
         ...defaultValues,
@@ -108,9 +109,26 @@ describe("state utils", () => {
       year: "2011",
       make: "Ford",
       model: "Mustang",
-      trim: "",
+      trim: "Mustang::12345",
       fuelType: "regular",
     });
+  });
+
+  it("falls back to legacy trim tokens when no dedicated selection value exists", () => {
+    const draft = getDraftFromVehicle({
+      id: "custom",
+      year: 2018,
+      make: "Toyota",
+      model: "Camry",
+      trim: "Camry Hybrid LE::47243",
+      title: "2018 Toyota Camry",
+      values: {
+        ...defaultValues,
+        fuelType: "regular",
+      },
+    });
+
+    expect(draft.trim).toBe("Camry Hybrid LE::47243");
   });
 
   it("parses valid saved custom vehicle JSON", () => {

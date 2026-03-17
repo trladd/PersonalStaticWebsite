@@ -368,6 +368,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       });
     };
   }, [
+    activeCustomVehicleLookupSummary,
     values.depreciationBasis,
     values.depreciationInterval,
     values.fuelType,
@@ -490,14 +491,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   }, []);
 
   useEffect(() => {
-    if (selectedSource !== "custom" || !savedCustomVehicle?.trim) {
+    const lookupSelectionValue =
+      savedCustomVehicle?.trimSelectionValue ??
+      (savedCustomVehicle?.trim?.includes("::") ? savedCustomVehicle.trim : null);
+
+    if (selectedSource !== "custom" || !lookupSelectionValue) {
       setActiveCustomVehicleLookupSummary(null);
       return;
     }
 
     let isMounted = true;
 
-    fetchVehicleLookupDetails(savedCustomVehicle.trim)
+    fetchVehicleLookupDetails(lookupSelectionValue)
       .then((details) => {
         if (!isMounted) {
           return;
@@ -514,7 +519,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     return () => {
       isMounted = false;
     };
-  }, [savedCustomVehicle?.trim, selectedSource]);
+  }, [savedCustomVehicle?.trim, savedCustomVehicle?.trimSelectionValue, selectedSource]);
 
   useEffect(() => {
     if (!modalRef.current) {
@@ -1215,6 +1220,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       trim: trimNotRequired
         ? null
         : (selectedVehicleDetails?.trim ?? customVehicleDraft.trim),
+      trimSelectionValue: trimNotRequired ? null : customVehicleDraft.trim,
       title:
         selectedVehicleDetails?.title ??
         `${customVehicleDraft.year} ${customVehicleDraft.make.trim()} ${customVehicleDraft.model.trim()}`,

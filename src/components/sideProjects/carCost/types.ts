@@ -80,6 +80,7 @@ export type VehicleTemplate = {
   make: string;
   model: string;
   trim?: string | null;
+  trimSelectionValue?: string | null;
   title: string;
   values: CarCostValues;
 };
