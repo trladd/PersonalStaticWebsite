@@ -65,6 +65,7 @@ const SHARE_PAYLOAD_KEY_ORDER = [
   "includeDepreciation",
   "includeAnnualOwnership",
   "includeFinancing",
+  "trim",
 ] as const;
 
 const buildTokenForIndex = (index: number) => {

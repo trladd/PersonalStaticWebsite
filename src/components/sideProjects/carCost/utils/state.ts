@@ -75,6 +75,7 @@ export const getDraftFromVehicle = (
   year: vehicle ? String(vehicle.year || "") : "",
   make: vehicle?.make ?? "",
   model: vehicle?.model ?? "",
+  trim: vehicle?.trim ?? "",
   fuelType: vehicle?.values.fuelType ?? "regular",
 });
 

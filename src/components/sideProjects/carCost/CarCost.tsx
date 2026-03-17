@@ -86,6 +86,7 @@ import {
   buildShareableCarCostUrl,
   parseSharedCarCostPayload,
 } from "./utils/share";
+import { useVehicleLookup } from "./utils/useVehicleLookup";
 import {
   buildAnalyticsVehicleFromCustomDraft,
   buildAnalyticsVehicleFromSavedCustom,
@@ -136,6 +137,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       year: "",
       make: "",
       model: "",
+      trim: "",
       fuelType: "regular",
     });
   const [customVehicleTouched, setCustomVehicleTouched] = useState<
@@ -144,6 +146,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     year: false,
     make: false,
     model: false,
+    trim: false,
   });
   const [showCustomVehicleValidation, setShowCustomVehicleValidation] =
     useState(false);
@@ -193,6 +196,23 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const installModalRef = useRef<HTMLDivElement>(null);
   const installModalInstanceRef = useRef<M.Modal | null>(null);
   const engagedSectionsRef = useRef<Set<CarCostAnalyticsSection>>(new Set());
+  const {
+    yearOptions,
+    makeOptions,
+    modelOptions,
+    trimOptions,
+    selectedVehicleDetails,
+    selectedVehicleSummary,
+    isLoadingMakes,
+    isLoadingModels,
+    isLoadingTrims,
+    isLoadingVehicleDetails,
+    lookupError,
+    setLookupField,
+  } = useVehicleLookup({
+    draft: customVehicleDraft,
+    setDraft: setCustomVehicleDraft,
+  });
 
   const palette = useMemo(() => buildPalette(isDarkMode), [isDarkMode]);
   const cardStyle = useMemo(() => buildCardStyle(palette), [palette]);
@@ -928,6 +948,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         year: "",
         make: "",
         model: "",
+        trim: "",
         fuelType: "regular",
       });
     }
@@ -1050,71 +1071,57 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }));
   };
 
-  const handleCustomVehicleDraftChange =
-    (field: keyof CustomVehicleDraft) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setCustomVehicleDraft((current) => ({
-        ...current,
-        [field]: event.target.value,
-      }));
-    };
-
-  const handleCustomVehicleFieldBlur = (field: CustomVehicleField) => () => {
-    setCustomVehicleTouched((current) => ({
-      ...current,
-      [field]: true,
-    }));
-    setShowCustomVehicleValidation(true);
-  };
-
-  const parsedCustomVehicleYear = Number(customVehicleDraft.year);
-  const currentModelYear = new Date().getFullYear() + 1;
   const customVehicleFieldErrors: Record<CustomVehicleField, string> = {
-    year:
-      customVehicleDraft.year.trim().length === 0
-        ? "Enter a year."
-        : !Number.isInteger(parsedCustomVehicleYear)
-          ? "Year must be a whole number."
-          : parsedCustomVehicleYear < 1886 ||
-              parsedCustomVehicleYear > currentModelYear
-            ? `Year must be between 1886 and ${currentModelYear}.`
-            : "",
+    year: customVehicleDraft.year.trim().length === 0 ? "Select a year." : "",
     make: customVehicleDraft.make.trim().length === 0 ? "Enter a make." : "",
     model: customVehicleDraft.model.trim().length === 0 ? "Enter a model." : "",
+    trim:
+      customVehicleDraft.trim.trim().length === 0
+        ? "Select a trim."
+        : selectedVehicleDetails
+          ? ""
+          : "Wait for the trim details to finish loading.",
   };
   const isCustomVehicleValid =
     customVehicleFieldErrors.year === "" &&
     customVehicleFieldErrors.make === "" &&
-    customVehicleFieldErrors.model === "";
+    customVehicleFieldErrors.model === "" &&
+    customVehicleFieldErrors.trim === "" &&
+    Boolean(selectedVehicleDetails);
 
   const customVehicleValidationMessage =
     customVehicleFieldErrors.year ||
     customVehicleFieldErrors.make ||
-    customVehicleFieldErrors.model;
+    customVehicleFieldErrors.model ||
+    customVehicleFieldErrors.trim ||
+    lookupError ||
+    "Select a vehicle trim to continue.";
 
   const handleStartWithOwnCar = () => {
     if (!isCustomVehicleValid) {
-      setCustomVehicleTouched({ year: true, make: true, model: true });
+      setCustomVehicleTouched({ year: true, make: true, model: true, trim: true });
       setShowCustomVehicleValidation(true);
       M.toast({
-        html: "Enter a valid year, make, and model",
+        html: "Select a complete vehicle trim before continuing",
         displayLength: 2500,
       });
       return;
     }
 
-    const trimmedMake = customVehicleDraft.make.trim();
-    const trimmedModel = customVehicleDraft.model.trim();
+    if (!selectedVehicleDetails) {
+      return;
+    }
+
     const nextCustomVehicle: CustomVehicle = {
       id: "custom",
-      year: parsedCustomVehicleYear,
-      make: trimmedMake,
-      model: trimmedModel,
-      title: `${parsedCustomVehicleYear} ${trimmedMake} ${trimmedModel}`,
+      year: selectedVehicleDetails.year,
+      make: selectedVehicleDetails.make,
+      model: selectedVehicleDetails.model,
+      trim: selectedVehicleDetails.trim,
+      title: selectedVehicleDetails.title,
       values: normalizeCarCostValues(
         stripSessionScopedValues({
-          fuelType: customVehicleDraft.fuelType,
-          fuelUnitPrice: DEFAULT_FUEL_PRICES[customVehicleDraft.fuelType],
+          ...selectedVehicleDetails.values,
         }),
       ),
     };
@@ -1143,7 +1150,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setSharedStartupSummary(null);
     setStartupNotice(null);
     setCustomVehicleDraft(getDraftFromVehicle(savedCustomVehicle));
-    setCustomVehicleTouched({ year: false, make: false, model: false });
+    setCustomVehicleTouched({ year: false, make: false, model: false, trim: false });
     setShowCustomVehicleValidation(false);
     initializeStartupModal(true)?.open();
   };
@@ -1468,18 +1475,25 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         setStartupTemplateId={setStartupTemplateId}
         handleLoadStartupTemplate={handleLoadStartupTemplate}
         customVehicleDraft={customVehicleDraft}
-        setCustomVehicleDraft={setCustomVehicleDraft}
         customVehicleTouched={customVehicleTouched}
         showCustomVehicleValidation={showCustomVehicleValidation}
         customVehicleFieldErrors={customVehicleFieldErrors}
         customVehicleValidationMessage={customVehicleValidationMessage}
-        currentModelYear={currentModelYear}
         isCustomVehicleValid={isCustomVehicleValid}
+        yearOptions={yearOptions}
+        makeOptions={makeOptions}
+        modelOptions={modelOptions}
+        trimOptions={trimOptions}
+        isLoadingMakes={isLoadingMakes}
+        isLoadingModels={isLoadingModels}
+        isLoadingTrims={isLoadingTrims}
+        isLoadingVehicleDetails={isLoadingVehicleDetails}
+        lookupError={lookupError}
+        selectedVehicleDetails={selectedVehicleDetails}
+        selectedVehicleSummary={selectedVehicleSummary}
+        setLookupField={setLookupField}
         handleContinueFromSavedState={handleContinueFromSavedState}
         handleOpenInstallModal={handleOpenInstallModal}
-        handleCustomVehicleDraftChange={handleCustomVehicleDraftChange}
-        handleCustomVehicleFieldBlur={handleCustomVehicleFieldBlur}
-        handleNumericInputFocus={handleNumericInputFocus}
         setCustomVehicleTouched={setCustomVehicleTouched}
         setShowCustomVehicleValidation={setShowCustomVehicleValidation}
         handleStartWithOwnCar={handleStartWithOwnCar}

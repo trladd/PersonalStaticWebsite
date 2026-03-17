@@ -104,6 +104,11 @@
       "status": "Done",
       "title": "Add share support by generating a URL with serialized state",
       "points": 8
+    },
+    {
+      "status": "Done",
+      "title": "Add structured year / make / model / trim lookup with EPA fuel economy prefill",
+      "points": 8
     }
   ],
   "backlog": [
@@ -116,11 +121,6 @@
       "status": "Todo",
       "title": "Add more expense categories",
       "points": 3
-    },
-    {
-      "status": "Todo",
-      "title": "Pull vehicle fuel economy automatically when possible",
-      "points": 5
     },
     {
       "status": "Todo",
@@ -164,12 +164,12 @@
     },
     {
       "status": "Todo",
-      "title": "Pull vehicle data from year / make / model",
+      "title": "Support other ownership types such as rental and lease",
       "points": 8
     },
     {
       "status": "Todo",
-      "title": "Support other ownership types such as rental and lease",
+      "title": "Add vehicle imagery for selected trims when a reliable source is available",
       "points": 8
     },
     {

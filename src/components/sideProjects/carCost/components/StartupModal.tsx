@@ -1,6 +1,13 @@
 import React from "react";
-import { CustomVehicleDraft, CustomVehicleField, FuelType, VehicleTemplate } from "../types";
+import {
+  CustomVehicleDraft,
+  CustomVehicleField,
+  SelectedVehicleLookupDetails,
+  VehicleLookupOption,
+  VehicleTemplate,
+} from "../types";
 import { formatCurrency } from "../utils/formatters";
+import CustomVehicleSelectionCard from "./CustomVehicleSelectionCard";
 
 type Palette = {
   panelBackground: string;
@@ -36,22 +43,36 @@ type StartupModalProps = {
   setStartupTemplateId: (value: string) => void;
   handleLoadStartupTemplate: () => void;
   customVehicleDraft: CustomVehicleDraft;
-  setCustomVehicleDraft: React.Dispatch<React.SetStateAction<CustomVehicleDraft>>;
   customVehicleTouched: Record<CustomVehicleField, boolean>;
   showCustomVehicleValidation: boolean;
   customVehicleFieldErrors: Record<CustomVehicleField, string>;
   customVehicleValidationMessage: string;
-  currentModelYear: number;
   isCustomVehicleValid: boolean;
+  yearOptions: VehicleLookupOption[];
+  makeOptions: VehicleLookupOption[];
+  modelOptions: VehicleLookupOption[];
+  trimOptions: VehicleLookupOption[];
+  isLoadingMakes: boolean;
+  isLoadingModels: boolean;
+  isLoadingTrims: boolean;
+  isLoadingVehicleDetails: boolean;
+  lookupError: string | null;
+  selectedVehicleDetails: SelectedVehicleLookupDetails | null;
+  selectedVehicleSummary: {
+    fuelType: string;
+    annualFuelCost: number | null;
+    city: number | null;
+    combined: number | null;
+    highway: number | null;
+    unitLabel: "MPG" | "mi/kWh";
+    purchasePrice: number | null;
+  } | null;
+  setLookupField: (
+    field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
+    value: string,
+  ) => void;
   handleContinueFromSavedState: () => void;
   handleOpenInstallModal: () => void;
-  handleCustomVehicleDraftChange: (
-    field: CustomVehicleField,
-  ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
-  handleCustomVehicleFieldBlur: (
-    field: CustomVehicleField,
-  ) => () => void;
-  handleNumericInputFocus: (event: React.FocusEvent<HTMLInputElement>) => void;
   setCustomVehicleTouched: React.Dispatch<
     React.SetStateAction<Record<CustomVehicleField, boolean>>
   >;
@@ -76,17 +97,6 @@ const SelectCaret = ({ color }: { color: string }) => (
   </span>
 );
 
-const fuelOptions: FuelType[] = [
-  "regular",
-  "midgrade",
-  "premium",
-  "diesel",
-  "e85",
-  "cng",
-  "lpg",
-  "electric",
-];
-
 const StartupModal: React.FC<StartupModalProps> = ({
   modalRef,
   palette,
@@ -100,18 +110,25 @@ const StartupModal: React.FC<StartupModalProps> = ({
   setStartupTemplateId,
   handleLoadStartupTemplate,
   customVehicleDraft,
-  setCustomVehicleDraft,
   customVehicleTouched,
   showCustomVehicleValidation,
   customVehicleFieldErrors,
   customVehicleValidationMessage,
-  currentModelYear,
   isCustomVehicleValid,
+  yearOptions,
+  makeOptions,
+  modelOptions,
+  trimOptions,
+  isLoadingMakes,
+  isLoadingModels,
+  isLoadingTrims,
+  isLoadingVehicleDetails,
+  lookupError,
+  selectedVehicleDetails,
+  selectedVehicleSummary,
+  setLookupField,
   handleContinueFromSavedState,
   handleOpenInstallModal,
-  handleCustomVehicleDraftChange,
-  handleCustomVehicleFieldBlur,
-  handleNumericInputFocus,
   setCustomVehicleTouched,
   setShowCustomVehicleValidation,
   handleStartWithOwnCar,
@@ -256,139 +273,37 @@ const StartupModal: React.FC<StartupModalProps> = ({
           </div>
 
           <div className="col s12 l6" style={{ marginBottom: "1rem" }}>
-            <div
-              style={{
-                ...styles.cardStyle,
-                padding: "1.25rem",
-                height: "100%",
-                background: palette.subtlePanel,
+            <CustomVehicleSelectionCard
+              palette={palette}
+              styles={{
+                cardStyle: styles.cardStyle,
+                inputContainerStyle: styles.inputContainerStyle,
+                invalidInputContainerStyle: styles.invalidInputContainerStyle,
+                selectStyle: styles.selectStyle,
+                solidPrimaryButtonStyle: styles.solidPrimaryButtonStyle,
               }}
-            >
-              <h5 style={{ marginTop: 0 }}>Check with my own car</h5>
-              <p style={{ color: palette.muted, fontSize: "0.9rem", lineHeight: 1.45 }}>
-                Enter your vehicle details to begin with a fresh state tied to your own car.
-              </p>
-              <div className="row" style={{ marginBottom: 0 }}>
-                {(["year", "make", "model"] as const).map((field) => (
-                  <div
-                    key={field}
-                    className={field === "year" ? "col s12" : "col s12 m6"}
-                  >
-                    <label
-                      htmlFor={`customVehicle${field[0].toUpperCase()}${field.slice(1)}`}
-                      style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
-                    >
-                      {field[0].toUpperCase() + field.slice(1)}
-                    </label>
-                    <div
-                      style={
-                        showCustomVehicleValidation &&
-                        customVehicleTouched[field] &&
-                        customVehicleFieldErrors[field]
-                          ? styles.invalidInputContainerStyle
-                          : styles.inputContainerStyle
-                      }
-                    >
-                      <input
-                        id={`customVehicle${field[0].toUpperCase()}${field.slice(1)}`}
-                        type={field === "year" ? "number" : "text"}
-                        min={field === "year" ? "1886" : undefined}
-                        max={field === "year" ? `${currentModelYear}` : undefined}
-                        step={field === "year" ? "1" : undefined}
-                        value={customVehicleDraft[field]}
-                        onChange={handleCustomVehicleDraftChange(field)}
-                        onBlur={handleCustomVehicleFieldBlur(field)}
-                        onFocus={field === "year" ? handleNumericInputFocus : undefined}
-                        placeholder={
-                          field === "year" ? "2020" : field === "make" ? "Toyota" : "Camry"
-                        }
-                        style={styles.inputStyle}
-                        className="car-cost-placeholder"
-                      />
-                    </div>
-                    {showCustomVehicleValidation &&
-                    customVehicleTouched[field] &&
-                    customVehicleFieldErrors[field] ? (
-                      <small
-                        style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}
-                      >
-                        {customVehicleFieldErrors[field]}
-                      </small>
-                    ) : null}
-                  </div>
-                ))}
-                <div className="col s12">
-                  <label
-                    htmlFor="customVehicleFuelType"
-                    style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
-                  >
-                    Fuel type
-                  </label>
-                  <div style={{ ...styles.inputContainerStyle, position: "relative" }}>
-                    <select
-                      id="customVehicleFuelType"
-                      className="browser-default"
-                      value={customVehicleDraft.fuelType}
-                      onChange={(event) =>
-                        setCustomVehicleDraft((current) => ({
-                          ...current,
-                          fuelType: event.target.value as FuelType,
-                        }))
-                      }
-                      style={{ ...styles.selectStyle, paddingRight: "2.75rem" }}
-                    >
-                      {fuelOptions.map((fuelType) => (
-                        <option key={fuelType} value={fuelType}>
-                          {fuelType === "cng"
-                            ? "CNG"
-                            : fuelType === "e85"
-                              ? "E85"
-                              : fuelType === "lpg"
-                                ? "LPG"
-                                : fuelType[0].toUpperCase() + fuelType.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                    <SelectCaret color={palette.muted} />
-                  </div>
-                </div>
-              </div>
-              <p style={{ color: palette.muted, fontSize: "0.92rem", margin: "0.5rem 0 0" }}>
-                Year must be between 1886 and {currentModelYear}.
-              </p>
-              {showCustomVehicleValidation && !isCustomVehicleValid ? (
-                <p style={{ color: "#c44949", fontSize: "0.88rem", margin: "0.5rem 0 0" }}>
-                  {customVehicleValidationMessage}
-                </p>
-              ) : null}
-              <div
-                onMouseDown={() => {
-                  if (!isCustomVehicleValid) {
-                    setCustomVehicleTouched({ year: true, make: true, model: true });
-                    setShowCustomVehicleValidation(true);
-                  }
-                }}
-                onTouchStart={() => {
-                  if (!isCustomVehicleValid) {
-                    setCustomVehicleTouched({ year: true, make: true, model: true });
-                    setShowCustomVehicleValidation(true);
-                  }
-                }}
-              >
-                <button
-                  type="button"
-                  className="waves-effect waves-light btn primaryColor"
-                  onClick={handleStartWithOwnCar}
-                  disabled={!isCustomVehicleValid}
-                  style={{
-                    ...styles.solidPrimaryButtonStyle,
-                    opacity: isCustomVehicleValid ? 1 : 0.65,
-                  }}
-                >
-                  Use my vehicle
-                </button>
-              </div>
-            </div>
+              customVehicleDraft={customVehicleDraft}
+              customVehicleTouched={customVehicleTouched}
+              showCustomVehicleValidation={showCustomVehicleValidation}
+              customVehicleFieldErrors={customVehicleFieldErrors}
+              customVehicleValidationMessage={customVehicleValidationMessage}
+              isCustomVehicleValid={isCustomVehicleValid}
+              yearOptions={yearOptions}
+              makeOptions={makeOptions}
+              modelOptions={modelOptions}
+              trimOptions={trimOptions}
+              isLoadingMakes={isLoadingMakes}
+              isLoadingModels={isLoadingModels}
+              isLoadingTrims={isLoadingTrims}
+              isLoadingVehicleDetails={isLoadingVehicleDetails}
+              lookupError={lookupError}
+              selectedVehicleDetails={selectedVehicleDetails}
+              selectedVehicleSummary={selectedVehicleSummary}
+              setLookupField={setLookupField}
+              setCustomVehicleTouched={setCustomVehicleTouched}
+              setShowCustomVehicleValidation={setShowCustomVehicleValidation}
+              handleStartWithOwnCar={handleStartWithOwnCar}
+            />
           </div>
         </div>
         )}

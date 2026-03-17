@@ -79,6 +79,7 @@ export type VehicleTemplate = {
   year: number;
   make: string;
   model: string;
+  trim?: string | null;
   title: string;
   values: CarCostValues;
 };
@@ -89,10 +90,37 @@ export type CustomVehicleDraft = {
   year: string;
   make: string;
   model: string;
+  trim: string;
   fuelType: FuelType;
 };
 
-export type CustomVehicleField = "year" | "make" | "model";
+export type CustomVehicleField = "year" | "make" | "model" | "trim";
+
+export type VehicleLookupOption = {
+  label: string;
+  value: string;
+};
+
+export type VehicleEfficiencyInfo = {
+  city: number | null;
+  combined: number | null;
+  highway: number | null;
+  unitLabel: "MPG" | "mi/kWh";
+  annualFuelCost: number | null;
+};
+
+export type SelectedVehicleLookupDetails = {
+  vehicleId: string;
+  year: number;
+  make: string;
+  model: string;
+  trim: string;
+  title: string;
+  fuelType: FuelType;
+  defaultPurchasePrice: number | null;
+  efficiency: VehicleEfficiencyInfo;
+  values: PartialTemplateValues;
+};
 
 export type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;
 

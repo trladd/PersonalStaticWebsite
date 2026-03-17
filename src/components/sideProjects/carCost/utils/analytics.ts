@@ -185,17 +185,20 @@ export const trackCarCostVehicleSelected = ({
 };
 
 export const buildAnalyticsVehicleFromCustomDraft = ({
+  trim,
   fuelType: _fuelType,
   ...draft
 }: {
   year: string;
   make: string;
   model: string;
+  trim?: string;
   fuelType: string;
 }) => {
   const parsedYear = Number(draft.year);
   const trimmedMake = draft.make.trim();
   const trimmedModel = draft.model.trim();
+  const trimmedTrim = trim?.trim();
 
   if (!Number.isInteger(parsedYear) || !trimmedMake || !trimmedModel) {
     return null;
@@ -204,8 +207,8 @@ export const buildAnalyticsVehicleFromCustomDraft = ({
   return {
     year: parsedYear,
     make: trimmedMake,
-    model: trimmedModel,
-    title: `${parsedYear} ${trimmedMake} ${trimmedModel}`,
+    model: trimmedTrim || trimmedModel,
+    title: `${parsedYear} ${trimmedMake} ${trimmedTrim || trimmedModel}`,
   };
 };
 

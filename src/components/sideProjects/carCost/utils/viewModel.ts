@@ -37,7 +37,7 @@ export const buildTemplateOptions = (
     : []),
   ...typedTemplates.map((template) => ({
     id: template.id,
-    title: `${template.year} ${template.make} ${template.model}`,
+    title: `${template.year} ${template.make} ${template.trim ?? template.model}`,
   })),
 ];
 
@@ -54,7 +54,7 @@ export const getCurrentVehicleLabel = (
           (template) => template.id === selectedTemplateId,
         );
         return matchingTemplate
-          ? `${matchingTemplate.year} ${matchingTemplate.make} ${matchingTemplate.model}`
+          ? `${matchingTemplate.year} ${matchingTemplate.make} ${matchingTemplate.trim ?? matchingTemplate.model}`
           : "Vehicle template";
       })();
 

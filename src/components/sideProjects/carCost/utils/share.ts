@@ -39,6 +39,6 @@ export const parseSharedCarCostPayload = (
   if (!encodedPayload) {
     return null;
   }
-  console.log(decompressSharePayload(encodedPayload));
+
   return decompressSharePayload(encodedPayload);
 };

@@ -108,6 +108,7 @@ describe("state utils", () => {
       year: "2011",
       make: "Ford",
       model: "Mustang",
+      trim: "",
       fuelType: "regular",
     });
   });
