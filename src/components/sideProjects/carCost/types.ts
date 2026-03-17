@@ -70,6 +70,10 @@ export type PersistedStateMigrationResult = {
   startupNotice: string | null;
 };
 
+export type PersistedCarCostAdminState = {
+  disableAnalyticsLogging: boolean;
+};
+
 export type VehicleTemplate = {
   id: string;
   year: number;

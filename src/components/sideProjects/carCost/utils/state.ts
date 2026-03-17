@@ -1,4 +1,5 @@
 import {
+  CAR_COST_ADMIN_STORAGE_KEY,
   CAR_COST_CUSTOM_KEY,
   CAR_COST_STATE_VERSION,
   DEFAULT_FUEL_PRICES,
@@ -11,6 +12,7 @@ import {
   CarCostValues,
   CustomVehicle,
   CustomVehicleDraft,
+  PersistedCarCostAdminState,
   PersistedCarCostState,
   PersistedStateMigrationResult,
   PartialTemplateValues,
@@ -221,4 +223,35 @@ export const migratePersistedCarCostState = (
   } catch (error) {
     return { migratedState: null, startupNotice: null };
   }
+};
+
+export const parseCarCostAdminState = (
+  savedAdminState: string | null,
+  legacySavedState: string | null,
+): PersistedCarCostAdminState => {
+  if (savedAdminState) {
+    try {
+      const parsedAdmin = JSON.parse(savedAdminState) as Partial<PersistedCarCostAdminState>;
+      return {
+        disableAnalyticsLogging: parsedAdmin.disableAnalyticsLogging ?? false,
+      };
+    } catch (error) {
+      localStorage.removeItem(CAR_COST_ADMIN_STORAGE_KEY);
+    }
+  }
+
+  if (legacySavedState) {
+    try {
+      const parsedLegacyState = JSON.parse(legacySavedState) as {
+        disableAnalyticsLogging?: boolean;
+      };
+      return {
+        disableAnalyticsLogging: parsedLegacyState.disableAnalyticsLogging ?? false,
+      };
+    } catch (error) {
+      return { disableAnalyticsLogging: false };
+    }
+  }
+
+  return { disableAnalyticsLogging: false };
 };

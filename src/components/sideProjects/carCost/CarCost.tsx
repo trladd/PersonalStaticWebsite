@@ -21,6 +21,7 @@ import insightsMetadata from "./insights.json";
 import vehicleTemplates from "./vehicleTemplates.json";
 import { Link } from "react-router-dom";
 import {
+  CAR_COST_ADMIN_STORAGE_KEY,
   CAR_COST_CUSTOM_KEY,
   CAR_COST_STATE_VERSION,
   CAR_COST_STORAGE_KEY,
@@ -63,6 +64,7 @@ import {
   applySessionScopedValues,
   cleanupModalArtifacts,
   getDraftFromVehicle,
+  parseCarCostAdminState,
   migratePersistedCarCostState,
   normalizeCarCostValues,
   normalizeVehicleTemplate,
@@ -84,6 +86,18 @@ import {
   buildShareableCarCostUrl,
   parseSharedCarCostPayload,
 } from "./utils/share";
+import {
+  buildAnalyticsVehicleFromCustomDraft,
+  buildAnalyticsVehicleFromSavedCustom,
+  setCarCostAnalyticsPreviewHandler,
+  trackCarCostDetailOpened,
+  trackCarCostInstallPrompt,
+  trackCarCostSectionEngagement,
+  trackCarCostSessionEvent,
+  trackCarCostShare,
+  trackCarCostVehicleSelected,
+  type CarCostAnalyticsSection,
+} from "./utils/analytics";
 
 const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   type BeforeInstallPromptEvent = Event & {
@@ -138,6 +152,16 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     "default" | "resume" | "shared"
   >("default");
   const [isSharedSession, setIsSharedSession] = useState(false);
+  const [disableAnalyticsLogging, setDisableAnalyticsLogging] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return parseCarCostAdminState(
+      window.localStorage.getItem(CAR_COST_ADMIN_STORAGE_KEY),
+      window.localStorage.getItem(CAR_COST_STORAGE_KEY),
+    ).disableAnalyticsLogging;
+  });
   const [sharedStartupSummary, setSharedStartupSummary] = useState<{
     vehicleLabel: string;
     trueCostPerMile: number;
@@ -168,6 +192,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const loanDetailsModalInstanceRef = useRef<M.Modal | null>(null);
   const installModalRef = useRef<HTMLDivElement>(null);
   const installModalInstanceRef = useRef<M.Modal | null>(null);
+  const engagedSectionsRef = useRef<Set<CarCostAnalyticsSection>>(new Set());
 
   const palette = useMemo(() => buildPalette(isDarkMode), [isDarkMode]);
   const cardStyle = useMemo(() => buildCardStyle(palette), [palette]);
@@ -208,6 +233,58 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   useEffect(() => {
     M.updateTextFields();
   }, [values, recurringType, customVehicleDraft]);
+
+  useEffect(() => {
+    setCarCostAnalyticsPreviewHandler((eventName, params) => {
+      const previewDetails = Object.entries(params)
+        .slice(0, 3)
+        .map(([key, value]) => `${key}: ${String(value)}`)
+        .join(" | ");
+
+      M.toast({
+        html: `Analytics preview: ${eventName}${
+          previewDetails ? ` (${previewDetails})` : ""
+        }`,
+        classes: "teal lighten-1",
+        displayLength: 10000,
+      });
+    });
+
+    return () => {
+      setCarCostAnalyticsPreviewHandler(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleAnalyticsToggleShortcut = (event: KeyboardEvent) => {
+      const isShortcutPressed =
+        event.key === "Enter" &&
+        event.shiftKey &&
+        (event.metaKey || event.ctrlKey);
+
+      if (!isShortcutPressed) {
+        return;
+      }
+
+      event.preventDefault();
+      setDisableAnalyticsLogging((current) => {
+        const nextValue = !current;
+        M.toast({
+          html: nextValue
+            ? "Car cost analytics disabled for this session."
+            : "Car cost analytics enabled for this session.",
+          displayLength: 2200,
+        });
+        return nextValue;
+      });
+    };
+
+    window.addEventListener("keydown", handleAnalyticsToggleShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", handleAnalyticsToggleShortcut);
+    };
+  }, []);
 
   useEffect(() => {
     const tooltipElements =
@@ -448,6 +525,17 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         ) {
           setStartupTemplateId(nextSharedState.selectedTemplateId);
         }
+        trackCarCostVehicleSelected({
+          selectionSource: "shared_link",
+          selectedSource: nextSharedState.selectedSource,
+          templateId: nextSharedState.selectedTemplateId,
+          vehicle:
+            nextSharedState.selectedSource === "custom"
+              ? buildAnalyticsVehicleFromSavedCustom(normalizedSharedVehicle)
+              : typedTemplates.find(
+                  (template) => template.id === nextSharedState.selectedTemplateId,
+                ) ?? null,
+        });
         setHasResolvedStartupChoice(true);
         initializeStartupModal(true)?.open();
       } else {
@@ -660,10 +748,53 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     localStorage.setItem(CAR_COST_STORAGE_KEY, JSON.stringify(nextState));
   }, [buildPersistedStateSnapshot, hasResolvedStartupChoice]);
 
+  useEffect(() => {
+    localStorage.setItem(
+      CAR_COST_ADMIN_STORAGE_KEY,
+      JSON.stringify({ disableAnalyticsLogging }),
+    );
+  }, [disableAnalyticsLogging]);
+
   const getNumericDraftValue = (key: string, actualValue: number) =>
     Object.prototype.hasOwnProperty.call(numericInputDrafts, key)
       ? numericInputDrafts[key]
       : String(actualValue);
+
+  const trackSectionEngagementOnce = (section: CarCostAnalyticsSection) => {
+    if (engagedSectionsRef.current.has(section)) {
+      return;
+    }
+
+    engagedSectionsRef.current.add(section);
+    trackCarCostSectionEngagement(section);
+  };
+
+  const numericFieldSectionMap: Partial<
+    Record<keyof CarCostValues, CarCostAnalyticsSection>
+  > = {
+    fuelEfficiency: "running_costs",
+    fuelUnitPrice: "running_costs",
+    oilChangeCost: "running_costs",
+    oilChangeInterval: "running_costs",
+    tireCost: "running_costs",
+    tireInterval: "running_costs",
+    miscMaintenanceCost: "running_costs",
+    miscMaintenanceInterval: "running_costs",
+    purchasePrice: "vehicle_cost",
+    resaleValue: "vehicle_cost",
+    depreciationInterval: "vehicle_cost",
+    annualInsurance: "annual_ownership",
+    annualRegistration: "annual_ownership",
+    annualParking: "annual_ownership",
+    annualInspection: "annual_ownership",
+    annualRoadside: "annual_ownership",
+    loanDownPayment: "vehicle_cost",
+    loanApr: "vehicle_cost",
+    loanTermMonths: "vehicle_cost",
+    loanMonthlyPayment: "vehicle_cost",
+    tripDistance: "trip_estimate",
+    recurringMiles: "recurring_driving_totals",
+  };
 
   const clearSharedSessionIfNeeded = () => {
     if (!isSharedSession) {
@@ -710,6 +841,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         return;
       }
 
+      const section = numericFieldSectionMap[name];
+      if (section) {
+        trackSectionEngagementOnce(section);
+      }
       clearSharedSessionIfNeeded();
       setValues((current) => ({
         ...current,
@@ -749,6 +884,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         | "includeFinancing",
     ) =>
     (event: React.ChangeEvent<HTMLInputElement>) => {
+      trackSectionEngagementOnce(
+        name === "includeAnnualOwnership" ? "annual_ownership" : "vehicle_cost",
+      );
       clearSharedSessionIfNeeded();
       setValues((current) => ({
         ...current,
@@ -759,6 +897,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const handleLoanPaymentModeChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
+    trackSectionEngagementOnce("vehicle_cost");
     clearSharedSessionIfNeeded();
     setValues((current) => ({
       ...current,
@@ -809,6 +948,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }
 
     const sessionValues = getSessionScopedValues(values);
+    trackSectionEngagementOnce("startup");
+    trackCarCostVehicleSelected({
+      selectionSource: "startup_template",
+      selectedSource: "template",
+      templateId: matchingTemplate.id,
+      vehicle: matchingTemplate,
+    });
     clearSharedSessionIfNeeded();
     applySelection(
       "template",
@@ -820,11 +966,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const handleTemplateSwitch = (nextValue: string) => {
     const sessionValues = getSessionScopedValues(values);
+    trackSectionEngagementOnce("startup");
     clearSharedSessionIfNeeded();
     if (nextValue === "custom") {
       if (!savedCustomVehicle) {
         return;
       }
+      trackCarCostVehicleSelected({
+        selectionSource: "sticky_switcher",
+        selectedSource: "custom",
+        templateId: "custom",
+        vehicle: buildAnalyticsVehicleFromSavedCustom(savedCustomVehicle),
+      });
       setSelectedSource("custom");
       setSelectedTemplateId("custom");
       setValues(
@@ -838,6 +991,12 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       return;
     }
 
+    trackCarCostVehicleSelected({
+      selectionSource: "sticky_switcher",
+      selectedSource: "template",
+      templateId: template.id,
+      vehicle: template,
+    });
     setSelectedSource("template");
     setSelectedTemplateId(template.id);
     setValues(applySessionScopedValues(template.values, sessionValues));
@@ -847,6 +1006,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
     const nextFuelType = event.target.value as FuelType;
+    trackSectionEngagementOnce("running_costs");
     clearSharedSessionIfNeeded();
     setValues((current) => ({
       ...current,
@@ -860,6 +1020,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   ) => {
     const nextBasis = event.target
       .value as CarCostValues["miscMaintenanceBasis"];
+    trackSectionEngagementOnce("running_costs");
     clearSharedSessionIfNeeded();
     setValues((current) => ({
       ...current,
@@ -877,6 +1038,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
     const nextBasis = event.target.value as CarCostValues["depreciationBasis"];
+    trackSectionEngagementOnce("vehicle_cost");
     clearSharedSessionIfNeeded();
     setValues((current) => ({
       ...current,
@@ -957,6 +1119,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       ),
     };
 
+    trackSectionEngagementOnce("startup");
+    trackCarCostVehicleSelected({
+      selectionSource: "startup_custom",
+      selectedSource: "custom",
+      templateId: "custom",
+      vehicle: buildAnalyticsVehicleFromCustomDraft(customVehicleDraft),
+    });
     setSavedCustomVehicle(nextCustomVehicle);
     localStorage.setItem(
       CAR_COST_CUSTOM_KEY,
@@ -968,6 +1137,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const handleOpenOwnCarModal = () => {
     cleanupModalArtifacts();
+    trackSectionEngagementOnce("startup");
     clearSharedSessionIfNeeded();
     setStartupMode("resume");
     setSharedStartupSummary(null);
@@ -979,6 +1149,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   };
 
   const handleContinueFromSavedState = () => {
+    if (startupMode === "shared" || startupMode === "resume") {
+      trackCarCostSessionEvent(startupMode);
+    }
     setStartupNotice(null);
     modalInstanceRef.current?.close();
   };
@@ -986,6 +1159,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const handleTripTypeDispatch: React.Dispatch<
     React.SetStateAction<TripType>
   > = (nextTripType) => {
+    trackSectionEngagementOnce("trip_estimate");
     clearSharedSessionIfNeeded();
     setTripType((current) =>
       typeof nextTripType === "function" ? nextTripType(current) : nextTripType,
@@ -995,6 +1169,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const handleRecurringTypeDispatch: React.Dispatch<
     React.SetStateAction<RecurringType>
   > = (nextRecurringType) => {
+    trackSectionEngagementOnce("recurring_driving_totals");
     clearSharedSessionIfNeeded();
     setRecurringType((current) =>
       typeof nextRecurringType === "function"
@@ -1006,6 +1181,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const handleAnnualMileageChange = (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
+    trackSectionEngagementOnce("vehicle_cost");
     const parsedAnnualMiles = Number(event.target.value);
     const nextAnnualMiles = Number.isFinite(parsedAnnualMiles)
       ? Math.max(parsedAnnualMiles, 0)
@@ -1087,6 +1263,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   };
 
   const handleShareCalculator = async () => {
+    trackSectionEngagementOnce("sharing");
     const shareUrl = buildShareableCarCostUrl({
       currentUrl: window.location.href,
       savedCustomVehicle,
@@ -1100,6 +1277,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           text: `Take a look at this car cost estimate for ${currentVehicleLabel}.`,
           url: shareUrl,
         });
+        trackCarCostShare("native_share");
         return;
       }
     } catch (error) {
@@ -1110,11 +1288,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
     try {
       await navigator.clipboard.writeText(shareUrl);
+      trackCarCostShare("clipboard");
       M.toast({
         html: "Share link copied. Paste it to send it to a friend.",
         displayLength: 2800,
       });
     } catch (error) {
+      trackCarCostShare("clipboard_failed");
       M.toast({
         html: "Couldn't copy the share link automatically.",
         displayLength: 2500,
@@ -1123,6 +1303,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   };
 
   const handleOpenInstallModal = () => {
+    trackSectionEngagementOnce("install");
+    trackCarCostInstallPrompt("opened");
     installModalInstanceRef.current?.open();
   };
 
@@ -1135,12 +1317,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     const choice = await installPromptEvent.userChoice;
 
     if (choice.outcome === "accepted") {
+      trackCarCostInstallPrompt("accepted");
       setInstallPromptEvent(null);
       installModalInstanceRef.current?.close();
       M.toast({ html: "Added to home screen.", displayLength: 2200 });
       return;
     }
 
+    trackCarCostInstallPrompt("dismissed");
     M.toast({ html: "Install was dismissed.", displayLength: 2200 });
   };
 
@@ -1167,6 +1351,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     insightCategory: InsightCategory | null = null,
   ) => {
     cleanupModalArtifacts();
+    trackSectionEngagementOnce("breakdown_explorer");
+    trackCarCostDetailOpened("breakdown_modal", title);
     setBreakdownModalMode(mode);
     setBreakdownModalTitle(title);
     setBreakdownModalModes(visibleModes);
@@ -1176,6 +1362,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const openLoanDetailsModal = () => {
     cleanupModalArtifacts();
+    trackSectionEngagementOnce("ownership_summary");
+    trackCarCostDetailOpened("loan_details_modal", "vehicle_financing");
     loanDetailsModalInstanceRef.current?.open();
   };
 
@@ -1388,6 +1576,22 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           display: "flow-root",
         }}
       >
+        {disableAnalyticsLogging ? (
+          <div
+            style={{
+              textAlign: "center",
+              fontSize: "0.35rem",
+              lineHeight: 1.2,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: palette.accentDark,
+              opacity: 0.8,
+              marginBottom: "0.35rem",
+            }}
+          >
+            Analytics disabled
+          </div>
+        ) : null}
         {showInstallAppAction ? (
           <div
             style={{

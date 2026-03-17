@@ -6,6 +6,7 @@ import {
   migratePersistedCarCostState,
   normalizeCarCostValues,
   normalizeVehicleTemplate,
+  parseCarCostAdminState,
   parseSavedCustomVehicle,
   stripSessionScopedValues,
 } from "../state";
@@ -188,5 +189,23 @@ describe("state utils", () => {
     expect(result.migratedState?.values.annualInsurance).toBe(1900);
     expect(result.migratedState?.values.purchasePrice).toBe(defaultValues.purchasePrice);
     expect(result.startupNotice).toContain("could only keep");
+  });
+
+  it("parses admin analytics state from its dedicated storage object", () => {
+    expect(
+      parseCarCostAdminState(
+        JSON.stringify({ disableAnalyticsLogging: true }),
+        null,
+      ),
+    ).toEqual({ disableAnalyticsLogging: true });
+  });
+
+  it("falls back to a legacy embedded analytics flag if needed", () => {
+    expect(
+      parseCarCostAdminState(
+        null,
+        JSON.stringify({ disableAnalyticsLogging: true }),
+      ),
+    ).toEqual({ disableAnalyticsLogging: true });
   });
 });
