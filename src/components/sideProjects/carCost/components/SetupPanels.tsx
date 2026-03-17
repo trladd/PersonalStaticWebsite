@@ -27,6 +27,7 @@ type SetupPanelsProps = {
   styles: StyleBundle;
   isMobileView: boolean;
   fuelEfficiencyLabel: string;
+  fuelEfficiencyTooltip?: string | null;
   fuelPriceLabel: string;
   fuelPriceTooltip: string;
   handleFuelTypeChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
@@ -224,6 +225,7 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
   styles,
   isMobileView,
   fuelEfficiencyLabel,
+  fuelEfficiencyTooltip,
   fuelPriceLabel,
   fuelPriceTooltip,
   handleFuelTypeChange,
@@ -277,6 +279,7 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
             <NumericField
               id="fuelEfficiency"
               label={fuelEfficiencyLabel}
+              tooltip={fuelEfficiencyTooltip ?? undefined}
               value={getNumericDraftValue("fuelEfficiency", values.fuelEfficiency)}
               step="0.1"
               styles={styles}

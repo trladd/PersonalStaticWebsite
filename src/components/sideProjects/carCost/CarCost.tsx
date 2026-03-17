@@ -23,6 +23,7 @@ import { Link } from "react-router-dom";
 import {
   CAR_COST_ADMIN_STORAGE_KEY,
   CAR_COST_CUSTOM_KEY,
+  CAR_COST_STARTUP_BANNER_MESSAGE,
   CAR_COST_STATE_VERSION,
   CAR_COST_STORAGE_KEY,
   DEFAULT_FUEL_PRICES,
@@ -41,6 +42,7 @@ import {
   PersistedCarCostState,
   RecurringType,
   TripType,
+  VehicleLookupSummary,
   VehicleTemplate,
 } from "./types";
 import { calculateCarCost } from "./utils/calculations";
@@ -86,6 +88,7 @@ import {
   buildShareableCarCostUrl,
   parseSharedCarCostPayload,
 } from "./utils/share";
+import { fetchVehicleLookupDetails } from "./utils/vehicleData";
 import { useVehicleLookup } from "./utils/useVehicleLookup";
 import {
   buildAnalyticsVehicleFromCustomDraft,
@@ -99,6 +102,21 @@ import {
   trackCarCostVehicleSelected,
   type CarCostAnalyticsSection,
 } from "./utils/analytics";
+
+const getAnnualMileageFromRecurring = (
+  recurringMiles: number,
+  recurringType: RecurringType,
+) => {
+  const annualMileageByType: Record<RecurringType, number> = {
+    day: recurringMiles * 365,
+    week: recurringMiles * 52,
+    month: recurringMiles * 12,
+    year: recurringMiles,
+    weekday: recurringMiles * 260,
+  };
+
+  return annualMileageByType[recurringType];
+};
 
 const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   type BeforeInstallPromptEvent = Event & {
@@ -150,6 +168,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   });
   const [showCustomVehicleValidation, setShowCustomVehicleValidation] =
     useState(false);
+  const [startupAnnualMileageValue, setStartupAnnualMileageValue] =
+    useState("");
+  const [startupAnnualMileageTouched, setStartupAnnualMileageTouched] =
+    useState(false);
   const [startupNotice, setStartupNotice] = useState<string | null>(null);
   const [startupMode, setStartupMode] = useState<
     "default" | "resume" | "shared"
@@ -170,6 +192,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     trueCostPerMile: number;
     overallCost: number;
   } | null>(null);
+  const [activeCustomVehicleLookupSummary, setActiveCustomVehicleLookupSummary] =
+    useState<VehicleLookupSummary | null>(null);
   const [installPromptEvent, setInstallPromptEvent] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [numericInputDrafts, setNumericInputDrafts] = useState<
@@ -196,11 +220,31 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   const installModalRef = useRef<HTMLDivElement>(null);
   const installModalInstanceRef = useRef<M.Modal | null>(null);
   const engagedSectionsRef = useRef<Set<CarCostAnalyticsSection>>(new Set());
+  const syncStartupAnnualMileageFromState = useCallback(
+    (
+      recurringMilesValue: number,
+      recurringMode: RecurringType,
+      requireManualEntry: boolean,
+    ) => {
+      setStartupAnnualMileageTouched(false);
+      setStartupAnnualMileageValue(
+        requireManualEntry
+          ? ""
+          : String(
+              Math.round(
+                getAnnualMileageFromRecurring(recurringMilesValue, recurringMode),
+              ),
+            ),
+      );
+    },
+    [],
+  );
   const {
     yearOptions,
     makeOptions,
     modelOptions,
     trimOptions,
+    trimNotRequired,
     selectedVehicleDetails,
     selectedVehicleSummary,
     isLoadingMakes,
@@ -252,7 +296,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   useEffect(() => {
     M.updateTextFields();
-  }, [values, recurringType, customVehicleDraft]);
+  }, [values, recurringType, customVehicleDraft, startupAnnualMileageValue]);
 
   useEffect(() => {
     setCarCostAnalyticsPreviewHandler((eventName, params) => {
@@ -446,6 +490,33 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   }, []);
 
   useEffect(() => {
+    if (selectedSource !== "custom" || !savedCustomVehicle?.trim) {
+      setActiveCustomVehicleLookupSummary(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    fetchVehicleLookupDetails(savedCustomVehicle.trim)
+      .then((details) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setActiveCustomVehicleLookupSummary(details.lookupSummary);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setActiveCustomVehicleLookupSummary(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [savedCustomVehicle?.trim, selectedSource]);
+
+  useEffect(() => {
     if (!modalRef.current) {
       return;
     }
@@ -528,6 +599,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
         setValues(normalizeCarCostValues(nextSharedState.values));
         setRecurringType(nextSharedState.recurringType);
+        syncStartupAnnualMileageFromState(
+          nextSharedState.values.recurringMiles,
+          nextSharedState.recurringType,
+          false,
+        );
         setTripType(nextSharedState.tripType ?? "oneWay");
         setIsSharedSession(true);
         setSelectedSource(nextSharedState.selectedSource ?? "default");
@@ -561,6 +637,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       } else {
         setIsSharedSession(true);
         setStartupMode("shared");
+        syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
         initializeStartupModal(true)?.open();
       }
     } else if (savedState) {
@@ -586,6 +663,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
           setValues(normalizeCarCostValues(migratedState.values));
           setRecurringType(migratedState.recurringType);
+          syncStartupAnnualMileageFromState(
+            migratedState.values.recurringMiles,
+            migratedState.recurringType,
+            false,
+          );
           setTripType(migratedState.tripType ?? "oneWay");
           setIsSharedSession(migratedState.isSharedSession ?? false);
           setSelectedSource(migratedState.selectedSource ?? "default");
@@ -617,6 +699,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           setStartupMode("default");
           setIsSharedSession(false);
           setSharedStartupSummary(null);
+          syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
           initializeStartupModal(false)?.open();
         }
       } catch (error) {
@@ -624,12 +707,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         setStartupMode("default");
         setIsSharedSession(false);
         setSharedStartupSummary(null);
+        syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
         initializeStartupModal(false)?.open();
       }
     } else {
       setStartupMode("default");
       setIsSharedSession(false);
       setSharedStartupSummary(null);
+      syncStartupAnnualMileageFromState(defaultValues.recurringMiles, "year", true);
       initializeStartupModal(false)?.open();
     }
 
@@ -637,7 +722,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       cleanupModalArtifacts();
       modalInstanceRef.current?.destroy();
     };
-  }, [initializeStartupModal, typedTemplates]);
+  }, [initializeStartupModal, syncStartupAnnualMileageFromState, typedTemplates]);
 
   useEffect(() => {
     if (!breakdownModalRef.current) {
@@ -943,6 +1028,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setSelectedTemplateId(nextTemplateId);
     setValues(nextValues);
     setRecurringType(nextRecurringType);
+    syncStartupAnnualMileageFromState(
+      nextValues.recurringMiles,
+      nextRecurringType,
+      false,
+    );
     if (source === "default") {
       setCustomVehicleDraft({
         year: "",
@@ -951,6 +1041,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         trim: "",
         fuelType: "regular",
       });
+      setStartupAnnualMileageTouched(false);
     }
     setHasResolvedStartupChoice(true);
     modalInstanceRef.current?.close();
@@ -1073,27 +1164,35 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const customVehicleFieldErrors: Record<CustomVehicleField, string> = {
     year: customVehicleDraft.year.trim().length === 0 ? "Select a year." : "",
-    make: customVehicleDraft.make.trim().length === 0 ? "Enter a make." : "",
-    model: customVehicleDraft.model.trim().length === 0 ? "Enter a model." : "",
+    make: customVehicleDraft.make.trim().length === 0 ? "Select a make." : "",
+    model: customVehicleDraft.model.trim().length === 0 ? "Select a model." : "",
     trim:
-      customVehicleDraft.trim.trim().length === 0
+      !trimNotRequired && customVehicleDraft.trim.trim().length === 0
         ? "Select a trim."
-        : selectedVehicleDetails
+        : trimNotRequired || selectedVehicleDetails
           ? ""
           : "Wait for the trim details to finish loading.",
   };
+  const startupAnnualMileageError =
+    startupAnnualMileageValue.trim().length === 0
+      ? "Enter your annual miles driven."
+      : Number(startupAnnualMileageValue) <= 0
+        ? "Annual miles must be greater than zero."
+        : "";
   const isCustomVehicleValid =
     customVehicleFieldErrors.year === "" &&
     customVehicleFieldErrors.make === "" &&
     customVehicleFieldErrors.model === "" &&
     customVehicleFieldErrors.trim === "" &&
-    Boolean(selectedVehicleDetails);
+    startupAnnualMileageError === "" &&
+    (trimNotRequired || Boolean(selectedVehicleDetails));
 
   const customVehicleValidationMessage =
     customVehicleFieldErrors.year ||
     customVehicleFieldErrors.make ||
     customVehicleFieldErrors.model ||
     customVehicleFieldErrors.trim ||
+    startupAnnualMileageError ||
     lookupError ||
     "Select a vehicle trim to continue.";
 
@@ -1108,20 +1207,23 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       return;
     }
 
-    if (!selectedVehicleDetails) {
-      return;
-    }
-
     const nextCustomVehicle: CustomVehicle = {
       id: "custom",
-      year: selectedVehicleDetails.year,
-      make: selectedVehicleDetails.make,
-      model: selectedVehicleDetails.model,
-      trim: selectedVehicleDetails.trim,
-      title: selectedVehicleDetails.title,
+      year: selectedVehicleDetails?.year ?? Number(customVehicleDraft.year),
+      make: selectedVehicleDetails?.make ?? customVehicleDraft.make.trim(),
+      model: selectedVehicleDetails?.model ?? customVehicleDraft.model.trim(),
+      trim: trimNotRequired
+        ? null
+        : (selectedVehicleDetails?.trim ?? customVehicleDraft.trim),
+      title:
+        selectedVehicleDetails?.title ??
+        `${customVehicleDraft.year} ${customVehicleDraft.make.trim()} ${customVehicleDraft.model.trim()}`,
       values: normalizeCarCostValues(
         stripSessionScopedValues({
-          ...selectedVehicleDetails.values,
+          ...(selectedVehicleDetails?.values ?? {
+            fuelType: customVehicleDraft.fuelType,
+            fuelUnitPrice: DEFAULT_FUEL_PRICES[customVehicleDraft.fuelType],
+          }),
         }),
       ),
     };
@@ -1152,6 +1254,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setCustomVehicleDraft(getDraftFromVehicle(savedCustomVehicle));
     setCustomVehicleTouched({ year: false, make: false, model: false, trim: false });
     setShowCustomVehicleValidation(false);
+    syncStartupAnnualMileageFromState(values.recurringMiles, recurringType, false);
     initializeStartupModal(true)?.open();
   };
 
@@ -1207,6 +1310,18 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       ...current,
       recurringMiles: recurringMilesByType[recurringType],
     }));
+  };
+
+  const handleStartupAnnualMileageChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    setStartupAnnualMileageValue(event.target.value);
+    setStartupAnnualMileageTouched(true);
+    handleAnnualMileageChange(event);
+  };
+
+  const handleStartupAnnualMileageBlur = () => {
+    setStartupAnnualMileageTouched(true);
   };
 
   const handleAnnualMileageDraftChange = (
@@ -1389,8 +1504,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     selectedTemplateId,
   );
   const recurringBreakdownMode = getRecurringBreakdownMode(recurringType);
-  const { fuelEfficiencyLabel, fuelPriceLabel, fuelPriceTooltip } =
-    buildFuelLabels(values);
+  const activeVehicleLookupSummary =
+    selectedSource === "custom" ? activeCustomVehicleLookupSummary : null;
+  const {
+    fuelEfficiencyLabel,
+    fuelEfficiencyTooltip,
+    fuelPriceLabel,
+    fuelPriceTooltip,
+  } = buildFuelLabels(values, activeVehicleLookupSummary, currentVehicleLabel);
   const { depreciationIntervalTooltip, parkingTooltip, resaleWarningTooltip } =
     buildVehicleTooltips(values, calculations);
   const {
@@ -1466,6 +1587,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           inputStyle,
           solidPrimaryButtonStyle,
         }}
+        startupBannerMessage={CAR_COST_STARTUP_BANNER_MESSAGE}
         isMobileView={isMobileView}
         startupMode={startupMode}
         sharedStartupSummary={sharedStartupSummary}
@@ -1484,6 +1606,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         makeOptions={makeOptions}
         modelOptions={modelOptions}
         trimOptions={trimOptions}
+        trimNotRequired={trimNotRequired}
         isLoadingMakes={isLoadingMakes}
         isLoadingModels={isLoadingModels}
         isLoadingTrims={isLoadingTrims}
@@ -1492,6 +1615,11 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         selectedVehicleDetails={selectedVehicleDetails}
         selectedVehicleSummary={selectedVehicleSummary}
         setLookupField={setLookupField}
+        startupAnnualMileageValue={startupAnnualMileageValue}
+        startupAnnualMileageTouched={startupAnnualMileageTouched}
+        startupAnnualMileageError={startupAnnualMileageError}
+        handleStartupAnnualMileageChange={handleStartupAnnualMileageChange}
+        handleStartupAnnualMileageBlur={handleStartupAnnualMileageBlur}
         handleContinueFromSavedState={handleContinueFromSavedState}
         handleOpenInstallModal={handleOpenInstallModal}
         setCustomVehicleTouched={setCustomVehicleTouched}
@@ -1665,6 +1793,7 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
           }}
           isMobileView={isMobileView}
           fuelEfficiencyLabel={fuelEfficiencyLabel}
+          fuelEfficiencyTooltip={fuelEfficiencyTooltip}
           fuelPriceLabel={fuelPriceLabel}
           fuelPriceTooltip={fuelPriceTooltip}
           handleFuelTypeChange={handleFuelTypeChange}

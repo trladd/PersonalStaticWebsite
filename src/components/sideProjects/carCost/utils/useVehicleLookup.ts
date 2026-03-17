@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { defaultValues } from "../config/constants";
 import {
   CustomVehicleDraft,
   CustomVehicleField,
@@ -37,6 +38,7 @@ export const useVehicleLookup = ({
   const [isLoadingTrims, setIsLoadingTrims] = useState(false);
   const [isLoadingVehicleDetails, setIsLoadingVehicleDetails] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [trimNotRequired, setTrimNotRequired] = useState(false);
 
   const yearOptions = useMemo(
     () =>
@@ -128,6 +130,7 @@ export const useVehicleLookup = ({
     if (!draft.year || !draft.make || !draft.model || !Number.isInteger(parsedYear)) {
       setTrimOptions(EMPTY_OPTIONS);
       setSelectedVehicleDetails(null);
+      setTrimNotRequired(false);
       return;
     }
 
@@ -135,6 +138,7 @@ export const useVehicleLookup = ({
     setIsLoadingTrims(true);
     setLookupError(null);
     setSelectedVehicleDetails(null);
+    setTrimNotRequired(false);
 
     fetchVehicleTrimOptions(parsedYear, draft.make, draft.model)
       .then((options) => {
@@ -148,6 +152,11 @@ export const useVehicleLookup = ({
             ...current,
             trim: options[0].value,
           }));
+          return;
+        }
+
+        if (options.length === 0) {
+          setTrimNotRequired(true);
         }
       })
       .catch(() => {
@@ -222,6 +231,7 @@ export const useVehicleLookup = ({
           make: "",
           model: "",
           trim: "",
+          fuelType: defaultValues.fuelType,
         };
       }
 
@@ -231,6 +241,7 @@ export const useVehicleLookup = ({
           make: value,
           model: "",
           trim: "",
+          fuelType: defaultValues.fuelType,
         };
       }
 
@@ -239,6 +250,7 @@ export const useVehicleLookup = ({
           ...current,
           model: value,
           trim: "",
+          fuelType: defaultValues.fuelType,
         };
       }
 
@@ -254,6 +266,7 @@ export const useVehicleLookup = ({
     makeOptions,
     modelOptions,
     trimOptions,
+    trimNotRequired,
     selectedVehicleDetails,
     selectedVehicleSummary: buildVehicleDetailsSummary(selectedVehicleDetails),
     isLoadingMakes,

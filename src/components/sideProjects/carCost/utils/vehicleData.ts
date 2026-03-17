@@ -366,6 +366,15 @@ export const fetchVehicleLookupDetails = (trimValue: string) => {
           fuelType,
           defaultPurchasePrice: purchasePrice,
           efficiency,
+          lookupSummary: {
+            fuelType,
+            annualFuelCost: efficiency.annualFuelCost,
+            city: efficiency.city,
+            combined: efficiency.combined,
+            highway: efficiency.highway,
+            unitLabel: efficiency.unitLabel,
+            purchasePrice,
+          },
           values: {
             ...buildVehicleValuesFromDetail(fuelType, efficiency.combined),
             purchasePrice: purchasePrice ?? defaultValues.purchasePrice,
@@ -385,13 +394,5 @@ export const buildVehicleDetailsSummary = (
     return null;
   }
 
-  return {
-    fuelType: details.fuelType,
-    annualFuelCost: details.efficiency.annualFuelCost,
-    city: details.efficiency.city,
-    combined: details.efficiency.combined,
-    highway: details.efficiency.highway,
-    unitLabel: details.efficiency.unitLabel,
-    purchasePrice: details.defaultPurchasePrice,
-  };
+  return details.lookupSummary;
 };

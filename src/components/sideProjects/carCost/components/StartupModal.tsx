@@ -30,6 +30,7 @@ type StartupModalProps = {
   modalRef: React.RefObject<HTMLDivElement | null>;
   palette: Palette;
   styles: StyleBundle;
+  startupBannerMessage: string;
   isMobileView: boolean;
   startupMode: "default" | "resume" | "shared";
   sharedStartupSummary: {
@@ -52,6 +53,7 @@ type StartupModalProps = {
   makeOptions: VehicleLookupOption[];
   modelOptions: VehicleLookupOption[];
   trimOptions: VehicleLookupOption[];
+  trimNotRequired: boolean;
   isLoadingMakes: boolean;
   isLoadingModels: boolean;
   isLoadingTrims: boolean;
@@ -71,6 +73,13 @@ type StartupModalProps = {
     field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
     value: string,
   ) => void;
+  startupAnnualMileageValue: string;
+  startupAnnualMileageTouched: boolean;
+  startupAnnualMileageError: string;
+  handleStartupAnnualMileageChange: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void;
+  handleStartupAnnualMileageBlur: () => void;
   handleContinueFromSavedState: () => void;
   handleOpenInstallModal: () => void;
   setCustomVehicleTouched: React.Dispatch<
@@ -101,6 +110,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
   modalRef,
   palette,
   styles,
+  startupBannerMessage,
   isMobileView,
   startupMode,
   sharedStartupSummary,
@@ -119,6 +129,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
   makeOptions,
   modelOptions,
   trimOptions,
+  trimNotRequired,
   isLoadingMakes,
   isLoadingModels,
   isLoadingTrims,
@@ -127,6 +138,11 @@ const StartupModal: React.FC<StartupModalProps> = ({
   selectedVehicleDetails,
   selectedVehicleSummary,
   setLookupField,
+  startupAnnualMileageValue,
+  startupAnnualMileageTouched,
+  startupAnnualMileageError,
+  handleStartupAnnualMileageChange,
+  handleStartupAnnualMileageBlur,
   handleContinueFromSavedState,
   handleOpenInstallModal,
   setCustomVehicleTouched,
@@ -142,6 +158,31 @@ const StartupModal: React.FC<StartupModalProps> = ({
           color: palette.text,
         }}
       >
+        {startupBannerMessage.trim().length > 0 ? (
+          <div
+            style={{
+              marginBottom: "1rem",
+              padding: "0.8rem 1rem",
+              borderRadius: "16px",
+              background: "rgba(210, 138, 51, 0.14)",
+              border: "1px solid rgba(210, 138, 51, 0.35)",
+              color: palette.text,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "0.65rem",
+            }}
+          >
+            <i
+              className="material-icons tiny"
+              style={{ color: "#d28a33", marginTop: "0.15rem", flexShrink: 0 }}
+            >
+              construction
+            </i>
+            <div style={{ fontSize: "0.92rem", lineHeight: 1.45 }}>
+              {startupBannerMessage}
+            </div>
+          </div>
+        ) : null}
         <h4>
           {startupMode === "shared"
             ? "Welcome to the vehicle cost calculator"
@@ -280,6 +321,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
                 inputContainerStyle: styles.inputContainerStyle,
                 invalidInputContainerStyle: styles.invalidInputContainerStyle,
                 selectStyle: styles.selectStyle,
+                inputStyle: styles.inputStyle,
                 solidPrimaryButtonStyle: styles.solidPrimaryButtonStyle,
               }}
               customVehicleDraft={customVehicleDraft}
@@ -292,6 +334,7 @@ const StartupModal: React.FC<StartupModalProps> = ({
               makeOptions={makeOptions}
               modelOptions={modelOptions}
               trimOptions={trimOptions}
+              trimNotRequired={trimNotRequired}
               isLoadingMakes={isLoadingMakes}
               isLoadingModels={isLoadingModels}
               isLoadingTrims={isLoadingTrims}
@@ -300,6 +343,11 @@ const StartupModal: React.FC<StartupModalProps> = ({
               selectedVehicleDetails={selectedVehicleDetails}
               selectedVehicleSummary={selectedVehicleSummary}
               setLookupField={setLookupField}
+              startupAnnualMileageValue={startupAnnualMileageValue}
+              startupAnnualMileageTouched={startupAnnualMileageTouched}
+              startupAnnualMileageError={startupAnnualMileageError}
+              handleStartupAnnualMileageChange={handleStartupAnnualMileageChange}
+              handleStartupAnnualMileageBlur={handleStartupAnnualMileageBlur}
               setCustomVehicleTouched={setCustomVehicleTouched}
               setShowCustomVehicleValidation={setShowCustomVehicleValidation}
               handleStartWithOwnCar={handleStartWithOwnCar}

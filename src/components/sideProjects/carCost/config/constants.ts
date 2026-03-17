@@ -64,3 +64,5 @@ export const CAR_COST_CUSTOM_KEY = "carCostCustomVehicle";
 export const CAR_COST_ADMIN_STORAGE_KEY = "carCostAdminState";
 export const CAR_COST_STATE_VERSION = 1;
 export const STALE_STATE_MS = 60 * 60 * 1000;
+export const CAR_COST_STARTUP_BANNER_MESSAGE =
+  "Large changes are currently underway in this calculator. You may see temporary instability while work is in progress.";

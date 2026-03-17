@@ -8,6 +8,7 @@ import {
   InsightCategory,
   InsightDefinition,
   RecurringType,
+  VehicleLookupSummary,
   VehicleTemplate,
 } from "../types";
 import { BreakdownMode } from "../components/CostBreakdownViewer";
@@ -61,7 +62,11 @@ export const getCurrentVehicleLabel = (
 export const getRecurringBreakdownMode = (recurringType: RecurringType): BreakdownMode =>
   recurringType === "weekday" ? "day" : recurringType;
 
-export const buildFuelLabels = (values: CarCostValues) => {
+export const buildFuelLabels = (
+  values: CarCostValues,
+  vehicleLookupSummary?: VehicleLookupSummary | null,
+  vehicleLabel?: string,
+) => {
   const fuelEfficiencyLabel =
     values.fuelType === "electric" ? "Efficiency (mi/kWh)" : "Fuel mileage (MPG)";
   const fuelPriceLabel =
@@ -73,8 +78,15 @@ export const buildFuelLabels = (values: CarCostValues) => {
   ].toLowerCase()} pricing at ${formatCurrency(values.fuelUnitPrice)} per ${
     values.fuelType === "electric" ? "kWh" : "gallon"
   }.`;
+  const fuelEfficiencyTooltip = vehicleLookupSummary
+    ? `${vehicleLabel ?? "Selected vehicle"}: ${vehicleLookupSummary.city !== null && vehicleLookupSummary.combined !== null && vehicleLookupSummary.highway !== null
+        ? `${formatNumber(vehicleLookupSummary.city)} city / ${formatNumber(
+            vehicleLookupSummary.combined,
+          )} combined / ${formatNumber(vehicleLookupSummary.highway)} highway`
+        : "fuel economy data was partially available"} ${vehicleLookupSummary.unitLabel}.`
+    : null;
 
-  return { fuelEfficiencyLabel, fuelPriceLabel, fuelPriceTooltip };
+  return { fuelEfficiencyLabel, fuelPriceLabel, fuelPriceTooltip, fuelEfficiencyTooltip };
 };
 
 export const buildVehicleTooltips = (

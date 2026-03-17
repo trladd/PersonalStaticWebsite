@@ -109,6 +109,16 @@ export type VehicleEfficiencyInfo = {
   annualFuelCost: number | null;
 };
 
+export type VehicleLookupSummary = {
+  fuelType: FuelType;
+  annualFuelCost: number | null;
+  city: number | null;
+  combined: number | null;
+  highway: number | null;
+  unitLabel: "MPG" | "mi/kWh";
+  purchasePrice: number | null;
+};
+
 export type SelectedVehicleLookupDetails = {
   vehicleId: string;
   year: number;
@@ -120,6 +130,7 @@ export type SelectedVehicleLookupDetails = {
   defaultPurchasePrice: number | null;
   efficiency: VehicleEfficiencyInfo;
   values: PartialTemplateValues;
+  lookupSummary: VehicleLookupSummary;
 };
 
 export type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;

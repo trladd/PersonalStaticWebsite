@@ -20,6 +20,7 @@ type StyleBundle = {
   inputContainerStyle: React.CSSProperties;
   invalidInputContainerStyle: React.CSSProperties;
   selectStyle: React.CSSProperties;
+  inputStyle: React.CSSProperties;
   solidPrimaryButtonStyle: React.CSSProperties;
 };
 
@@ -36,6 +37,7 @@ type Props = {
   makeOptions: VehicleLookupOption[];
   modelOptions: VehicleLookupOption[];
   trimOptions: VehicleLookupOption[];
+  trimNotRequired: boolean;
   isLoadingMakes: boolean;
   isLoadingModels: boolean;
   isLoadingTrims: boolean;
@@ -55,6 +57,13 @@ type Props = {
     field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
     value: string,
   ) => void;
+  startupAnnualMileageValue: string;
+  startupAnnualMileageTouched: boolean;
+  startupAnnualMileageError: string;
+  handleStartupAnnualMileageChange: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void;
+  handleStartupAnnualMileageBlur: () => void;
   setCustomVehicleTouched: React.Dispatch<
     React.SetStateAction<Record<CustomVehicleField, boolean>>
   >;
@@ -92,6 +101,7 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
   makeOptions,
   modelOptions,
   trimOptions,
+  trimNotRequired,
   isLoadingMakes,
   isLoadingModels,
   isLoadingTrims,
@@ -100,6 +110,11 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
   selectedVehicleDetails,
   selectedVehicleSummary,
   setLookupField,
+  startupAnnualMileageValue,
+  startupAnnualMileageTouched,
+  startupAnnualMileageError,
+  handleStartupAnnualMileageChange,
+  handleStartupAnnualMileageBlur,
   setCustomVehicleTouched,
   setShowCustomVehicleValidation,
   handleStartWithOwnCar,
@@ -214,18 +229,63 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
           !customVehicleDraft.make || isLoadingModels,
           isLoadingModels ? "Loading models..." : "Select a model",
         )}
-        {renderSelectField(
-          "trim",
-          "Trim",
-          customVehicleDraft.trim,
-          trimOptions,
-          !customVehicleDraft.model || isLoadingTrims,
-          isLoadingTrims ? "Loading trims..." : "Select a trim",
-          trimOptions.length === 0 && customVehicleDraft.model
-            ? "We look up trim-level EPA vehicles after you choose a model."
-            : undefined,
-        )}
+        {!trimNotRequired
+          ? renderSelectField(
+              "trim",
+              "Trim",
+              customVehicleDraft.trim,
+              trimOptions,
+              !customVehicleDraft.model || isLoadingTrims,
+              isLoadingTrims ? "Loading trims..." : "Select a trim",
+              trimOptions.length === 0 && customVehicleDraft.model
+                ? "We look up trim-level EPA vehicles after you choose a model."
+                : undefined,
+            )
+          : null}
+        <div className="col s12">
+          <label
+            htmlFor="startupAnnualMiles"
+            style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+          >
+            Annual miles driven
+          </label>
+          <div
+            style={
+              startupAnnualMileageTouched && startupAnnualMileageError
+                ? styles.invalidInputContainerStyle
+                : styles.inputContainerStyle
+            }
+          >
+            <input
+              id="startupAnnualMiles"
+              type="number"
+              min="0"
+              step="1"
+              value={startupAnnualMileageValue}
+              onChange={handleStartupAnnualMileageChange}
+              onBlur={handleStartupAnnualMileageBlur}
+              placeholder="12000"
+              style={styles.inputStyle}
+              className="car-cost-placeholder"
+            />
+          </div>
+          <small style={{ display: "block", color: palette.muted, marginTop: "0.35rem" }}>
+            This uses the same annual driving assumption as the main calculator.
+          </small>
+          {startupAnnualMileageTouched && startupAnnualMileageError ? (
+            <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+              {startupAnnualMileageError}
+            </small>
+          ) : null}
+        </div>
       </div>
+      {trimNotRequired && customVehicleDraft.model ? (
+        <p style={{ color: palette.muted, fontSize: "0.88rem", margin: "0.5rem 0 0" }}>
+          This model does not expose a separate trim choice in the free EPA data, so
+          we'll start from your selected year / make / model and keep the remaining
+          values editable.
+        </p>
+      ) : null}
       {lookupError ? (
         <p style={{ color: "#c44949", fontSize: "0.88rem", margin: "0.4rem 0 0" }}>
           {lookupError}
@@ -290,6 +350,7 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
               trim: true,
             });
             setShowCustomVehicleValidation(true);
+            handleStartupAnnualMileageBlur();
           }
         }}
         onTouchStart={() => {
@@ -301,6 +362,7 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
               trim: true,
             });
             setShowCustomVehicleValidation(true);
+            handleStartupAnnualMileageBlur();
           }
         }}
       >
