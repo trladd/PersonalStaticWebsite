@@ -17,7 +17,6 @@ describe("state utils", () => {
       ...defaultValues,
       tripDistance: 123,
       drivingMileage: { n: 456, u: "yr" as const },
-      annualInsurance: 3333,
       includeVehicleCost: 0,
     });
 
@@ -26,11 +25,6 @@ describe("state utils", () => {
       includeTripFuelOverride: defaultValues.includeTripFuelOverride,
       tripFuelEfficiency: defaultValues.tripFuelEfficiency,
       drivingMileage: { n: 456, u: "yr" },
-      annualInsurance: 3333,
-      annualRegistration: defaultValues.annualRegistration,
-      annualParking: defaultValues.annualParking,
-      annualInspection: defaultValues.annualInspection,
-      annualRoadside: defaultValues.annualRoadside,
       includeVehicleCost: 0,
       includeAnnualOwnership: defaultValues.includeAnnualOwnership,
     });
@@ -39,7 +33,7 @@ describe("state utils", () => {
     expect(next.tripDistance).toBe(123);
     expect(next.includeTripFuelOverride).toBe(defaultValues.includeTripFuelOverride);
     expect(next.drivingMileage).toEqual({ n: 456, u: "yr" });
-    expect(next.annualInsurance).toBe(3333);
+    expect(next.annualInsurance).toBe(defaultValues.annualInsurance);
     expect(next.includeVehicleCost).toBe(0);
     expect(next.purchasePrice).toBe(defaultValues.purchasePrice);
   });
@@ -50,13 +44,16 @@ describe("state utils", () => {
       includeTripFuelOverride: 1,
       tripFuelEfficiency: 29,
       drivingMileage: { n: 12, u: "yr" as const },
-      annualInsurance: 999,
       includeVehicleCost: 0,
       includeAnnualOwnership: 0,
+      annualInsurance: 999,
       purchasePrice: 22000,
     });
 
-    expect(stripped).toEqual({ purchasePrice: 22000 });
+    expect(stripped).toEqual({
+      annualInsurance: 999,
+      purchasePrice: 22000,
+    });
   });
 
   it("normalizes template values and legacy fuel mileage", () => {
@@ -92,7 +89,7 @@ describe("state utils", () => {
     expect(template.values.fuelEfficiency).toBe(32);
     expect(template.values.fuelType).toBe("regular");
     expect(template.values.oilChangeCost).toBe(defaultValues.oilChangeCost);
-    expect(template.values.annualInsurance).toBe(defaultValues.annualInsurance);
+    expect(template.values.annualInsurance).toBe(999);
     expect(template.values.includeVehicleCost).toBe(defaultValues.includeVehicleCost);
   });
 
@@ -116,6 +113,8 @@ describe("state utils", () => {
       model: "Mustang",
       trim: "Mustang::12345",
       fuelType: "regular",
+      vehicleClassBucket: "",
+      manualVehicleEntry: false,
     });
   });
 
@@ -155,7 +154,7 @@ describe("state utils", () => {
     expect(parsed?.title).toBe("2018 Subaru WRX");
     expect(parsed?.values.fuelEfficiency).toBe(24);
     expect(parsed?.values.oilChangeCost).toBe(defaultValues.oilChangeCost);
-    expect(parsed?.values.annualInsurance).toBe(defaultValues.annualInsurance);
+    expect(parsed?.values.annualInsurance).toBe(1);
   });
 
   it("cleans up invalid saved custom vehicle JSON", () => {

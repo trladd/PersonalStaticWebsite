@@ -8,6 +8,7 @@ import {
   SelectedVehicleLookupDetails,
   VehicleLookupOption,
 } from "../types";
+import { mapVehicleClassToBucket } from "./vehicleClass";
 
 type XmlNodeRecord = Record<string, string>;
 
@@ -359,6 +360,7 @@ export const fetchVehicleLookupDetails = (trimValue: string) => {
           typeof vehicleRecord.VClass === "string" && vehicleRecord.VClass.trim().length > 0
             ? vehicleRecord.VClass.trim()
             : null;
+        const vehicleClassBucket = mapVehicleClassToBucket(vehicleClass);
 
         return {
           vehicleId,
@@ -372,6 +374,7 @@ export const fetchVehicleLookupDetails = (trimValue: string) => {
           efficiency,
           lookupSummary: {
             vehicleClass,
+            vehicleClassBucket,
             fuelType,
             annualFuelCost: efficiency.annualFuelCost,
             city: efficiency.city,

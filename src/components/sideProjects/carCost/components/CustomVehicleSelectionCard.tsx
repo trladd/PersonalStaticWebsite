@@ -4,10 +4,17 @@ import {
   CustomVehicleField,
   DrivingMileageSetting,
   DrivingMileageUnit,
+  FuelType,
   SelectedVehicleLookupDetails,
+  VehicleClassBucket,
   VehicleLookupOption,
+  VehicleLookupSummary,
 } from "../types";
 import { formatCurrency, formatNumber } from "../utils/formatters";
+import {
+  getVehicleClassBucketLabel,
+  getVehicleClassBucketOptions,
+} from "../utils/vehicleClass";
 import DrivingMileageField from "./DrivingMileageField";
 
 type Palette = {
@@ -46,19 +53,18 @@ type Props = {
   isLoadingTrims: boolean;
   isLoadingVehicleDetails: boolean;
   lookupError: string | null;
+  requiresManualCategory: boolean;
+  manualCategoryMessage: string | null;
   selectedVehicleDetails: SelectedVehicleLookupDetails | null;
-  selectedVehicleSummary: {
-    vehicleClass: string | null;
-    fuelType: string;
-    annualFuelCost: number | null;
-    city: number | null;
-    combined: number | null;
-    highway: number | null;
-    unitLabel: "MPG" | "mi/kWh";
-    purchasePrice: number | null;
-  } | null;
+  selectedVehicleSummary: VehicleLookupSummary | null;
   setLookupField: (
-    field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
+    field:
+      | "year"
+      | "make"
+      | "model"
+      | "trim"
+      | "vehicleClassBucket"
+      | "manualVehicleEntry",
     value: string,
   ) => void;
   startupDrivingMileageValue: string;
@@ -68,6 +74,9 @@ type Props = {
   startupPurchasePriceValue: string;
   startupPurchasePriceTouched: boolean;
   startupPurchasePriceError: string;
+  startupFuelEfficiencyValue: string;
+  startupFuelEfficiencyTouched: boolean;
+  startupFuelEfficiencyError: string;
   handleStartupDrivingMileageUnitChange: (unit: DrivingMileageUnit) => void;
   handleStartupAnnualMileageChange: (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -80,6 +89,12 @@ type Props = {
   ) => void;
   handleStartupPurchasePriceFocus: () => void;
   handleStartupPurchasePriceBlur: () => void;
+  handleStartupFuelEfficiencyChange: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void;
+  handleStartupFuelEfficiencyBlur: () => void;
+  handleStartupFuelTypeChange: (fuelType: FuelType) => void;
+  setStartupFuelEfficiencyTouched: React.Dispatch<React.SetStateAction<boolean>>;
   setCustomVehicleTouched: React.Dispatch<
     React.SetStateAction<Record<CustomVehicleField, boolean>>
   >;
@@ -123,6 +138,8 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
   isLoadingTrims,
   isLoadingVehicleDetails,
   lookupError,
+  requiresManualCategory,
+  manualCategoryMessage,
   selectedVehicleDetails,
   selectedVehicleSummary,
   setLookupField,
@@ -133,16 +150,34 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
   startupPurchasePriceValue,
   startupPurchasePriceTouched,
   startupPurchasePriceError,
+  startupFuelEfficiencyValue,
+  startupFuelEfficiencyTouched,
+  startupFuelEfficiencyError,
   handleStartupDrivingMileageUnitChange,
   handleStartupAnnualMileageChange,
   handleStartupAnnualMileageBlur,
   handleStartupPurchasePriceChange,
   handleStartupPurchasePriceFocus,
   handleStartupPurchasePriceBlur,
+  handleStartupFuelEfficiencyChange,
+  handleStartupFuelEfficiencyBlur,
+  handleStartupFuelTypeChange,
+  setStartupFuelEfficiencyTouched,
   setCustomVehicleTouched,
   setShowCustomVehicleValidation,
   handleStartWithOwnCar,
 }) => {
+  const manualCategoryOptions = getVehicleClassBucketOptions();
+  const fuelTypeOptions: FuelType[] = [
+    "regular",
+    "midgrade",
+    "premium",
+    "diesel",
+    "e85",
+    "cng",
+    "lpg",
+    "electric",
+  ];
   const tooltipIconStyle: React.CSSProperties = {
     fontSize: "0.95rem",
     marginLeft: "0.35rem",
@@ -150,6 +185,17 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
     cursor: "help",
     color: palette.muted,
   };
+  const hasResolvedLookupSelection =
+    (!!customVehicleDraft.year &&
+      !!customVehicleDraft.make &&
+      !!customVehicleDraft.model &&
+      !!customVehicleDraft.trim) ||
+    (!!customVehicleDraft.year &&
+      !!customVehicleDraft.make &&
+      !!customVehicleDraft.model &&
+      trimNotRequired);
+  const showManualVehicleEntryToggle =
+    customVehicleDraft.manualVehicleEntry || !hasResolvedLookupSelection;
 
   const renderTooltipLabel = (
     htmlFor: string,
@@ -243,6 +289,61 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
     </div>
   );
 
+  const renderFreeformField = (
+    field: Extract<CustomVehicleField, "make" | "model" | "trim">,
+    label: string,
+    value: string,
+    placeholder: string,
+  ) => (
+    <div className={field === "trim" ? "col s12" : "col s12 m6"}>
+      <label
+        htmlFor={`customVehicle${field[0].toUpperCase()}${field.slice(1)}Manual`}
+        style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+      >
+        {label}
+      </label>
+      <div
+        style={
+          showCustomVehicleValidation &&
+          customVehicleTouched[field] &&
+          customVehicleFieldErrors[field]
+            ? styles.invalidInputContainerStyle
+            : styles.inputContainerStyle
+        }
+      >
+        <input
+          id={`customVehicle${field[0].toUpperCase()}${field.slice(1)}Manual`}
+          type="text"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => {
+            setLookupField(field, event.target.value);
+            setCustomVehicleTouched((current) => ({
+              ...current,
+              [field]: true,
+            }));
+          }}
+          onBlur={() => {
+            setCustomVehicleTouched((current) => ({
+              ...current,
+              [field]: true,
+            }));
+            setShowCustomVehicleValidation(true);
+          }}
+          style={styles.inputStyle}
+          className="car-cost-placeholder"
+        />
+      </div>
+      {showCustomVehicleValidation &&
+      customVehicleTouched[field] &&
+      customVehicleFieldErrors[field] ? (
+        <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+          {customVehicleFieldErrors[field]}
+        </small>
+      ) : null}
+    </div>
+  );
+
   return (
     <div
       style={{
@@ -265,35 +366,246 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
           false,
           "Select a year",
         )}
-        {renderSelectField(
-          "make",
-          "Make",
-          customVehicleDraft.make,
-          makeOptions,
-          !customVehicleDraft.year || isLoadingMakes,
-          isLoadingMakes ? "Loading makes..." : "Select a make",
-        )}
-        {renderSelectField(
-          "model",
-          "Model",
-          customVehicleDraft.model,
-          modelOptions,
-          !customVehicleDraft.make || isLoadingModels,
-          isLoadingModels ? "Loading models..." : "Select a model",
-        )}
-        {!trimNotRequired
-          ? renderSelectField(
+        {customVehicleDraft.manualVehicleEntry
+          ? renderFreeformField("make", "Make", customVehicleDraft.make, "Ford")
+          : renderSelectField(
+              "make",
+              "Make",
+              customVehicleDraft.make,
+              makeOptions,
+              !customVehicleDraft.year || isLoadingMakes,
+              isLoadingMakes ? "Loading makes..." : "Select a make",
+            )}
+        {customVehicleDraft.manualVehicleEntry
+          ? renderFreeformField("model", "Model", customVehicleDraft.model, "F-550")
+          : renderSelectField(
+              "model",
+              "Model",
+              customVehicleDraft.model,
+              modelOptions,
+              !customVehicleDraft.make || isLoadingModels,
+              isLoadingModels ? "Loading models..." : "Select a model",
+            )}
+        {customVehicleDraft.manualVehicleEntry
+          ? renderFreeformField(
               "trim",
-              "Trim",
+              "Trim / engine",
               customVehicleDraft.trim,
-              trimOptions,
-              !customVehicleDraft.model || isLoadingTrims,
-              isLoadingTrims ? "Loading trims..." : "Select a trim",
-              trimOptions.length === 0 && customVehicleDraft.model
-                ? "We look up trim-level EPA vehicles after you choose a model."
-                : undefined,
+              "6.7L Power Stroke / XL",
             )
-          : null}
+          : !trimNotRequired
+            ? renderSelectField(
+                "trim",
+                "Trim",
+                customVehicleDraft.trim,
+                trimOptions,
+                !customVehicleDraft.model || isLoadingTrims,
+                isLoadingTrims ? "Loading trims..." : "Select a trim",
+                trimOptions.length === 0 && customVehicleDraft.model
+                  ? "We look up trim-level EPA vehicles after you choose a model."
+                  : undefined,
+              )
+            : null}
+        {showManualVehicleEntryToggle ? (
+          <div className="col s12">
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "0.8rem",
+                color: palette.muted,
+                lineHeight: 1.3,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={customVehicleDraft.manualVehicleEntry}
+                onChange={(event) => {
+                  setLookupField(
+                    "manualVehicleEntry",
+                    event.target.checked ? "1" : "0",
+                  );
+                  setShowCustomVehicleValidation(false);
+                }}
+              />
+              <span>I can&apos;t find my Year/Make/Model/Trim in the options above</span>
+            </label>
+            {customVehicleDraft.manualVehicleEntry ? (
+              <div
+                style={{
+                  marginTop: "0.55rem",
+                  padding: "0.85rem 1rem",
+                  borderRadius: "14px",
+                  background: "rgba(64, 146, 168, 0.11)",
+                  border: "1px solid rgba(64, 146, 168, 0.24)",
+                  color: palette.text,
+                  fontSize: "0.88rem",
+                  lineHeight: 1.45,
+                }}
+              >
+                That is okay. You can enter the vehicle manually here. It just means
+                we will lean more on the category and the fuel economy you enter, so
+                you should double-check the defaults after loading the calculator.
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {requiresManualCategory ? (
+          <div className="col s12">
+            <div
+              style={{
+                marginBottom: "0.85rem",
+                padding: "0.85rem 1rem",
+                borderRadius: "14px",
+                background: "rgba(210, 138, 51, 0.12)",
+                border: "1px solid rgba(210, 138, 51, 0.28)",
+                color: palette.text,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0.6rem",
+                  alignItems: "flex-start",
+                }}
+              >
+                <i
+                  className="material-icons tiny"
+                  style={{ color: "#d28a33", marginTop: "0.1rem" }}
+                >
+                  warning_amber
+                </i>
+                <div style={{ fontSize: "0.88rem", lineHeight: 1.45 }}>
+                  {manualCategoryMessage ??
+                    "This vehicle is not fully covered by the free EPA fuel-economy data set. We'll use the category you choose to set rough defaults, and the calculator will still work well, but it will need more manual attention to detail."}
+                </div>
+              </div>
+            </div>
+            <label
+              htmlFor="customVehicleCategory"
+              style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+            >
+              Vehicle category
+            </label>
+            <div
+              style={{
+                ...(showCustomVehicleValidation &&
+                customVehicleTouched.vehicleClassBucket &&
+                customVehicleFieldErrors.vehicleClassBucket
+                  ? styles.invalidInputContainerStyle
+                  : styles.inputContainerStyle),
+                position: "relative",
+              }}
+            >
+              <select
+                id="customVehicleCategory"
+                className="browser-default"
+                value={customVehicleDraft.vehicleClassBucket}
+                onChange={(event) => {
+                  setLookupField(
+                    "vehicleClassBucket",
+                    event.target.value as VehicleClassBucket,
+                  );
+                  setCustomVehicleTouched((current) => ({
+                    ...current,
+                    vehicleClassBucket: true,
+                  }));
+                }}
+                onBlur={() => {
+                  setCustomVehicleTouched((current) => ({
+                    ...current,
+                    vehicleClassBucket: true,
+                  }));
+                  setShowCustomVehicleValidation(true);
+                }}
+                style={{ ...styles.selectStyle, paddingRight: "2.75rem" }}
+              >
+                <option value="">Select the closest category</option>
+                {manualCategoryOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <SelectCaret color={palette.muted} />
+            </div>
+            {showCustomVehicleValidation &&
+            customVehicleTouched.vehicleClassBucket &&
+            customVehicleFieldErrors.vehicleClassBucket ? (
+              <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                {customVehicleFieldErrors.vehicleClassBucket}
+              </small>
+            ) : null}
+          </div>
+        ) : null}
+        {requiresManualCategory ? (
+          <>
+            <div className="col s12 m6">
+              <label
+                htmlFor="customVehicleFuelType"
+                style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
+              >
+                Fuel type
+              </label>
+              <div style={{ ...styles.inputContainerStyle, position: "relative" }}>
+                <select
+                  id="customVehicleFuelType"
+                  className="browser-default"
+                  value={customVehicleDraft.fuelType}
+                  onChange={(event) =>
+                    handleStartupFuelTypeChange(event.target.value as FuelType)
+                  }
+                  style={{ ...styles.selectStyle, paddingRight: "2.75rem" }}
+                >
+                  {fuelTypeOptions.map((fuelType) => (
+                    <option key={fuelType} value={fuelType}>
+                      {fuelType === "cng"
+                        ? "CNG"
+                        : fuelType.charAt(0).toUpperCase() + fuelType.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <SelectCaret color={palette.muted} />
+              </div>
+            </div>
+            <div className="col s12 m6">
+              {renderTooltipLabel(
+                "startupFuelEfficiency",
+                "Fuel mileage",
+                "Enter the fuel economy you expect in real use. For trucks and manually entered vehicles, this becomes one of the most important assumptions in the calculator.",
+              )}
+              <div
+                style={
+                  startupFuelEfficiencyTouched && startupFuelEfficiencyError
+                    ? styles.invalidInputContainerStyle
+                    : styles.inputContainerStyle
+                }
+              >
+                <input
+                  id="startupFuelEfficiency"
+                  type="number"
+                  inputMode="decimal"
+                  min="1"
+                  step="0.1"
+                  value={startupFuelEfficiencyValue}
+                  onChange={handleStartupFuelEfficiencyChange}
+                  onBlur={handleStartupFuelEfficiencyBlur}
+                  placeholder={customVehicleDraft.fuelType === "electric" ? "3.0" : "14"}
+                  style={styles.inputStyle}
+                  className="car-cost-placeholder"
+                />
+              </div>
+              {startupFuelEfficiencyTouched && startupFuelEfficiencyError ? (
+                <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
+                  {startupFuelEfficiencyError}
+                </small>
+              ) : null}
+            </div>
+          </>
+        ) : null}
         <div className="col s12">
           {renderTooltipLabel(
             "startupPurchasePrice",
@@ -390,6 +702,17 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
           }}
         >
           <p style={{ margin: 0, fontWeight: 700 }}>{selectedVehicleDetails.title}</p>
+          {selectedVehicleSummary.vehicleClass ? (
+            <p
+              style={{
+                margin: "0.35rem 0 0",
+                color: palette.muted,
+                fontSize: "0.92rem",
+              }}
+            >
+              Vehicle category: {selectedVehicleSummary.vehicleClass}
+            </p>
+          ) : null}
           <p style={{ margin: "0.35rem 0 0", color: palette.muted, fontSize: "0.92rem" }}>
             {selectedVehicleSummary.city !== null &&
             selectedVehicleSummary.combined !== null &&
@@ -410,12 +733,49 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
               : ""}
           </p>
         </div>
+      ) : requiresManualCategory &&
+        customVehicleDraft.vehicleClassBucket &&
+        customVehicleDraft.year &&
+        customVehicleDraft.make &&
+        customVehicleDraft.model ? (
+        <div
+          style={{
+            marginTop: "0.9rem",
+            padding: "0.85rem 1rem",
+            borderRadius: "16px",
+            border: `1px solid ${palette.border}`,
+            background: palette.panelBackground,
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 700 }}>
+            {customVehicleDraft.year} {customVehicleDraft.make} {customVehicleDraft.model}
+          </p>
+          <p style={{ margin: "0.35rem 0 0", color: palette.muted, fontSize: "0.92rem" }}>
+            Vehicle category: {getVehicleClassBucketLabel(customVehicleDraft.vehicleClassBucket)}
+          </p>
+          <p style={{ margin: "0.35rem 0 0", color: palette.muted, fontSize: "0.92rem" }}>
+            Fuel economy and trim-level EPA data were not available for this vehicle, so
+            the calculator will start with generic defaults for this category and leave
+            the detailed values editable.
+          </p>
+        </div>
       ) : null}
       {showCustomVehicleValidation && !isCustomVehicleValid ? (
         <p style={{ color: "#c44949", fontSize: "0.88rem", margin: "0.6rem 0 0" }}>
           {customVehicleValidationMessage}
         </p>
       ) : null}
+      <p
+        style={{
+          color: palette.muted,
+          fontSize: "0.84rem",
+          lineHeight: 1.45,
+          margin: "0.75rem 0 0.6rem",
+        }}
+      >
+        This will generically fill some maintenance and ownership values based on
+        the vehicle category when available. Check all values afterward.
+      </p>
       <div
         onMouseDown={() => {
           if (!isCustomVehicleValid) {
@@ -424,10 +784,13 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
               make: true,
               model: true,
               trim: true,
+              vehicleClassBucket: true,
+              manualVehicleEntry: true,
             });
             setShowCustomVehicleValidation(true);
             handleStartupAnnualMileageBlur();
             handleStartupPurchasePriceBlur();
+            setStartupFuelEfficiencyTouched(true);
           }
         }}
         onTouchStart={() => {
@@ -437,10 +800,13 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
               make: true,
               model: true,
               trim: true,
+              vehicleClassBucket: true,
+              manualVehicleEntry: true,
             });
             setShowCustomVehicleValidation(true);
             handleStartupAnnualMileageBlur();
             handleStartupPurchasePriceBlur();
+            setStartupFuelEfficiencyTouched(true);
           }
         }}
       >

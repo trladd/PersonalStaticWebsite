@@ -4,8 +4,10 @@ import {
   CustomVehicleField,
   DrivingMileageSetting,
   DrivingMileageUnit,
+  FuelType,
   SelectedVehicleLookupDetails,
   VehicleLookupOption,
+  VehicleLookupSummary,
   VehicleTemplate,
 } from "../types";
 import { formatCurrency } from "../utils/formatters";
@@ -61,19 +63,18 @@ type StartupModalProps = {
   isLoadingTrims: boolean;
   isLoadingVehicleDetails: boolean;
   lookupError: string | null;
+  requiresManualCategory: boolean;
+  manualCategoryMessage: string | null;
   selectedVehicleDetails: SelectedVehicleLookupDetails | null;
-  selectedVehicleSummary: {
-    vehicleClass: string | null;
-    fuelType: string;
-    annualFuelCost: number | null;
-    city: number | null;
-    combined: number | null;
-    highway: number | null;
-    unitLabel: "MPG" | "mi/kWh";
-    purchasePrice: number | null;
-  } | null;
+  selectedVehicleSummary: VehicleLookupSummary | null;
   setLookupField: (
-    field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
+    field:
+      | "year"
+      | "make"
+      | "model"
+      | "trim"
+      | "vehicleClassBucket"
+      | "manualVehicleEntry",
     value: string,
   ) => void;
   startupDrivingMileageValue: string;
@@ -83,6 +84,9 @@ type StartupModalProps = {
   startupPurchasePriceValue: string;
   startupPurchasePriceTouched: boolean;
   startupPurchasePriceError: string;
+  startupFuelEfficiencyValue: string;
+  startupFuelEfficiencyTouched: boolean;
+  startupFuelEfficiencyError: string;
   handleStartupDrivingMileageUnitChange: (unit: DrivingMileageUnit) => void;
   handleStartupAnnualMileageChange: (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -95,6 +99,12 @@ type StartupModalProps = {
   ) => void;
   handleStartupPurchasePriceFocus: () => void;
   handleStartupPurchasePriceBlur: () => void;
+  handleStartupFuelEfficiencyChange: (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => void;
+  handleStartupFuelEfficiencyBlur: () => void;
+  handleStartupFuelTypeChange: (fuelType: FuelType) => void;
+  setStartupFuelEfficiencyTouched: React.Dispatch<React.SetStateAction<boolean>>;
   handleContinueFromSavedState: () => void;
   handleOpenInstallModal: () => void;
   setCustomVehicleTouched: React.Dispatch<
@@ -150,6 +160,8 @@ const StartupModal: React.FC<StartupModalProps> = ({
   isLoadingTrims,
   isLoadingVehicleDetails,
   lookupError,
+  requiresManualCategory,
+  manualCategoryMessage,
   selectedVehicleDetails,
   selectedVehicleSummary,
   setLookupField,
@@ -160,12 +172,19 @@ const StartupModal: React.FC<StartupModalProps> = ({
   startupPurchasePriceValue,
   startupPurchasePriceTouched,
   startupPurchasePriceError,
+  startupFuelEfficiencyValue,
+  startupFuelEfficiencyTouched,
+  startupFuelEfficiencyError,
   handleStartupDrivingMileageUnitChange,
   handleStartupAnnualMileageChange,
   handleStartupAnnualMileageBlur,
   handleStartupPurchasePriceChange,
   handleStartupPurchasePriceFocus,
   handleStartupPurchasePriceBlur,
+  handleStartupFuelEfficiencyChange,
+  handleStartupFuelEfficiencyBlur,
+  handleStartupFuelTypeChange,
+  setStartupFuelEfficiencyTouched,
   handleContinueFromSavedState,
   handleOpenInstallModal,
   setCustomVehicleTouched,
@@ -363,6 +382,8 @@ const StartupModal: React.FC<StartupModalProps> = ({
               isLoadingTrims={isLoadingTrims}
               isLoadingVehicleDetails={isLoadingVehicleDetails}
               lookupError={lookupError}
+              requiresManualCategory={requiresManualCategory}
+              manualCategoryMessage={manualCategoryMessage}
               selectedVehicleDetails={selectedVehicleDetails}
               selectedVehicleSummary={selectedVehicleSummary}
               setLookupField={setLookupField}
@@ -373,6 +394,9 @@ const StartupModal: React.FC<StartupModalProps> = ({
               startupPurchasePriceValue={startupPurchasePriceValue}
               startupPurchasePriceTouched={startupPurchasePriceTouched}
               startupPurchasePriceError={startupPurchasePriceError}
+              startupFuelEfficiencyValue={startupFuelEfficiencyValue}
+              startupFuelEfficiencyTouched={startupFuelEfficiencyTouched}
+              startupFuelEfficiencyError={startupFuelEfficiencyError}
               handleStartupDrivingMileageUnitChange={
                 handleStartupDrivingMileageUnitChange
               }
@@ -381,6 +405,10 @@ const StartupModal: React.FC<StartupModalProps> = ({
               handleStartupPurchasePriceChange={handleStartupPurchasePriceChange}
               handleStartupPurchasePriceFocus={handleStartupPurchasePriceFocus}
               handleStartupPurchasePriceBlur={handleStartupPurchasePriceBlur}
+              handleStartupFuelEfficiencyChange={handleStartupFuelEfficiencyChange}
+              handleStartupFuelEfficiencyBlur={handleStartupFuelEfficiencyBlur}
+              handleStartupFuelTypeChange={handleStartupFuelTypeChange}
+              setStartupFuelEfficiencyTouched={setStartupFuelEfficiencyTouched}
               setCustomVehicleTouched={setCustomVehicleTouched}
               setShowCustomVehicleValidation={setShowCustomVehicleValidation}
               handleStartWithOwnCar={handleStartWithOwnCar}

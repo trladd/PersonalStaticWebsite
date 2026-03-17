@@ -29,6 +29,7 @@ import {
   DEFAULT_FUEL_PRICES,
   defaultValues,
 } from "./config/constants";
+import { getVehicleClassDefaultValues } from "./config/vehicleClassDefaults";
 import {
   CarCostProps,
   CarCostValues,
@@ -163,6 +164,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       model: "",
       trim: "",
       fuelType: "regular",
+      vehicleClassBucket: "",
+      manualVehicleEntry: false,
     });
   const [customVehicleTouched, setCustomVehicleTouched] = useState<
     Record<CustomVehicleField, boolean>
@@ -171,6 +174,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     make: false,
     model: false,
     trim: false,
+    vehicleClassBucket: false,
+    manualVehicleEntry: false,
   });
   const [showCustomVehicleValidation, setShowCustomVehicleValidation] =
     useState(false);
@@ -178,6 +183,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     useState(false);
   const [startupPurchasePriceValue, setStartupPurchasePriceValue] = useState("");
   const [startupPurchasePriceTouched, setStartupPurchasePriceTouched] =
+    useState(false);
+  const [startupFuelEfficiencyTouched, setStartupFuelEfficiencyTouched] =
     useState(false);
   const [startupNotice, setStartupNotice] = useState<string | null>(null);
   const [startupMode, setStartupMode] = useState<
@@ -259,12 +266,30 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     },
     [],
   );
+  const syncStartupFuelEfficiencyFromState = useCallback(
+    (_fuelEfficiency: number, requireManualEntry: boolean) => {
+      setStartupFuelEfficiencyTouched(false);
+      setNumericInputDrafts((current) => {
+        const nextDrafts = { ...current };
+        if (requireManualEntry) {
+          nextDrafts.startupFuelEfficiencyValue = "";
+          return nextDrafts;
+        }
+
+        delete nextDrafts.startupFuelEfficiencyValue;
+        return nextDrafts;
+      });
+    },
+    [],
+  );
   const {
     yearOptions,
     makeOptions,
     modelOptions,
     trimOptions,
     trimNotRequired,
+    requiresManualCategory,
+    manualCategoryMessage,
     selectedVehicleDetails,
     selectedVehicleSummary,
     isLoadingMakes,
@@ -317,6 +342,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
   useEffect(() => {
     M.updateTextFields();
   }, [values, customVehicleDraft, numericInputDrafts]);
+
+  useEffect(() => {
+    if (requiresManualCategory) {
+      syncStartupFuelEfficiencyFromState(values.fuelEfficiency, true);
+      return;
+    }
+
+    syncStartupFuelEfficiencyFromState(values.fuelEfficiency, false);
+  }, [requiresManualCategory, syncStartupFuelEfficiencyFromState, values.fuelEfficiency]);
 
   useEffect(() => {
     setCarCostAnalyticsPreviewHandler((eventName, params) => {
@@ -693,6 +727,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
             model: "",
             trim: "",
             fuelType: "regular",
+            vehicleClassBucket: "",
+            manualVehicleEntry: false,
           });
         }
 
@@ -1203,6 +1239,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         model: "",
         trim: "",
         fuelType: "regular",
+        vehicleClassBucket: "",
+        manualVehicleEntry: false,
       });
       setStartupAnnualMileageTouched(false);
       setStartupPurchasePriceTouched(false);
@@ -1237,6 +1275,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       applySessionScopedValues(matchingTemplate.values, sessionValues),
       matchingTemplate.id,
     );
+    M.toast({
+      html: `Loaded ${matchingTemplate.title}. Values updated for that vehicle.`,
+      displayLength: 3000,
+    });
   };
 
   const handleTemplateSwitch = (nextValue: string) => {
@@ -1253,11 +1295,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         templateId: "custom",
         vehicle: buildAnalyticsVehicleFromSavedCustom(savedCustomVehicle),
       });
-      setSelectedSource("custom");
-      setSelectedTemplateId("custom");
-      setValues(
+      applySelection(
+        "custom",
         applySessionScopedValues(savedCustomVehicle.values, sessionValues),
+        "custom",
       );
+      M.toast({
+        html: `Loaded ${savedCustomVehicle.title}. Values updated for that vehicle.`,
+        displayLength: 3000,
+      });
       return;
     }
 
@@ -1272,9 +1318,15 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       templateId: template.id,
       vehicle: template,
     });
-    setSelectedSource("template");
-    setSelectedTemplateId(template.id);
-    setValues(applySessionScopedValues(template.values, sessionValues));
+    applySelection(
+      "template",
+      applySessionScopedValues(template.values, sessionValues),
+      template.id,
+    );
+    M.toast({
+      html: `Loaded ${template.title}. Values updated for that vehicle.`,
+      displayLength: 3000,
+    });
   };
 
   const handleFuelTypeChange = (
@@ -1308,14 +1360,34 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
 
   const customVehicleFieldErrors: Record<CustomVehicleField, string> = {
     year: customVehicleDraft.year.trim().length === 0 ? "Select a year." : "",
-    make: customVehicleDraft.make.trim().length === 0 ? "Select a make." : "",
-    model: customVehicleDraft.model.trim().length === 0 ? "Select a model." : "",
+    make:
+      customVehicleDraft.make.trim().length === 0
+        ? customVehicleDraft.manualVehicleEntry
+          ? "Enter a make."
+          : "Select a make."
+        : "",
+    model:
+      customVehicleDraft.model.trim().length === 0
+        ? customVehicleDraft.manualVehicleEntry
+          ? "Enter a model."
+          : "Select a model."
+        : "",
     trim:
-      !trimNotRequired && customVehicleDraft.trim.trim().length === 0
+      !trimNotRequired &&
+      !customVehicleDraft.manualVehicleEntry &&
+      customVehicleDraft.trim.trim().length === 0
         ? "Select a trim."
-        : trimNotRequired || selectedVehicleDetails
+        : customVehicleDraft.manualVehicleEntry &&
+            customVehicleDraft.trim.trim().length === 0
+          ? "Enter a trim or engine description."
+        : trimNotRequired || selectedVehicleDetails || requiresManualCategory
           ? ""
           : "Wait for the trim details to finish loading.",
+    vehicleClassBucket:
+      requiresManualCategory && !customVehicleDraft.vehicleClassBucket
+        ? "Choose the closest vehicle category."
+        : "",
+    manualVehicleEntry: "",
   };
   const startupDrivingMileageValue = getNumericDraftValue(
     "startupDrivingMileageValue",
@@ -1335,39 +1407,79 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       : startupPurchasePriceNumber === null || startupPurchasePriceNumber <= 0
         ? "Purchase price must be greater than zero."
         : "";
+  const startupFuelEfficiencyValue = getNumericDraftValue(
+    "startupFuelEfficiencyValue",
+    values.fuelEfficiency,
+  );
+  const startupFuelEfficiencyError = requiresManualCategory
+    ? startupFuelEfficiencyValue.trim().length === 0
+      ? "Enter your fuel economy."
+      : Number(startupFuelEfficiencyValue) <= 0
+        ? "Fuel economy must be greater than zero."
+        : ""
+    : "";
   const isCustomVehicleValid =
     customVehicleFieldErrors.year === "" &&
     customVehicleFieldErrors.make === "" &&
     customVehicleFieldErrors.model === "" &&
     customVehicleFieldErrors.trim === "" &&
+    customVehicleFieldErrors.vehicleClassBucket === "" &&
     startupAnnualMileageError === "" &&
     startupPurchasePriceError === "" &&
-    (trimNotRequired || Boolean(selectedVehicleDetails));
+    startupFuelEfficiencyError === "" &&
+    (trimNotRequired || Boolean(selectedVehicleDetails) || requiresManualCategory);
 
   const customVehicleValidationMessage =
     customVehicleFieldErrors.year ||
     customVehicleFieldErrors.make ||
     customVehicleFieldErrors.model ||
     customVehicleFieldErrors.trim ||
+    customVehicleFieldErrors.vehicleClassBucket ||
     startupAnnualMileageError ||
     startupPurchasePriceError ||
+    startupFuelEfficiencyError ||
     lookupError ||
-    "Select a vehicle trim to continue.";
+    manualCategoryMessage ||
+    "Select a vehicle to continue.";
 
   const handleStartWithOwnCar = () => {
     if (!isCustomVehicleValid) {
-      setCustomVehicleTouched({ year: true, make: true, model: true, trim: true });
+      setCustomVehicleTouched({
+        year: true,
+        make: true,
+        model: true,
+        trim: true,
+        vehicleClassBucket: true,
+        manualVehicleEntry: true,
+      });
       setShowCustomVehicleValidation(true);
       setStartupAnnualMileageTouched(true);
       setStartupPurchasePriceTouched(true);
+      setStartupFuelEfficiencyTouched(true);
       M.toast({
-        html: "Select a complete vehicle trim before continuing",
+        html: "Finish the vehicle details before continuing",
         displayLength: 2500,
       });
       return;
     }
 
     const sessionValues = getSessionScopedValues(values);
+    const selectedVehicleClassBucket =
+      selectedVehicleDetails?.lookupSummary.vehicleClassBucket ??
+      (customVehicleDraft.vehicleClassBucket || "unknown");
+    const vehicleClassDefaults = getVehicleClassDefaultValues(
+      selectedVehicleClassBucket,
+    );
+    const previousVehicleKey = savedCustomVehicle
+      ? `${savedCustomVehicle.year}:${savedCustomVehicle.make}:${savedCustomVehicle.model}:${
+          savedCustomVehicle.trimSelectionValue ?? savedCustomVehicle.trim ?? ""
+        }`
+      : null;
+    const nextVehicleKey = `${
+      selectedVehicleDetails?.year ?? Number(customVehicleDraft.year)
+    }:${selectedVehicleDetails?.make ?? customVehicleDraft.make.trim()}:${
+      selectedVehicleDetails?.model ?? customVehicleDraft.model.trim()
+    }:${selectedVehicleDetails?.vehicleId ?? customVehicleDraft.trim}`;
     const nextCustomVehicle: CustomVehicle = {
       id: "custom",
       year: selectedVehicleDetails?.year ?? Number(customVehicleDraft.year),
@@ -1377,13 +1489,21 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         ? null
         : (selectedVehicleDetails?.trim ?? customVehicleDraft.trim),
       trimSelectionValue: trimNotRequired ? null : customVehicleDraft.trim,
+      vehicleClass: selectedVehicleDetails?.lookupSummary.vehicleClass ?? null,
+      vehicleClassBucket:
+        selectedVehicleDetails?.lookupSummary.vehicleClassBucket ??
+        (customVehicleDraft.vehicleClassBucket || null),
+      manualVehicleEntry: customVehicleDraft.manualVehicleEntry,
       title:
         selectedVehicleDetails?.title ??
         `${customVehicleDraft.year} ${customVehicleDraft.make.trim()} ${customVehicleDraft.model.trim()}`,
       values: normalizeCarCostValues(
         stripSessionScopedValues({
+          ...vehicleClassDefaults,
           ...(selectedVehicleDetails?.values ?? {
             fuelType: customVehicleDraft.fuelType,
+            fuelEfficiency:
+              Number(startupFuelEfficiencyValue) || values.fuelEfficiency,
             fuelUnitPrice: DEFAULT_FUEL_PRICES[customVehicleDraft.fuelType],
           }),
           purchasePrice: startupPurchasePriceNumber ?? 0,
@@ -1409,7 +1529,13 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
       applySessionScopedValues(nextCustomVehicle.values, sessionValues),
       "custom",
     );
-    M.toast({ html: `Loaded ${nextCustomVehicle.title}`, displayLength: 2500 });
+    M.toast({
+      html:
+        previousVehicleKey && previousVehicleKey !== nextVehicleKey
+          ? `Updated values for ${nextCustomVehicle.title}. Review the refreshed defaults.`
+          : `Loaded ${nextCustomVehicle.title}`,
+      displayLength: 3200,
+    });
   };
 
   const handleOpenOwnCarModal = () => {
@@ -1420,7 +1546,14 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     setSharedStartupSummary(null);
     setStartupNotice(null);
     setCustomVehicleDraft(getDraftFromVehicle(savedCustomVehicle));
-    setCustomVehicleTouched({ year: false, make: false, model: false, trim: false });
+    setCustomVehicleTouched({
+      year: false,
+      make: false,
+      model: false,
+      trim: false,
+      vehicleClassBucket: false,
+      manualVehicleEntry: false,
+    });
     setShowCustomVehicleValidation(false);
     syncStartupAnnualMileageFromState(false);
     syncStartupPurchasePriceFromState(values.purchasePrice, false);
@@ -1601,6 +1734,46 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
     }
 
     setStartupPurchasePriceValue(formatCurrency(parsedValue));
+  };
+
+  const handleStartupFuelTypeChange = (fuelType: FuelType) => {
+    setCustomVehicleDraft((current) => ({
+      ...current,
+      fuelType,
+    }));
+    setValues((current) => ({
+      ...current,
+      fuelType,
+      fuelUnitPrice: DEFAULT_FUEL_PRICES[fuelType],
+    }));
+  };
+
+  const handleStartupFuelEfficiencyChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const nextValue = event.target.value;
+    setStartupFuelEfficiencyTouched(true);
+    setNumericInputDrafts((current) => ({
+      ...current,
+      startupFuelEfficiencyValue: nextValue,
+    }));
+  };
+
+  const handleStartupFuelEfficiencyBlur = () => {
+    setStartupFuelEfficiencyTouched(true);
+    const parsedValue = Number(startupFuelEfficiencyValue);
+    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+      return;
+    }
+
+    setNumericInputDrafts((current) => ({
+      ...current,
+      startupFuelEfficiencyValue: String(parsedValue),
+    }));
+    setValues((current) => ({
+      ...current,
+      fuelEfficiency: parsedValue,
+    }));
   };
 
   const handleShareCalculator = async () => {
@@ -1840,6 +2013,8 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         isLoadingTrims={isLoadingTrims}
         isLoadingVehicleDetails={isLoadingVehicleDetails}
         lookupError={lookupError}
+        requiresManualCategory={requiresManualCategory}
+        manualCategoryMessage={manualCategoryMessage}
         selectedVehicleDetails={selectedVehicleDetails}
         selectedVehicleSummary={selectedVehicleSummary}
         setLookupField={setLookupField}
@@ -1850,6 +2025,9 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         startupPurchasePriceValue={startupPurchasePriceValue}
         startupPurchasePriceTouched={startupPurchasePriceTouched}
         startupPurchasePriceError={startupPurchasePriceError}
+        startupFuelEfficiencyValue={startupFuelEfficiencyValue}
+        startupFuelEfficiencyTouched={startupFuelEfficiencyTouched}
+        startupFuelEfficiencyError={startupFuelEfficiencyError}
         handleStartupDrivingMileageUnitChange={
           handleStartupDrivingMileageUnitChange
         }
@@ -1858,6 +2036,10 @@ const CarCost: React.FC<CarCostProps> = ({ navWrapperRef }) => {
         handleStartupPurchasePriceChange={handleStartupPurchasePriceChange}
         handleStartupPurchasePriceFocus={handleStartupPurchasePriceFocus}
         handleStartupPurchasePriceBlur={handleStartupPurchasePriceBlur}
+        handleStartupFuelEfficiencyChange={handleStartupFuelEfficiencyChange}
+        handleStartupFuelEfficiencyBlur={handleStartupFuelEfficiencyBlur}
+        handleStartupFuelTypeChange={handleStartupFuelTypeChange}
+        setStartupFuelEfficiencyTouched={setStartupFuelEfficiencyTouched}
         handleContinueFromSavedState={handleContinueFromSavedState}
         handleOpenInstallModal={handleOpenInstallModal}
         setCustomVehicleTouched={setCustomVehicleTouched}

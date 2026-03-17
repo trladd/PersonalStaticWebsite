@@ -32,6 +32,24 @@ export type DrivingMileageSetting = {
   u: DrivingMileageUnit;
 };
 
+export type VehicleClassBucket =
+  | "two_seater"
+  | "subcompact"
+  | "compact"
+  | "midsize"
+  | "large"
+  | "minivan"
+  | "heavy_duty_truck"
+  | "small_pickup_truck"
+  | "small_suv"
+  | "special_purpose"
+  | "suv"
+  | "standard_pickup_truck"
+  | "standard_suv"
+  | "van_passenger"
+  | "van_cargo"
+  | "unknown";
+
 export interface CarCostProps {
   navWrapperRef?: React.RefObject<HTMLDivElement>;
 }
@@ -114,6 +132,9 @@ export type VehicleTemplate = {
   model: string;
   trim?: string | null;
   trimSelectionValue?: string | null;
+  vehicleClass?: string | null;
+  vehicleClassBucket?: VehicleClassBucket | null;
+  manualVehicleEntry?: boolean;
   title: string;
   values: CarCostValues;
 };
@@ -126,9 +147,17 @@ export type CustomVehicleDraft = {
   model: string;
   trim: string;
   fuelType: FuelType;
+  vehicleClassBucket: VehicleClassBucket | "";
+  manualVehicleEntry: boolean;
 };
 
-export type CustomVehicleField = "year" | "make" | "model" | "trim";
+export type CustomVehicleField =
+  | "year"
+  | "make"
+  | "model"
+  | "trim"
+  | "vehicleClassBucket"
+  | "manualVehicleEntry";
 
 export type VehicleLookupOption = {
   label: string;
@@ -145,6 +174,7 @@ export type VehicleEfficiencyInfo = {
 
 export type VehicleLookupSummary = {
   vehicleClass: string | null;
+  vehicleClassBucket: VehicleClassBucket;
   fuelType: FuelType;
   annualFuelCost: number | null;
   city: number | null;
@@ -176,11 +206,6 @@ export type SessionScopedCarCostValues = Pick<
   | "includeTripFuelOverride"
   | "tripFuelEfficiency"
   | "drivingMileage"
-  | "annualInsurance"
-  | "annualRegistration"
-  | "annualParking"
-  | "annualInspection"
-  | "annualRoadside"
   | "includeVehicleCost"
   | "includeAnnualOwnership"
 >;

@@ -34,11 +34,6 @@ const SESSION_SCOPED_VALUE_KEYS = [
   "includeTripFuelOverride",
   "tripFuelEfficiency",
   "drivingMileage",
-  "annualInsurance",
-  "annualRegistration",
-  "annualParking",
-  "annualInspection",
-  "annualRoadside",
   "includeVehicleCost",
   "includeAnnualOwnership",
 ] as const;
@@ -50,11 +45,6 @@ export const getSessionScopedValues = (
   includeTripFuelOverride: values.includeTripFuelOverride,
   tripFuelEfficiency: values.tripFuelEfficiency,
   drivingMileage: values.drivingMileage,
-  annualInsurance: values.annualInsurance,
-  annualRegistration: values.annualRegistration,
-  annualParking: values.annualParking,
-  annualInspection: values.annualInspection,
-  annualRoadside: values.annualRoadside,
   includeVehicleCost: values.includeVehicleCost,
   includeAnnualOwnership: values.includeAnnualOwnership,
 });
@@ -93,6 +83,8 @@ export const getDraftFromVehicle = (
     (vehicle?.trim?.includes("::") ? vehicle.trim : "") ??
     "",
   fuelType: vehicle?.values.fuelType ?? "regular",
+  vehicleClassBucket: vehicle?.vehicleClassBucket ?? "",
+  manualVehicleEntry: vehicle?.manualVehicleEntry ?? false,
 });
 
 export const cleanupModalArtifacts = () => {
