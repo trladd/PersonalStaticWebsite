@@ -1,5 +1,11 @@
 import { CarCostValues, FuelType, IntervalSetting } from "../types";
 import { createIntervalSetting } from "../utils/intervals";
+import { DrivingMileageSetting } from "../types";
+
+export const DEFAULT_DRIVING_MILEAGE: DrivingMileageSetting = {
+  n: 12000,
+  u: "yr",
+};
 
 export const DEFAULT_MISC_MAINTENANCE_SCHEDULE: IntervalSetting =
   createIntervalSetting("d", 15000, "mile");
@@ -50,7 +56,7 @@ export const defaultValues: CarCostValues = {
   resaleValue: 0,
   depreciationInterval: 100000,
   tripDistance: 250,
-  recurringMiles: 12000,
+  drivingMileage: DEFAULT_DRIVING_MILEAGE,
   annualInsurance: 2100,
   annualRegistration: 175,
   annualParking: 0,
@@ -135,7 +141,7 @@ export const DEFAULT_NEW_CAR_TERM_MONTHS = 72;
 export const CAR_COST_STORAGE_KEY = "carCostState";
 export const CAR_COST_CUSTOM_KEY = "carCostCustomVehicle";
 export const CAR_COST_ADMIN_STORAGE_KEY = "carCostAdminState";
-export const CAR_COST_STATE_VERSION = 4;
+export const CAR_COST_STATE_VERSION = 5;
 export const STALE_STATE_MS = 60 * 60 * 1000;
 export const CAR_COST_STARTUP_BANNER_MESSAGE =
   "Large changes are currently underway in this calculator. You may see temporary instability while work is in progress.";

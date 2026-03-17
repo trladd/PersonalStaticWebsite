@@ -10,7 +10,7 @@ export type FuelType =
   | "lpg"
   | "electric";
 
-export type RecurringType = "day" | "week" | "month" | "year" | "weekday";
+export type DrivingMileageUnit = "dy" | "wk" | "wd" | "we" | "mo" | "yr";
 export type TripType = "oneWay" | "roundTrip";
 export type TripTireSet = "allSeason" | "winter";
 export type InsightCategory =
@@ -25,6 +25,11 @@ export type IntervalSetting = {
     n: number;
     u: IntervalUnit;
   };
+};
+
+export type DrivingMileageSetting = {
+  n: number;
+  u: DrivingMileageUnit;
 };
 
 export interface CarCostProps {
@@ -64,7 +69,7 @@ export type CarCostValues = {
   resaleValue: number;
   depreciationInterval: number;
   tripDistance: number;
-  recurringMiles: number;
+  drivingMileage: DrivingMileageSetting;
   annualInsurance: number;
   annualRegistration: number;
   annualParking: number;
@@ -87,7 +92,6 @@ export type PersistedCarCostState = {
   selectedSource: "default" | "template" | "custom";
   selectedTemplateId: string | null;
   values: CarCostValues;
-  recurringType: RecurringType;
   tripType: TripType;
   tripTireSet: TripTireSet;
   updatedAt: string;
@@ -140,6 +144,7 @@ export type VehicleEfficiencyInfo = {
 };
 
 export type VehicleLookupSummary = {
+  vehicleClass: string | null;
   fuelType: FuelType;
   annualFuelCost: number | null;
   city: number | null;
@@ -163,14 +168,14 @@ export type SelectedVehicleLookupDetails = {
   lookupSummary: VehicleLookupSummary;
 };
 
-export type PlannerValues = Pick<CarCostValues, "tripDistance" | "recurringMiles">;
+export type PlannerValues = Pick<CarCostValues, "tripDistance" | "drivingMileage">;
 
 export type SessionScopedCarCostValues = Pick<
   CarCostValues,
   | "tripDistance"
   | "includeTripFuelOverride"
   | "tripFuelEfficiency"
-  | "recurringMiles"
+  | "drivingMileage"
   | "annualInsurance"
   | "annualRegistration"
   | "annualParking"
@@ -196,4 +201,6 @@ export type PartialTemplateValues = Partial<CarCostValues> & {
   fuelMileage?: number;
   miscMaintenanceBasis?: "miles" | "month" | "year";
   miscMaintenanceInterval?: number;
+  recurringMiles?: number;
+  recurringType?: string;
 };

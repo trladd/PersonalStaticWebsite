@@ -2,6 +2,7 @@ import {
   CAR_COST_ADMIN_STORAGE_KEY,
   CAR_COST_CUSTOM_KEY,
   CAR_COST_STATE_VERSION,
+  DEFAULT_DRIVING_MILEAGE,
   DEFAULT_BATTERY_REPLACEMENT_SCHEDULE,
   DEFAULT_BRAKE_SERVICE_SCHEDULE,
   DEFAULT_FUEL_PRICES,
@@ -17,6 +18,7 @@ import {
   CarCostValues,
   CustomVehicle,
   CustomVehicleDraft,
+  DrivingMileageSetting,
   PersistedCarCostAdminState,
   PersistedCarCostState,
   PersistedStateMigrationResult,
@@ -24,13 +26,14 @@ import {
   SessionScopedCarCostValues,
   VehicleTemplate,
 } from "../types";
+import { normalizeDrivingMileageSetting } from "./drivingMileage";
 import { normalizeIntervalSetting } from "./intervals";
 
 const SESSION_SCOPED_VALUE_KEYS = [
   "tripDistance",
   "includeTripFuelOverride",
   "tripFuelEfficiency",
-  "recurringMiles",
+  "drivingMileage",
   "annualInsurance",
   "annualRegistration",
   "annualParking",
@@ -46,7 +49,7 @@ export const getSessionScopedValues = (
   tripDistance: values.tripDistance,
   includeTripFuelOverride: values.includeTripFuelOverride,
   tripFuelEfficiency: values.tripFuelEfficiency,
-  recurringMiles: values.recurringMiles,
+  drivingMileage: values.drivingMileage,
   annualInsurance: values.annualInsurance,
   annualRegistration: values.annualRegistration,
   annualParking: values.annualParking,
@@ -117,6 +120,13 @@ export const normalizeCarCostValues = (
     rawValues?.fuelEfficiency ??
     rawValues?.fuelMileage ??
     defaultValues.fuelEfficiency,
+  drivingMileage: normalizeDrivingMileageSetting(
+    rawValues?.drivingMileage as Partial<DrivingMileageSetting> | undefined,
+    typeof rawValues?.recurringMiles === "number" ? rawValues.recurringMiles : undefined,
+    typeof (rawValues as { recurringType?: string } | undefined)?.recurringType === "string"
+      ? (rawValues as { recurringType?: string }).recurringType
+      : undefined,
+  ),
   miscMaintenanceSchedule: normalizeIntervalSetting({
     rawInterval: rawValues?.miscMaintenanceSchedule,
     fallback: DEFAULT_MISC_MAINTENANCE_SCHEDULE,
@@ -212,7 +222,6 @@ const buildPersistedCarCostState = (
   selectedSource: rawState.selectedSource ?? "default",
   selectedTemplateId: rawState.selectedTemplateId ?? null,
   values: normalizeCarCostValues(rawState.values),
-  recurringType: rawState.recurringType ?? "year",
   tripType: rawState.tripType ?? "oneWay",
   tripTireSet: rawState.tripTireSet ?? "allSeason",
   updatedAt: rawState.updatedAt ?? new Date(0).toISOString(),
@@ -235,7 +244,7 @@ export const migratePersistedCarCostState = (
       version?: number;
     };
 
-    if (!parsedState?.values || !parsedState?.recurringType) {
+    if (!parsedState?.values) {
       return {
         migratedState: null,
         startupNotice: null,
@@ -260,8 +269,10 @@ export const migratePersistedCarCostState = (
         isSharedSession: false,
         selectedSource: "default",
         selectedTemplateId: null,
-        values: defaultValues,
-        recurringType: "year",
+        values: {
+          ...defaultValues,
+          drivingMileage: DEFAULT_DRIVING_MILEAGE,
+        },
         tripType: "oneWay",
         tripTireSet: "allSeason",
         updatedAt: new Date().toISOString(),

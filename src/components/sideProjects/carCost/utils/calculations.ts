@@ -1,5 +1,6 @@
-import { CarCostValues, RecurringType, TripTireSet, TripType } from "../types";
+import { CarCostValues, TripTireSet, TripType } from "../types";
 import { isToggleEnabled } from "./formatters";
+import { getAnnualMileageFromSetting } from "./drivingMileage";
 import { getAnnualizedIntervalCost } from "./intervals";
 
 export type LoanPaydownPoint = {
@@ -75,7 +76,6 @@ export type CarCostCalculations = {
 
 export const calculateCarCost = (
   values: CarCostValues,
-  recurringType: RecurringType,
   tripType: TripType,
   tripTireSet: TripTireSet,
 ): CarCostCalculations => {
@@ -93,15 +93,7 @@ export const calculateCarCost = (
       ? values.fuelUnitPrice / tripFuelEfficiencyUsed
       : 0;
 
-  const annualMileageByType: Record<RecurringType, number> = {
-    day: values.recurringMiles * 365,
-    week: values.recurringMiles * 52,
-    month: values.recurringMiles * 12,
-    year: values.recurringMiles,
-    weekday: values.recurringMiles * 5 * 52,
-  };
-
-  const annualMileage = annualMileageByType[recurringType];
+  const annualMileage = getAnnualMileageFromSetting(values.drivingMileage);
   const oilAgeLimitMiles =
     values.oilChangeMaxMonths > 0 && annualMileage > 0
       ? annualMileage * (values.oilChangeMaxMonths / 12)

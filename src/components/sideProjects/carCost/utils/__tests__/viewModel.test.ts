@@ -60,9 +60,19 @@ describe("viewModel utils", () => {
     ).toBe("2025 Toyota Camry");
   });
 
-  it("maps weekday recurring mode back to day for breakdown views", () => {
-    expect(getRecurringBreakdownMode("weekday")).toBe("day");
-    expect(getRecurringBreakdownMode("month")).toBe("month");
+  it("maps driving mileage units to recurring breakdown views", () => {
+    expect(
+      getRecurringBreakdownMode({
+        ...defaultValues,
+        drivingMileage: { n: 20, u: "wd" },
+      }),
+    ).toBe("day");
+    expect(
+      getRecurringBreakdownMode({
+        ...defaultValues,
+        drivingMileage: { n: 1000, u: "mo" },
+      }),
+    ).toBe("month");
   });
 
   it("builds tooltips reflecting years vs miles ownership assumptions", () => {
@@ -72,7 +82,6 @@ describe("viewModel utils", () => {
         depreciationBasis: "years",
         depreciationInterval: 3,
       },
-      "year",
       "roundTrip",
       "allSeason",
     );
@@ -93,7 +102,6 @@ describe("viewModel utils", () => {
   it("builds insights and filters them by associated category", () => {
     const calculations = calculateCarCost(
       defaultValues,
-      "year",
       "roundTrip",
       "allSeason",
     );

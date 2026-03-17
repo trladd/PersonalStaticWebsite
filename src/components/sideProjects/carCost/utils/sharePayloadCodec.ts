@@ -91,6 +91,7 @@ const SHARE_PAYLOAD_KEY_ORDER = [
   "oilChangeMaxMonths",
   "includeTripFuelOverride",
   "tripFuelEfficiency",
+  "drivingMileage",
 ] as const;
 
 const buildTokenForIndex = (index: number) => {

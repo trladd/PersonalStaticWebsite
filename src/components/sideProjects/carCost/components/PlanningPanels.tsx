@@ -3,7 +3,13 @@ import SeeMoreButton from "./SeeMoreButton";
 import { BreakdownMode } from "./CostBreakdownViewer";
 import { CarCostCalculations } from "../utils/calculations";
 import { formatCurrency, formatNumber, isToggleEnabled } from "../utils/formatters";
-import { CarCostValues, RecurringType, TripTireSet, TripType } from "../types";
+import {
+  CarCostValues,
+  DrivingMileageUnit,
+  TripTireSet,
+  TripType,
+} from "../types";
+import DrivingMileageField from "./DrivingMileageField";
 
 type Palette = {
   muted: string;
@@ -30,7 +36,6 @@ type PlanningPanelsProps = {
   tripType: TripType;
   tripTireSet: TripTireSet;
   tripFuelEconomyTip: string | null;
-  recurringType: RecurringType;
   recurringBreakdownMode: BreakdownMode;
   tripTypeButtonStyle: (isActive: boolean) => React.CSSProperties;
   setTripType: React.Dispatch<React.SetStateAction<TripType>>;
@@ -38,7 +43,9 @@ type PlanningPanelsProps = {
   handleToggleChange: (
     name: "includeTripFuelOverride",
   ) => (event: React.ChangeEvent<HTMLInputElement>) => void;
-  setRecurringType: React.Dispatch<React.SetStateAction<RecurringType>>;
+  onDrivingMileageUnitChange: (unit: DrivingMileageUnit) => void;
+  onDrivingMileageValueChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onDrivingMileageValueBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
   getNumericDraftValue: (key: string, actualValue: number) => string;
   handleNumericFieldChange: (
     name: keyof CarCostValues,
@@ -70,13 +77,14 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
   tripType,
   tripTireSet,
   tripFuelEconomyTip,
-  recurringType,
   recurringBreakdownMode,
   tripTypeButtonStyle,
   setTripType,
   setTripTireSet,
   handleToggleChange,
-  setRecurringType,
+  onDrivingMileageUnitChange,
+  onDrivingMileageValueChange,
+  onDrivingMileageValueBlur,
   getNumericDraftValue,
   handleNumericFieldChange,
   handleNumericFieldBlur,
@@ -318,66 +326,37 @@ const PlanningPanels: React.FC<PlanningPanelsProps> = ({
           <p style={{ color: palette.muted, lineHeight: 1.5 }}>
             Enter miles by day, week, month, or year to see equivalent cost across every timeframe.
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-            <div style={{ flex: "1 1 220px" }}>
-              <label
-                htmlFor="recurringMiles"
-                style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
-              >
-                Miles
-              </label>
-              <div style={inputContainerStyle}>
-                <input
-                  id="recurringMiles"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={getNumericDraftValue("recurringMiles", values.recurringMiles)}
-                  onChange={handleNumericFieldChange("recurringMiles")}
-                  onBlur={handleNumericFieldBlur("recurringMiles")}
-                  onFocus={handleNumericInputFocus}
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-            <div style={{ flex: "1 1 220px" }}>
-              <label
-                htmlFor="recurringType"
-                style={{ display: "block", fontWeight: 600, marginBottom: "0.45rem" }}
-              >
-                Based on
-              </label>
-              <div style={{ ...inputContainerStyle, position: "relative" }}>
-                <select
-                  id="recurringType"
-                  className="browser-default"
-                  value={recurringType}
-                  onChange={(event) => setRecurringType(event.target.value as RecurringType)}
-                  style={{ ...selectStyle, paddingRight: "2.75rem" }}
-                >
-                  <option value="day">Miles per day</option>
-                  <option value="weekday">Miles per weekday</option>
-                  <option value="week">Miles per week</option>
-                  <option value="month">Miles per month</option>
-                  <option value="year">Miles per year</option>
-                </select>
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    right: "1rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: palette.muted,
-                    fontSize: "0.85rem",
-                    pointerEvents: "none",
-                  }}
-                >
-                  ▼
-                </span>
-              </div>
-            </div>
-          </div>
+          <DrivingMileageField
+            idPrefix="recurringDrivingMileage"
+            label="Vehicle mileage"
+            valueText={getNumericDraftValue(
+              "drivingMileageRecurring",
+              values.drivingMileage.n,
+            )}
+            mileageSetting={values.drivingMileage}
+            palette={{ muted: palette.muted }}
+            styles={{
+              inputContainerStyle,
+              selectStyle,
+              inputStyle,
+              fieldLabelStyle: {
+                display: "block",
+                fontWeight: 600,
+                marginBottom: "0.45rem",
+              },
+              subFieldLabelStyle: {
+                display: "block",
+                fontWeight: 500,
+                fontSize: "0.84rem",
+                color: palette.muted,
+                marginBottom: "0.35rem",
+              },
+            }}
+            onUnitChange={onDrivingMileageUnitChange}
+            onValueChange={onDrivingMileageValueChange}
+            onValueBlur={onDrivingMileageValueBlur}
+            onFocus={handleNumericInputFocus}
+          />
 
           <div className="row" style={{ marginTop: "1.25rem", marginBottom: 0 }}>
             {(["day", "week", "month", "year"] as const).map((key) => (

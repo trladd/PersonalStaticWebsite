@@ -2,8 +2,9 @@ import React from "react";
 import { CAR_COST_FIELD_TOOLTIPS } from "../config/constants";
 import { CarCostCalculations } from "../utils/calculations";
 import { formatCurrency, formatNumber, isToggleEnabled } from "../utils/formatters";
-import { CarCostValues, IntervalSetting } from "../types";
+import { CarCostValues, DrivingMileageUnit, IntervalSetting } from "../types";
 import IntervalSettingField from "./IntervalSettingField";
+import DrivingMileageField from "./DrivingMileageField";
 
 type Palette = {
   text: string;
@@ -89,10 +90,9 @@ type SetupPanelsProps = {
   handleLoanPaymentModeChange: (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => void;
-  handleAnnualMileageDraftChange: (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => void;
-  handleAnnualMileageBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
+  onDrivingMileageUnitChange: (unit: DrivingMileageUnit) => void;
+  onDrivingMileageValueChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onDrivingMileageValueBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
 };
 
 const runningFields: Array<{
@@ -487,8 +487,9 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
   handleIntervalSettingValueBlur,
   handleDepreciationBasisChange,
   handleLoanPaymentModeChange,
-  handleAnnualMileageDraftChange,
-  handleAnnualMileageBlur,
+  onDrivingMileageUnitChange,
+  onDrivingMileageValueChange,
+  onDrivingMileageValueBlur,
 }) => {
   const maintenanceCostPerMile =
     calculations.oilCostPerMile + calculations.miscCostPerMile;
@@ -1142,29 +1143,22 @@ const SetupPanels: React.FC<SetupPanelsProps> = ({
                 </div>
               </div>
               <div style={{ marginTop: "0.75rem" }}>
-                <label
-                  htmlFor="annualMileageVehicleCost"
-                  style={styles.subFieldLabelStyle}
-                >
-                  Annual miles driven
-                </label>
-                <div style={styles.inputContainerStyle}>
-                  <input
-                    id="annualMileageVehicleCost"
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={getNumericDraftValue(
-                      "annualMileageVehicleCost",
-                      Math.round(calculations.annualMileage),
-                    )}
-                      onChange={handleAnnualMileageDraftChange}
-                      onBlur={handleAnnualMileageBlur}
-                      onFocus={handleNumericInputFocus}
-                      disabled={!isToggleEnabled(values.includeVehicleCost)}
-                      style={styles.inputStyle}
-                    />
-                </div>
+                <DrivingMileageField
+                  idPrefix="annualMileageVehicleCost"
+                  label="Vehicle mileage"
+                  valueText={getNumericDraftValue(
+                    "drivingMileageVehicleCost",
+                    values.drivingMileage.n,
+                  )}
+                  mileageSetting={values.drivingMileage}
+                  palette={{ muted: palette.muted }}
+                  styles={styles}
+                  disabled={!isToggleEnabled(values.includeVehicleCost)}
+                  onUnitChange={onDrivingMileageUnitChange}
+                  onValueChange={onDrivingMileageValueChange}
+                  onValueBlur={onDrivingMileageValueBlur}
+                  onFocus={handleNumericInputFocus}
+                />
               </div>
             </div>
           </div>

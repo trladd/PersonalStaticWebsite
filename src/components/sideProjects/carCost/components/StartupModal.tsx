@@ -2,6 +2,8 @@ import React from "react";
 import {
   CustomVehicleDraft,
   CustomVehicleField,
+  DrivingMileageSetting,
+  DrivingMileageUnit,
   SelectedVehicleLookupDetails,
   VehicleLookupOption,
   VehicleTemplate,
@@ -61,6 +63,7 @@ type StartupModalProps = {
   lookupError: string | null;
   selectedVehicleDetails: SelectedVehicleLookupDetails | null;
   selectedVehicleSummary: {
+    vehicleClass: string | null;
     fuelType: string;
     annualFuelCost: number | null;
     city: number | null;
@@ -73,16 +76,20 @@ type StartupModalProps = {
     field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
     value: string,
   ) => void;
-  startupAnnualMileageValue: string;
+  startupDrivingMileageValue: string;
+  startupDrivingMileageSetting: DrivingMileageSetting;
   startupAnnualMileageTouched: boolean;
   startupAnnualMileageError: string;
   startupPurchasePriceValue: string;
   startupPurchasePriceTouched: boolean;
   startupPurchasePriceError: string;
+  handleStartupDrivingMileageUnitChange: (unit: DrivingMileageUnit) => void;
   handleStartupAnnualMileageChange: (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => void;
-  handleStartupAnnualMileageBlur: () => void;
+  handleStartupAnnualMileageBlur: (
+    event?: React.FocusEvent<HTMLInputElement>,
+  ) => void;
   handleStartupPurchasePriceChange: (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => void;
@@ -146,12 +153,14 @@ const StartupModal: React.FC<StartupModalProps> = ({
   selectedVehicleDetails,
   selectedVehicleSummary,
   setLookupField,
-  startupAnnualMileageValue,
+  startupDrivingMileageValue,
+  startupDrivingMileageSetting,
   startupAnnualMileageTouched,
   startupAnnualMileageError,
   startupPurchasePriceValue,
   startupPurchasePriceTouched,
   startupPurchasePriceError,
+  handleStartupDrivingMileageUnitChange,
   handleStartupAnnualMileageChange,
   handleStartupAnnualMileageBlur,
   handleStartupPurchasePriceChange,
@@ -357,12 +366,16 @@ const StartupModal: React.FC<StartupModalProps> = ({
               selectedVehicleDetails={selectedVehicleDetails}
               selectedVehicleSummary={selectedVehicleSummary}
               setLookupField={setLookupField}
-              startupAnnualMileageValue={startupAnnualMileageValue}
+              startupDrivingMileageValue={startupDrivingMileageValue}
+              startupDrivingMileageSetting={startupDrivingMileageSetting}
               startupAnnualMileageTouched={startupAnnualMileageTouched}
               startupAnnualMileageError={startupAnnualMileageError}
               startupPurchasePriceValue={startupPurchasePriceValue}
               startupPurchasePriceTouched={startupPurchasePriceTouched}
               startupPurchasePriceError={startupPurchasePriceError}
+              handleStartupDrivingMileageUnitChange={
+                handleStartupDrivingMileageUnitChange
+              }
               handleStartupAnnualMileageChange={handleStartupAnnualMileageChange}
               handleStartupAnnualMileageBlur={handleStartupAnnualMileageBlur}
               handleStartupPurchasePriceChange={handleStartupPurchasePriceChange}

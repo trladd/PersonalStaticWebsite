@@ -13,7 +13,6 @@ describe("buildBreakdownModes", () => {
     };
     const calculations = calculateCarCost(
       values,
-      "year",
       "roundTrip",
       "allSeason",
     );
@@ -33,8 +32,7 @@ describe("buildBreakdownModes", () => {
       ...defaultValues,
       includeWinterTires: 1 as const,
       winterTireMonths: 4,
-      recurringMiles: 12000,
-      recurringType: "year" as const,
+      drivingMileage: { n: 12000, u: "yr" as const },
       tireInterval: 50000,
       tireMaxAgeYears: 6,
       winterTireInterval: 30000,
@@ -44,7 +42,6 @@ describe("buildBreakdownModes", () => {
     };
     const calculations = calculateCarCost(
       values,
-      "year",
       "roundTrip",
       "allSeason",
     );

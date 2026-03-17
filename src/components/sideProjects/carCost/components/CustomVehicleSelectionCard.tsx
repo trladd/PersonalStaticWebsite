@@ -2,10 +2,13 @@ import React from "react";
 import {
   CustomVehicleDraft,
   CustomVehicleField,
+  DrivingMileageSetting,
+  DrivingMileageUnit,
   SelectedVehicleLookupDetails,
   VehicleLookupOption,
 } from "../types";
 import { formatCurrency, formatNumber } from "../utils/formatters";
+import DrivingMileageField from "./DrivingMileageField";
 
 type Palette = {
   panelBackground: string;
@@ -45,6 +48,7 @@ type Props = {
   lookupError: string | null;
   selectedVehicleDetails: SelectedVehicleLookupDetails | null;
   selectedVehicleSummary: {
+    vehicleClass: string | null;
     fuelType: string;
     annualFuelCost: number | null;
     city: number | null;
@@ -57,16 +61,20 @@ type Props = {
     field: Extract<CustomVehicleField, "year" | "make" | "model" | "trim">,
     value: string,
   ) => void;
-  startupAnnualMileageValue: string;
+  startupDrivingMileageValue: string;
+  startupDrivingMileageSetting: DrivingMileageSetting;
   startupAnnualMileageTouched: boolean;
   startupAnnualMileageError: string;
   startupPurchasePriceValue: string;
   startupPurchasePriceTouched: boolean;
   startupPurchasePriceError: string;
+  handleStartupDrivingMileageUnitChange: (unit: DrivingMileageUnit) => void;
   handleStartupAnnualMileageChange: (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => void;
-  handleStartupAnnualMileageBlur: () => void;
+  handleStartupAnnualMileageBlur: (
+    event?: React.FocusEvent<HTMLInputElement>,
+  ) => void;
   handleStartupPurchasePriceChange: (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => void;
@@ -118,12 +126,14 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
   selectedVehicleDetails,
   selectedVehicleSummary,
   setLookupField,
-  startupAnnualMileageValue,
+  startupDrivingMileageValue,
+  startupDrivingMileageSetting,
   startupAnnualMileageTouched,
   startupAnnualMileageError,
   startupPurchasePriceValue,
   startupPurchasePriceTouched,
   startupPurchasePriceError,
+  handleStartupDrivingMileageUnitChange,
   handleStartupAnnualMileageChange,
   handleStartupAnnualMileageBlur,
   handleStartupPurchasePriceChange,
@@ -317,31 +327,34 @@ const CustomVehicleSelectionCard: React.FC<Props> = ({
           ) : null}
         </div>
         <div className="col s12">
-          {renderTooltipLabel(
-            "startupAnnualMiles",
-            "Annual miles driven",
-            "Why do we need this? It helps convert ownership costs into meaningful per-mile estimates. You can change it later.",
-          )}
-          <div
-            style={
-              startupAnnualMileageTouched && startupAnnualMileageError
-                ? styles.invalidInputContainerStyle
-                : styles.inputContainerStyle
-            }
-          >
-            <input
-              id="startupAnnualMiles"
-              type="number"
-              min="0"
-              step="1"
-              value={startupAnnualMileageValue}
-              onChange={handleStartupAnnualMileageChange}
-              onBlur={handleStartupAnnualMileageBlur}
-              placeholder="12000"
-              style={styles.inputStyle}
-              className="car-cost-placeholder"
-            />
-          </div>
+          <DrivingMileageField
+            idPrefix="startupAnnualMiles"
+            label="Vehicle mileage"
+            valueText={startupDrivingMileageValue}
+            mileageSetting={startupDrivingMileageSetting}
+            palette={{ muted: palette.muted }}
+            styles={{
+              ...styles,
+              fieldLabelStyle: {
+                display: "block",
+                fontWeight: 600,
+                marginBottom: "0.45rem",
+              },
+              subFieldLabelStyle: {
+                display: "block",
+                fontWeight: 500,
+                fontSize: "0.84rem",
+                color: palette.muted,
+                marginBottom: "0.35rem",
+              },
+            }}
+            placeholder="Enter your miles"
+            invalid={startupAnnualMileageTouched && Boolean(startupAnnualMileageError)}
+            onUnitChange={handleStartupDrivingMileageUnitChange}
+            onValueChange={handleStartupAnnualMileageChange}
+            onValueBlur={(event) => handleStartupAnnualMileageBlur(event)}
+            onFocus={() => undefined}
+          />
           {startupAnnualMileageTouched && startupAnnualMileageError ? (
             <small style={{ display: "block", color: "#c44949", marginTop: "0.35rem" }}>
               {startupAnnualMileageError}

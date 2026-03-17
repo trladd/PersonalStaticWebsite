@@ -16,7 +16,7 @@ describe("state utils", () => {
     const sessionValues = getSessionScopedValues({
       ...defaultValues,
       tripDistance: 123,
-      recurringMiles: 456,
+      drivingMileage: { n: 456, u: "yr" as const },
       annualInsurance: 3333,
       includeVehicleCost: 0,
     });
@@ -25,7 +25,7 @@ describe("state utils", () => {
       tripDistance: 123,
       includeTripFuelOverride: defaultValues.includeTripFuelOverride,
       tripFuelEfficiency: defaultValues.tripFuelEfficiency,
-      recurringMiles: 456,
+      drivingMileage: { n: 456, u: "yr" },
       annualInsurance: 3333,
       annualRegistration: defaultValues.annualRegistration,
       annualParking: defaultValues.annualParking,
@@ -38,7 +38,7 @@ describe("state utils", () => {
     const next = applySessionScopedValues(defaultValues, sessionValues);
     expect(next.tripDistance).toBe(123);
     expect(next.includeTripFuelOverride).toBe(defaultValues.includeTripFuelOverride);
-    expect(next.recurringMiles).toBe(456);
+    expect(next.drivingMileage).toEqual({ n: 456, u: "yr" });
     expect(next.annualInsurance).toBe(3333);
     expect(next.includeVehicleCost).toBe(0);
     expect(next.purchasePrice).toBe(defaultValues.purchasePrice);
@@ -49,7 +49,7 @@ describe("state utils", () => {
       tripDistance: 90,
       includeTripFuelOverride: 1,
       tripFuelEfficiency: 29,
-      recurringMiles: 12,
+      drivingMileage: { n: 12, u: "yr" as const },
       annualInsurance: 999,
       includeVehicleCost: 0,
       includeAnnualOwnership: 0,
@@ -176,7 +176,6 @@ describe("state utils", () => {
           fuelType: "regular",
           fuelEfficiency: 33,
         },
-        recurringType: "year",
         tripType: "roundTrip",
         updatedAt: "2026-03-15T00:00:00.000Z",
       }),
@@ -199,12 +198,11 @@ describe("state utils", () => {
         selectedTemplateId: "future-car",
         values: {
           tripDistance: 321,
-          recurringMiles: 222,
+          drivingMileage: { n: 222, u: "yr" as const },
           annualInsurance: 1900,
           includeVehicleCost: 0,
           purchasePrice: 99999,
         },
-        recurringType: "year",
         tripType: "roundTrip",
         updatedAt: "2026-03-15T00:00:00.000Z",
       }),

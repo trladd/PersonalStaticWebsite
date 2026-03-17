@@ -355,6 +355,10 @@ export const fetchVehicleLookupDetails = (trimValue: string) => {
         const fuelType = mapEpaFuelType(vehicleRecord.fuelType1 || vehicleRecord.fuelType);
         const efficiency = getEfficiencyInfo(vehicleRecord, fuelType);
         const purchasePrice = toNumberOrNull(vehicleRecord.msrp);
+        const vehicleClass =
+          typeof vehicleRecord.VClass === "string" && vehicleRecord.VClass.trim().length > 0
+            ? vehicleRecord.VClass.trim()
+            : null;
 
         return {
           vehicleId,
@@ -367,6 +371,7 @@ export const fetchVehicleLookupDetails = (trimValue: string) => {
           defaultPurchasePrice: purchasePrice,
           efficiency,
           lookupSummary: {
+            vehicleClass,
             fuelType,
             annualFuelCost: efficiency.annualFuelCost,
             city: efficiency.city,
