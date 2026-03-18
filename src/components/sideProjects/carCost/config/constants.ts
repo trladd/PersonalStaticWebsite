@@ -144,4 +144,5 @@ export const CAR_COST_ADMIN_STORAGE_KEY = "carCostAdminState";
 export const CAR_COST_STATE_VERSION = 5;
 export const STALE_STATE_MS = 60 * 60 * 1000;
 export const CAR_COST_STARTUP_BANNER_MESSAGE =
-  "Large changes are currently underway in this calculator. You may see temporary instability while work is in progress.";
+  "Large changes are currently underway in this calculator. It will be moving to a new home soon, so you may see temporary instability while work is in progress.";
+export const CAR_COST_FUTURE_HOME_URL = "https://www.truecosttodrive.com";
