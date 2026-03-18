@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -31,8 +31,16 @@
         font-family: "Avenir Next", "Segoe UI", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(255, 255, 255, 0.65), transparent 36%),
-          radial-gradient(circle at 85% 15%, rgba(230, 193, 156, 0.26), transparent 24%),
+          radial-gradient(
+            circle at top left,
+            rgba(255, 255, 255, 0.65),
+            transparent 36%
+          ),
+          radial-gradient(
+            circle at 85% 15%,
+            rgba(230, 193, 156, 0.26),
+            transparent 24%
+          ),
           linear-gradient(180deg, #f4efe7 0%, #efe2d2 48%, #eadac8 100%);
       }
 
@@ -59,7 +67,11 @@
         width: 360px;
         height: 360px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.52), transparent 70%);
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.52),
+          transparent 70%
+        );
         pointer-events: none;
       }
 
@@ -363,6 +375,20 @@
       }
     </style>
   </head>
+  <!-- Google tag (gtag.js) -->
+  <script
+    async
+    src="https://www.googletagmanager.com/gtag/js?id=G-5DXQQC92B9"
+  ></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
+
+    gtag("config", "G-5DXQQC92B9");
+  </script>
   <body>
     <main class="page">
       <section class="shell">
@@ -377,14 +403,16 @@
             <h1>Fuel is only the beginning.</h1>
             <p class="lede">
               A standalone vehicle cost experience is on the way. It is being
-              rebuilt to help drivers see the full picture: real operating costs,
-              aging tires, service timing, depreciation, financing pressure, and
-              what all of that means for everyday driving, gig work, and long trips.
+              rebuilt to help drivers see the full picture: real operating
+              costs, aging tires, service timing, depreciation, financing
+              pressure, and what all of that means for everyday driving, gig
+              work, and long trips.
             </p>
             <div class="callout">
-              <strong>What is coming:</strong> a sharper, easier-to-share tool that
-              turns year / make / model data into a realistic starting point, then
-              lets you pressure-test the numbers against how you actually drive.
+              <strong>What is coming:</strong> a sharper, easier-to-share tool
+              that turns year / make / model data into a realistic starting
+              point, then lets you pressure-test the numbers against how you
+              actually drive.
             </div>
 
             <div class="teaser-grid">
@@ -413,7 +441,10 @@
               <div class="metric-hero">
                 <small>Estimated true cost</small>
                 <strong>$0.61/mi</strong>
-                <span>With fuel, tires, maintenance, depreciation, and financing together</span>
+                <span
+                  >With fuel, tires, maintenance, depreciation, and financing
+                  together</span
+                >
               </div>
 
               <div class="preview-grid">
@@ -436,9 +467,9 @@
               </div>
 
               <p class="preview-note">
-                The live calculator is being split into its own dedicated home so it
-                can grow into a cleaner product with better data, better defaults,
-                and a more polished mobile experience.
+                The live calculator is being split into its own dedicated home
+                so it can grow into a cleaner product with better data, better
+                defaults, and a more polished mobile experience.
               </p>
             </div>
           </aside>
@@ -446,13 +477,18 @@
 
         <div class="footer">
           <div class="footer-copy">
-            This teaser is temporary while the standalone experience is under construction.
-            The finished version will focus on helping people make smarter decisions about
-            what they drive, what they keep, and what each mile is really costing them.
-            In the meantime, you can use the beta project at
-            <a href="https://www.trevarladd.com/sideprojects/carcost">trevarladd.com/sideprojects/carcost</a>.
+            This teaser is temporary while the standalone experience is under
+            construction. The finished version will focus on helping people make
+            smarter decisions about what they drive, what they keep, and what
+            each mile is really costing them. In the meantime, you can use the
+            beta project at
+            <a href="https://www.trevarladd.com/sideprojects/carcost"
+              >trevarladd.com/sideprojects/carcost</a
+            >.
           </div>
-          <div class="footer-tag">Something genuinely useful is coming soon</div>
+          <div class="footer-tag">
+            Something genuinely useful is coming soon
+          </div>
         </div>
       </section>
     </main>
