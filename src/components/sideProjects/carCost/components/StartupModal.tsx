@@ -1,4 +1,5 @@
 import React from "react";
+import { CAR_COST_FUTURE_HOME_URL } from "../config/constants";
 import {
   CustomVehicleDraft,
   CustomVehicleField,
@@ -221,7 +222,19 @@ const StartupModal: React.FC<StartupModalProps> = ({
               construction
             </i>
             <div style={{ fontSize: "0.92rem", lineHeight: 1.45 }}>
-              {startupBannerMessage}
+              {startupBannerMessage}{" "}
+              <a
+                href={CAR_COST_FUTURE_HOME_URL}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: palette.text,
+                  fontWeight: 700,
+                  textDecoration: "underline",
+                }}
+              >
+                New home: truecosttodrive.com
+              </a>
             </div>
           </div>
         ) : null}

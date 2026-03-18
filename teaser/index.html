@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vehicle Cost Calculator Preview</title>
+    <style>
+      :root {
+        --ink: #2f2419;
+        --ink-soft: #6e5a48;
+        --paper: #fbf7f2;
+        --panel: rgba(255, 252, 248, 0.86);
+        --panel-strong: rgba(255, 252, 248, 0.96);
+        --shell: linear-gradient(180deg, #f5ebde 0%, #efe1cf 100%);
+        --accent: #b45f31;
+        --accent-soft: rgba(180, 95, 49, 0.14);
+        --line: rgba(92, 66, 42, 0.13);
+        --shadow: 0 26px 60px rgba(93, 66, 41, 0.16);
+        --radius-xl: 32px;
+        --radius-lg: 22px;
+        --radius-md: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.65), transparent 36%),
+          radial-gradient(circle at 85% 15%, rgba(230, 193, 156, 0.26), transparent 24%),
+          linear-gradient(180deg, #f4efe7 0%, #efe2d2 48%, #eadac8 100%);
+      }
+
+      .page {
+        max-width: 1220px;
+        margin: 0 auto;
+        padding: 28px 20px 52px;
+      }
+
+      .shell {
+        position: relative;
+        overflow: hidden;
+        background: var(--shell);
+        border: 1px solid rgba(92, 66, 42, 0.08);
+        border-radius: 36px;
+        box-shadow: var(--shadow);
+        padding: 28px;
+      }
+
+      .shell::before {
+        content: "";
+        position: absolute;
+        inset: -20% auto auto -10%;
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.52), transparent 70%);
+        pointer-events: none;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 28px;
+      }
+
+      .brand {
+        font-size: 1.05rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(47, 36, 25, 0.08);
+        color: var(--ink);
+        font-size: 0.84rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      .status-pill::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 5px rgba(180, 95, 49, 0.16);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.92fr);
+        gap: 28px;
+        align-items: stretch;
+      }
+
+      .hero-copy,
+      .hero-preview {
+        position: relative;
+        background: var(--panel);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(92, 66, 42, 0.1);
+        border-radius: var(--radius-xl);
+        padding: 30px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--accent);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 28px;
+        height: 1px;
+        background: currentColor;
+      }
+
+      h1 {
+        margin: 20px 0 16px;
+        font-size: clamp(2.9rem, 6vw, 5.2rem);
+        line-height: 0.94;
+        letter-spacing: -0.06em;
+      }
+
+      .lede {
+        margin: 0;
+        max-width: 700px;
+        color: var(--ink-soft);
+        font-size: 1.16rem;
+        line-height: 1.72;
+      }
+
+      .callout {
+        margin-top: 22px;
+        padding: 16px 18px;
+        border-radius: var(--radius-md);
+        background: var(--accent-soft);
+        border: 1px solid rgba(180, 95, 49, 0.18);
+        color: var(--ink);
+        font-size: 0.96rem;
+        line-height: 1.55;
+      }
+
+      .callout strong {
+        color: var(--accent);
+      }
+
+      .teaser-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 24px;
+      }
+
+      .teaser-card {
+        padding: 16px;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.55);
+        border: 1px solid var(--line);
+      }
+
+      .teaser-card strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.82rem;
+        color: var(--ink-soft);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .teaser-card span {
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+      }
+
+      .preview-frame {
+        background: var(--panel-strong);
+        border: 1px solid rgba(92, 66, 42, 0.11);
+        border-radius: 28px;
+        padding: 18px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      }
+
+      .preview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .preview-title {
+        font-size: 0.84rem;
+        font-weight: 700;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+
+      .preview-chip {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(47, 36, 25, 0.08);
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .metric-hero {
+        padding: 18px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #c56d3f 0%, #b55b2f 100%);
+        color: white;
+        margin-bottom: 14px;
+      }
+
+      .metric-hero small {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.88;
+      }
+
+      .metric-hero strong {
+        display: block;
+        font-size: 2.3rem;
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+
+      .metric-hero span {
+        display: block;
+        margin-top: 6px;
+        font-size: 0.94rem;
+        opacity: 0.9;
+      }
+
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .preview-card {
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .preview-card strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ink-soft);
+      }
+
+      .preview-card span {
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+      }
+
+      .preview-note {
+        margin-top: 16px;
+        font-size: 0.93rem;
+        line-height: 1.6;
+        color: var(--ink-soft);
+      }
+
+      .footer {
+        margin-top: 26px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        color: var(--ink-soft);
+      }
+
+      .footer-copy {
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }
+
+      .footer-copy a {
+        color: var(--accent);
+        font-weight: 700;
+        text-decoration: underline;
+      }
+
+      .footer-tag {
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.42);
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      @media (max-width: 920px) {
+        .page {
+          padding: 16px;
+        }
+
+        .shell {
+          border-radius: 28px;
+          padding: 18px;
+        }
+
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-copy,
+        .hero-preview {
+          padding: 22px;
+        }
+
+        .teaser-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .preview-grid {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          font-size: 2.55rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="shell">
+        <div class="nav">
+          <div class="brand">Trevar Ladd • Side Project Preview</div>
+          <div class="status-pill">Under active construction</div>
+        </div>
+
+        <div class="hero">
+          <section class="hero-copy">
+            <div class="eyebrow">Vehicle Cost Calculator</div>
+            <h1>Fuel is only the beginning.</h1>
+            <p class="lede">
+              A standalone vehicle cost experience is on the way. It is being
+              rebuilt to help drivers see the full picture: real operating costs,
+              aging tires, service timing, depreciation, financing pressure, and
+              what all of that means for everyday driving, gig work, and long trips.
+            </p>
+            <div class="callout">
+              <strong>What is coming:</strong> a sharper, easier-to-share tool that
+              turns year / make / model data into a realistic starting point, then
+              lets you pressure-test the numbers against how you actually drive.
+            </div>
+
+            <div class="teaser-grid">
+              <div class="teaser-card">
+                <strong>Trip planning</strong>
+                <span>See what one route really costs</span>
+              </div>
+              <div class="teaser-card">
+                <strong>Ownership view</strong>
+                <span>Model the total cost of keeping a vehicle</span>
+              </div>
+              <div class="teaser-card">
+                <strong>Vehicle compare</strong>
+                <span>Understand what belongs in your garage</span>
+              </div>
+            </div>
+          </section>
+
+          <aside class="hero-preview">
+            <div class="preview-frame">
+              <div class="preview-header">
+                <div class="preview-title">Preview Snapshot</div>
+                <div class="preview-chip">Teaser only</div>
+              </div>
+
+              <div class="metric-hero">
+                <small>Estimated true cost</small>
+                <strong>$0.61/mi</strong>
+                <span>With fuel, tires, maintenance, depreciation, and financing together</span>
+              </div>
+
+              <div class="preview-grid">
+                <div class="preview-card">
+                  <strong>Trip lens</strong>
+                  <span>Quick route estimate</span>
+                </div>
+                <div class="preview-card">
+                  <strong>Fuel profile</strong>
+                  <span>City / combined / highway aware</span>
+                </div>
+                <div class="preview-card">
+                  <strong>Tire timing</strong>
+                  <span>Age and tread both considered</span>
+                </div>
+                <div class="preview-card">
+                  <strong>Service planning</strong>
+                  <span>Oil, brakes, battery, and repair reserve</span>
+                </div>
+              </div>
+
+              <p class="preview-note">
+                The live calculator is being split into its own dedicated home so it
+                can grow into a cleaner product with better data, better defaults,
+                and a more polished mobile experience.
+              </p>
+            </div>
+          </aside>
+        </div>
+
+        <div class="footer">
+          <div class="footer-copy">
+            This teaser is temporary while the standalone experience is under construction.
+            The finished version will focus on helping people make smarter decisions about
+            what they drive, what they keep, and what each mile is really costing them.
+            In the meantime, you can use the beta project at
+            <a href="https://www.trevarladd.com/sideprojects/carcost">trevarladd.com/sideprojects/carcost</a>.
+          </div>
+          <div class="footer-tag">Something genuinely useful is coming soon</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
