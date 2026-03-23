@@ -9,7 +9,7 @@ const SideNav: React.FC = () => {
       <a href={navLink.link}>
         {navLink.label}
         <i className="material-icons">
-          <img className="navLinkIcon" src={navLink.image} />
+          <img className="navLinkIcon" src={navLink.image} alt={navLink.label} />
         </i>
       </a>
     </li>
@@ -19,7 +19,15 @@ const SideNav: React.FC = () => {
     <li>
       <a href={sideProject.link}>
         {sideProject.label}
-        <i className="material-icons">{sideProject.icon || "developer_mode"}</i>
+        {sideProject.iconImage ? (
+          <img
+            className="sideProjectMenuIcon sideProjectMenuIcon--mobile"
+            src={sideProject.iconImage}
+            alt={`${sideProject.label} icon`}
+          />
+        ) : (
+          <i className="material-icons">{sideProject.icon || "developer_mode"}</i>
+        )}
       </a>
     </li>
   ));

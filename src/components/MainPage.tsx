@@ -87,6 +87,54 @@ const MainPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="card">
+              <div className="card-image waves-effect waves-block waves-light">
+                <img
+                  className="activator"
+                  src="images/tctd_main_logo_cropped.png"
+                  alt="True Cost To Drive project logo"
+                />
+              </div>
+              <div className="card-content">
+                <span className="card-title activator grey-text text-darken-4">
+                  TrueCostToDrive.com
+                  <i className="material-icons right">more_vert</i>
+                </span>
+                <p>
+                  <a
+                    href="https://www.truecosttodrive.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Visit the standalone site
+                  </a>
+                </p>
+                <p>
+                  <a href="/sideProjects/trueCostToDrive">
+                    Open it here inside my side projects
+                  </a>
+                </p>
+              </div>
+              <div className="card-reveal">
+                <span className="card-title grey-text text-darken-4">
+                  TrueCostToDrive.com
+                  <i className="material-icons right">close</i>
+                </span>
+                <p>
+                  True Cost To Drive is my deeper dive into helping people
+                  understand what vehicle ownership is really costing them. It
+                  goes beyond fuel economy to explore insurance, maintenance,
+                  depreciation, acquisition decisions, trip planning, and how
+                  different vehicles shape a household budget.
+                </p>
+                <p>
+                  I am building it as a standalone product so it has room to
+                  grow beyond a side-project calculator into a more guided and
+                  complete ownership-planning experience.
+                </p>
+              </div>
+            </div>
+
             <h2>Professional Projects by Technology/Category</h2>
             <p>
               Here I discuss my involvement in some professional projects

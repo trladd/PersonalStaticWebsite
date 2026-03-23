@@ -1,4 +1,4 @@
-import React, { useEffect, useContext, useRef } from "react";
+import React, { useEffect, useContext } from "react";
 import { siteConfig } from "../utility/siteConfig";
 import { ThemeContext } from "../utility/ThemeContext"; // Adjust the import path as necessary
 
@@ -11,7 +11,7 @@ interface HeadingProps {
 const navLinkList = siteConfig.socialLinks.map((navLink) => (
   <li>
     <a href={navLink.link}>
-      <img className="navLinkIcon" src={navLink.image} />
+      <img className="navLinkIcon" src={navLink.image} alt={navLink.label} />
     </a>
   </li>
 ));
@@ -19,9 +19,17 @@ const sideProjectList = siteConfig.sideProjects.map((sideProject) => (
   <li className="black-text">
     <a href={sideProject.link} className="black-text">
       {sideProject.label}
-      <i className="material-icons black-text">
-        {sideProject.icon || "developer_mode"}
-      </i>
+      {sideProject.iconImage ? (
+        <img
+          className="sideProjectMenuIcon"
+          src={sideProject.iconImage}
+          alt={`${sideProject.label} icon`}
+        />
+      ) : (
+        <i className="material-icons black-text">
+          {sideProject.icon || "developer_mode"}
+        </i>
+      )}
     </a>
   </li>
 ));
@@ -31,7 +39,7 @@ const Heading: React.FC<HeadingProps> = ({ title, navWrapperRef }) => {
 
   useEffect(() => {
     var sideNav = document.querySelectorAll(".sidenav");
-    var instances = M.Sidenav.init(sideNav, {});
+    M.Sidenav.init(sideNav, {});
 
     var dropDown = document.querySelectorAll(".dropdown-trigger");
     M.Dropdown.init(dropDown, {

@@ -3,6 +3,7 @@ import Numeronym from "../components/sideProjects/numeronym/Numeronym";
 import About from "../components/sideProjects/about/About";
 import SiteDebugTools from "../components/sideProjects/siteDebugTools/SiteDebugTools";
 import CarCost from "../components/sideProjects/carCost/CarCost";
+import TrueCostToDriveEmbed from "../components/sideProjects/trueCostToDrive/TrueCostToDriveEmbed";
 
 interface ComponentWithNavWrapperRefProps {
   navWrapperRef: React.RefObject<HTMLDivElement>;
@@ -95,6 +96,7 @@ const sideProjects: {
   link: string;
   label: string;
   icon?: string;
+  iconImage?: string;
   component: ComponentWithNavWrapperRef;
 }[] = [
   {
@@ -119,6 +121,12 @@ const sideProjects: {
     label: "Car Cost Calculator",
     icon: "directions_car",
     component: CarCost as ComponentWithNavWrapperRef,
+  },
+  {
+    link: "/sideProjects/trueCostToDrive",
+    label: "TrueCostToDrive.com",
+    iconImage: "/images/tctd_square_logo.png",
+    component: TrueCostToDriveEmbed as ComponentWithNavWrapperRef,
   },
 ];
 
