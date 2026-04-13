@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { checkProfileSizing, getAge } from "../utility/utility";
 import M from "materialize-css"; // Import the necessary library
+import RoadTripShowcase from "./sideProjects/roadTrips/RoadTripShowcase";
+import { roadTripShowcaseData } from "./sideProjects/roadTrips/roadTripData";
 
 const Introduction: React.FC = () => {
   useEffect(() => {
@@ -114,6 +116,17 @@ const Introduction: React.FC = () => {
               car just to drive south as far as I could get in to south america
               and fly back home.
             </p>
+
+            <RoadTripShowcase
+              title={roadTripShowcaseData.title}
+              intro={roadTripShowcaseData.intro}
+              trips={roadTripShowcaseData.trips}
+              className="roadTrips--embedded"
+              showHero={false}
+              showBreakdowns={false}
+              showFilter={false}
+              showHint={false}
+            />
           </li>
           <li>
             <h4>

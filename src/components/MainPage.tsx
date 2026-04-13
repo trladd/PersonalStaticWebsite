@@ -135,6 +135,44 @@ const MainPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="card">
+              <div className="card-image waves-effect waves-block waves-light">
+                <img
+                  className="activator"
+                  src="images/wrx.JPG"
+                  alt="Road Trip Atlas project preview"
+                />
+              </div>
+              <div className="card-content">
+                <span className="card-title activator grey-text text-darken-4">
+                  Road Trip Atlas
+                  <i className="material-icons right">more_vert</i>
+                </span>
+                <p>
+                  <a href="/sideProjects/roadTrips">
+                    Explore the reusable trip map and summary dashboard
+                  </a>
+                </p>
+              </div>
+              <div className="card-reveal">
+                <span className="card-title grey-text text-darken-4">
+                  Road Trip Atlas
+                  <i className="material-icons right">close</i>
+                </span>
+                <p>
+                  This side project is a reusable road-trip tracker that lets me
+                  load many multi-stop routes onto one map, shade the states I
+                  have covered, and keep wishlist trips in the same view without
+                  losing the distinction between planned and completed travel.
+                </p>
+                <p>
+                  The component is driven by config data so I can keep adding
+                  trips over time and have the cumulative miles, trip counts,
+                  and state coverage update automatically.
+                </p>
+              </div>
+            </div>
+
             <h2>Professional Projects by Technology/Category</h2>
             <p>
               Here I discuss my involvement in some professional projects

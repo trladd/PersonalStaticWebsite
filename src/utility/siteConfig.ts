@@ -4,6 +4,7 @@ import About from "../components/sideProjects/about/About";
 import SiteDebugTools from "../components/sideProjects/siteDebugTools/SiteDebugTools";
 import CarCost from "../components/sideProjects/carCost/CarCost";
 import TrueCostToDriveEmbed from "../components/sideProjects/trueCostToDrive/TrueCostToDriveEmbed";
+import RoadTrips from "../components/sideProjects/roadTrips/RoadTrips";
 
 interface ComponentWithNavWrapperRefProps {
   navWrapperRef: React.RefObject<HTMLDivElement>;
@@ -127,6 +128,12 @@ const sideProjects: {
     label: "TrueCostToDrive.com",
     iconImage: "/images/tctd_square_logo.png",
     component: TrueCostToDriveEmbed as ComponentWithNavWrapperRef,
+  },
+  {
+    link: "/sideProjects/roadTrips",
+    label: "Road Trip Atlas",
+    icon: "map",
+    component: RoadTrips as ComponentWithNavWrapperRef,
   },
 ];
 
