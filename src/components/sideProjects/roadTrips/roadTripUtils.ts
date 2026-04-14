@@ -1,5 +1,12 @@
-import { RoadTrip, RoadTripCategory, RoadTripCoordinate, RoadTripWaypoint } from "./types";
+import {
+  RoadTrip,
+  RoadTripCategory,
+  RoadTripCoordinate,
+  RoadTripWaypoint,
+} from "./types";
 import usStatesGeoJson from "./data/us-states.json";
+import canadaRegionsGeoJson from "./data/canada-regions.json";
+import mexicoRegionsGeoJson from "./data/mexico-regions.json";
 
 export const STATE_NAME_BY_CODE: Record<string, string> = {
   AL: "Alabama",
@@ -55,10 +62,83 @@ export const STATE_NAME_BY_CODE: Record<string, string> = {
   DC: "District of Columbia",
 };
 
-const STATE_CODE_BY_NAME = Object.entries(STATE_NAME_BY_CODE).reduce<
+interface SupportedRegionFeatureProperties {
+  name: string;
+  regionCode: string;
+  countryCode: string;
+  type?: string;
+}
+
+export const CANADA_REGION_NAME_BY_CODE: Record<string, string> =
+  Object.fromEntries(
+    (
+      canadaRegionsGeoJson.features as Array<{
+        properties: SupportedRegionFeatureProperties;
+      }>
+    ).map((feature) => [
+      feature.properties.regionCode,
+      feature.properties.name,
+    ]),
+  );
+
+export const MEXICO_REGION_NAME_BY_CODE: Record<string, string> =
+  Object.fromEntries(
+    (
+      mexicoRegionsGeoJson.features as Array<{
+        properties: SupportedRegionFeatureProperties;
+      }>
+    ).map((feature) => [
+      feature.properties.regionCode,
+      feature.properties.name,
+    ]),
+  );
+
+export const REGION_NAME_BY_CODE: Record<string, string> = {
+  ...STATE_NAME_BY_CODE,
+  ...CANADA_REGION_NAME_BY_CODE,
+  ...MEXICO_REGION_NAME_BY_CODE,
+};
+
+function normalizeLookupKey(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildRegionLookupEntries(): Array<[string, string]> {
+  const usEntries = Object.entries(STATE_NAME_BY_CODE).flatMap(
+    ([code, name]) => [
+      [normalizeLookupKey(code), code] as [string, string],
+      [normalizeLookupKey(name), code] as [string, string],
+    ],
+  );
+  const canadaEntries = Object.entries(CANADA_REGION_NAME_BY_CODE).flatMap(
+    ([code, name]) => [
+      [normalizeLookupKey(code), code] as [string, string],
+      [normalizeLookupKey(code.replace(/^CA-/, "")), code] as [string, string],
+      [normalizeLookupKey(name), code] as [string, string],
+    ],
+  );
+  const mexicoEntries = Object.entries(MEXICO_REGION_NAME_BY_CODE).flatMap(
+    ([code, name]) => [
+      [normalizeLookupKey(code), code] as [string, string],
+      [normalizeLookupKey(code.replace(/^MX-/, "")), code] as [string, string],
+      [normalizeLookupKey(name), code] as [string, string],
+    ],
+  );
+
+  return [...usEntries, ...canadaEntries, ...mexicoEntries];
+}
+
+const STATE_CODE_BY_NAME = buildRegionLookupEntries().reduce<
   Record<string, string>
->((acc, [code, name]) => {
-  acc[name.toLowerCase()] = code;
+>((acc, [lookupKey, code]) => {
+  acc[lookupKey] = code;
   return acc;
 }, {});
 
@@ -67,7 +147,9 @@ const CATEGORY_LABELS: Record<RoadTripCategory, string> = {
   wishlist: "Trip Wishlist",
 };
 
-const TRACKED_STATE_CODES = Object.keys(STATE_NAME_BY_CODE).filter((code) => code !== "DC");
+const TRACKED_STATE_CODES = Object.keys(STATE_NAME_BY_CODE).filter(
+  (code) => code !== "DC",
+);
 const routeStateCodeCache = new WeakMap<RoadTripCoordinate[], string[]>();
 
 type GeoJsonRing = [number, number][];
@@ -90,6 +172,14 @@ interface IndexedStateGeometry {
   maxLatitude: number;
   minLongitude: number;
   maxLongitude: number;
+}
+
+interface SupportedGeoJsonFeature {
+  properties?: {
+    name?: string;
+    regionCode?: string;
+  };
+  geometry?: GeoJsonGeometry;
 }
 
 function computeBoundingBox(coordinates: GeoJsonPolygon[] | GeoJsonPolygon) {
@@ -121,26 +211,47 @@ function computeBoundingBox(coordinates: GeoJsonPolygon[] | GeoJsonPolygon) {
   };
 }
 
-const indexedStateGeometries: IndexedStateGeometry[] = (usStatesGeoJson.features as any[])
-  .map((feature) => {
-    const name = String(feature?.properties?.name ?? "");
-    const code = normalizeStateCode(name);
-    const geometry = feature?.geometry as GeoJsonGeometry | undefined;
+function indexRegionGeometries(
+  features: SupportedGeoJsonFeature[],
+): IndexedStateGeometry[] {
+  return features
+    .map((feature) => {
+      const name = String(feature?.properties?.name ?? "");
+      const rawRegionCode = String(feature?.properties?.regionCode ?? name);
+      const code = normalizeStateCode(rawRegionCode);
+      const geometry = feature?.geometry as GeoJsonGeometry | undefined;
 
-    if (!code || !geometry || (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon")) {
-      return null;
-    }
+      if (
+        !code ||
+        !geometry ||
+        (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon")
+      ) {
+        return null;
+      }
 
-    const bounds = computeBoundingBox(geometry.coordinates as any);
+      const bounds = computeBoundingBox(geometry.coordinates as any);
 
-    return {
-      code,
-      name,
-      geometry,
-      ...bounds,
-    };
-  })
-  .filter(Boolean) as IndexedStateGeometry[];
+      return {
+        code,
+        name,
+        geometry,
+        ...bounds,
+      };
+    })
+    .filter(Boolean) as IndexedStateGeometry[];
+}
+
+const indexedStateGeometries: IndexedStateGeometry[] = [
+  ...indexRegionGeometries(
+    usStatesGeoJson.features as unknown as SupportedGeoJsonFeature[],
+  ),
+  ...indexRegionGeometries(
+    canadaRegionsGeoJson.features as unknown as SupportedGeoJsonFeature[],
+  ),
+  ...indexRegionGeometries(
+    mexicoRegionsGeoJson.features as unknown as SupportedGeoJsonFeature[],
+  ),
+];
 
 export function getCategoryLabel(category: RoadTripCategory): string {
   return CATEGORY_LABELS[category];
@@ -151,27 +262,35 @@ export function getTrackedStateCodes(): string[] {
 }
 
 export function normalizeStateCode(input: string): string | null {
-  const trimmed = input.trim();
-  if (!trimmed) {
+  const lookupKey = normalizeLookupKey(input);
+  if (!lookupKey) {
     return null;
   }
 
-  const upper = trimmed.toUpperCase();
-  if (STATE_NAME_BY_CODE[upper]) {
+  const upper = input.trim().toUpperCase();
+  if (REGION_NAME_BY_CODE[upper]) {
     return upper;
   }
 
-  return STATE_CODE_BY_NAME[trimmed.toLowerCase()] ?? null;
+  return STATE_CODE_BY_NAME[lookupKey] ?? null;
+}
+
+export function isTrackedUsStateCode(code: string): boolean {
+  return TRACKED_STATE_CODES.includes(code);
 }
 
 function isPointInRing(
   latitude: number,
   longitude: number,
-  ring: GeoJsonRing
+  ring: GeoJsonRing,
 ): boolean {
   let isInside = false;
 
-  for (let currentIndex = 0, previousIndex = ring.length - 1; currentIndex < ring.length; previousIndex = currentIndex, currentIndex += 1) {
+  for (
+    let currentIndex = 0, previousIndex = ring.length - 1;
+    currentIndex < ring.length;
+    previousIndex = currentIndex, currentIndex += 1
+  ) {
     const [currentLongitude, currentLatitude] = ring[currentIndex];
     const [previousLongitude, previousLatitude] = ring[previousIndex];
 
@@ -194,7 +313,7 @@ function isPointInRing(
 function isPointInPolygon(
   latitude: number,
   longitude: number,
-  polygon: GeoJsonPolygon
+  polygon: GeoJsonPolygon,
 ): boolean {
   if (!polygon.length || !isPointInRing(latitude, longitude, polygon[0])) {
     return false;
@@ -210,7 +329,7 @@ function isPointInPolygon(
 }
 
 export function deriveStateCodesFromCoordinates(
-  coordinates: RoadTripCoordinate[]
+  coordinates: RoadTripCoordinate[],
 ): string[] {
   if (coordinates.length === 0) {
     return [];
@@ -240,7 +359,9 @@ export function deriveStateCodesFromCoordinates(
           : stateGeometry.geometry.coordinates;
 
       if (
-        polygons.some((polygon) => isPointInPolygon(latitude, longitude, polygon))
+        polygons.some((polygon) =>
+          isPointInPolygon(latitude, longitude, polygon),
+        )
       ) {
         foundStateCodes.add(stateGeometry.code);
       }
@@ -252,19 +373,43 @@ export function deriveStateCodesFromCoordinates(
   return derivedStates;
 }
 
-export function getTripStateCodes(trip: RoadTrip): string[] {
+export function getTripRegionCodes(trip: RoadTrip): string[] {
   const rawStates = [
     ...(trip.statesCovered ?? []),
     ...trip.waypoints.map((waypoint) => waypoint.state),
-    ...(trip.pathCoordinates ? deriveStateCodesFromCoordinates(trip.pathCoordinates) : []),
+    ...(trip.pathCoordinates
+      ? deriveStateCodesFromCoordinates(trip.pathCoordinates)
+      : []),
   ];
 
-  return Array.from(new Set(rawStates.map(normalizeStateCode).filter(Boolean))) as string[];
+  return Array.from(
+    new Set(rawStates.map(normalizeStateCode).filter(Boolean)),
+  ) as string[];
+}
+
+export function getTripStateCodes(trip: RoadTrip): string[] {
+  return getTripRegionCodes(trip).filter(isTrackedUsStateCode);
+}
+
+export function getTripAdditionalRegionCodes(trip: RoadTrip): string[] {
+  return getTripRegionCodes(trip).filter((code) => !isTrackedUsStateCode(code));
 }
 
 export function getTripStateNames(trip: RoadTrip): string[] {
   return getTripStateCodes(trip)
     .map((code) => STATE_NAME_BY_CODE[code])
+    .filter(Boolean);
+}
+
+export function getTripRegionNames(trip: RoadTrip): string[] {
+  return getTripRegionCodes(trip)
+    .map((code) => REGION_NAME_BY_CODE[code])
+    .filter(Boolean);
+}
+
+export function getTripAdditionalRegionNames(trip: RoadTrip): string[] {
+  return getTripAdditionalRegionCodes(trip)
+    .map((code) => REGION_NAME_BY_CODE[code])
     .filter(Boolean);
 }
 
@@ -274,7 +419,7 @@ export function getTripRenderCoordinates(trip: RoadTrip): RoadTripCoordinate[] {
   }
 
   return trip.waypoints.map(
-    (waypoint) => [waypoint.latitude, waypoint.longitude] as RoadTripCoordinate
+    (waypoint) => [waypoint.latitude, waypoint.longitude] as RoadTripCoordinate,
   );
 }
 
@@ -284,7 +429,7 @@ function toRadians(value: number): number {
 
 function calculateSegmentMiles(
   start: RoadTripCoordinate,
-  end: RoadTripCoordinate
+  end: RoadTripCoordinate,
 ): number {
   const earthRadiusMiles = 3958.7613;
   const [startLatitude, startLongitude] = start;
@@ -305,7 +450,7 @@ function calculateSegmentMiles(
 }
 
 export function estimateMilesFromCoordinates(
-  coordinates: RoadTripCoordinate[]
+  coordinates: RoadTripCoordinate[],
 ): number {
   if (coordinates.length < 2) {
     return 0;
@@ -319,9 +464,14 @@ export function estimateMilesFromCoordinates(
   return Math.round(miles);
 }
 
-export function estimateMilesFromWaypoints(waypoints: RoadTripWaypoint[]): number {
+export function estimateMilesFromWaypoints(
+  waypoints: RoadTripWaypoint[],
+): number {
   return estimateMilesFromCoordinates(
-    waypoints.map((waypoint) => [waypoint.latitude, waypoint.longitude] as RoadTripCoordinate)
+    waypoints.map(
+      (waypoint) =>
+        [waypoint.latitude, waypoint.longitude] as RoadTripCoordinate,
+    ),
   );
 }
 
@@ -331,23 +481,30 @@ export interface RoadTripCategorySummary {
   tripCount: number;
   totalMiles: number;
   statesVisited: string[];
+  additionalRegionsVisited: string[];
 }
 
 export interface RoadTripSummary {
   totalTrips: number;
   totalMiles: number;
   totalStatesVisited: string[];
+  totalAdditionalRegionsVisited: string[];
   taken: RoadTripCategorySummary;
   wishlist: RoadTripCategorySummary;
 }
 
 function summarizeCategory(
   trips: RoadTrip[],
-  category: RoadTripCategory
+  category: RoadTripCategory,
 ): RoadTripCategorySummary {
   const categoryTrips = trips.filter((trip) => trip.category === category);
   const statesVisited = Array.from(
-    new Set(categoryTrips.flatMap((trip) => getTripStateCodes(trip)))
+    new Set(categoryTrips.flatMap((trip) => getTripStateCodes(trip))),
+  );
+  const additionalRegionsVisited = Array.from(
+    new Set(
+      categoryTrips.flatMap((trip) => getTripAdditionalRegionCodes(trip)),
+    ),
   );
 
   return {
@@ -356,6 +513,7 @@ function summarizeCategory(
     tripCount: categoryTrips.length,
     totalMiles: categoryTrips.reduce((sum, trip) => sum + trip.miles, 0),
     statesVisited,
+    additionalRegionsVisited,
   };
 }
 
@@ -367,7 +525,10 @@ export function summarizeRoadTrips(trips: RoadTrip[]): RoadTripSummary {
     totalTrips: trips.length,
     totalMiles: trips.reduce((sum, trip) => sum + trip.miles, 0),
     totalStatesVisited: Array.from(
-      new Set(trips.flatMap((trip) => getTripStateCodes(trip)))
+      new Set(trips.flatMap((trip) => getTripStateCodes(trip))),
+    ),
+    totalAdditionalRegionsVisited: Array.from(
+      new Set(trips.flatMap((trip) => getTripAdditionalRegionCodes(trip))),
     ),
     taken,
     wishlist,
@@ -379,9 +540,11 @@ export interface StateCoverage {
   wishlist: boolean;
 }
 
-export function buildStateCoverage(trips: RoadTrip[]): Record<string, StateCoverage> {
+export function buildStateCoverage(
+  trips: RoadTrip[],
+): Record<string, StateCoverage> {
   return trips.reduce<Record<string, StateCoverage>>((acc, trip) => {
-    getTripStateCodes(trip).forEach((stateCode) => {
+    getTripRegionCodes(trip).forEach((stateCode) => {
       const current = acc[stateCode] ?? { taken: false, wishlist: false };
       current[trip.category] = true;
       acc[stateCode] = current;
@@ -400,18 +563,19 @@ export interface StateCompletionSummary {
 }
 
 export function summarizeStateCompletion(
-  visitedStateCodes: string[]
+  visitedStateCodes: string[],
 ): StateCompletionSummary {
   const normalizedVisited = Array.from(
     new Set(
       visitedStateCodes
         .map(normalizeStateCode)
-        .filter((code): code is string => Boolean(code) && code !== "DC")
-    )
+        .filter((code): code is string => typeof code === "string")
+        .filter((code) => TRACKED_STATE_CODES.includes(code)),
+    ),
   );
 
   const remainingStateCodes = TRACKED_STATE_CODES.filter(
-    (code) => !normalizedVisited.includes(code)
+    (code) => !normalizedVisited.includes(code),
   );
 
   return {
@@ -421,7 +585,9 @@ export function summarizeStateCompletion(
     completionPercent:
       TRACKED_STATE_CODES.length === 0
         ? 0
-        : Math.round((normalizedVisited.length / TRACKED_STATE_CODES.length) * 100),
+        : Math.round(
+            (normalizedVisited.length / TRACKED_STATE_CODES.length) * 100,
+          ),
     visitedStateCodes: normalizedVisited,
     remainingStateCodes,
   };

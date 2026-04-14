@@ -4,17 +4,16 @@ import { RoadTrip } from "./types";
 
 function applyCachedRoutes(trips: RoadTrip[]): RoadTrip[] {
   return trips.map((trip) => {
-    if (trip.pathCoordinates && trip.pathCoordinates.length >= 2) {
-      return trip;
-    }
-
     if (trip.waypoints.length < 2) {
       return trip;
     }
 
     const cachedRoute = getCachedRoute(trip.waypoints);
     if (!cachedRoute) {
-      return trip;
+      return {
+        ...trip,
+        pathCoordinates: undefined,
+      };
     }
 
     return {
@@ -26,8 +25,12 @@ function applyCachedRoutes(trips: RoadTrip[]): RoadTrip[] {
   });
 }
 
-export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true): RoadTrip[] {
+export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true): {
+  resolvedTrips: RoadTrip[];
+  isResolvingRoutes: boolean;
+} {
   const [resolvedTrips, setResolvedTrips] = useState<RoadTrip[]>(() => applyCachedRoutes(trips));
+  const [isResolvingRoutes, setIsResolvingRoutes] = useState(false);
 
   useEffect(() => {
     setResolvedTrips(applyCachedRoutes(trips));
@@ -35,23 +38,27 @@ export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true
 
   useEffect(() => {
     if (!autoResolveRoutes) {
+      setIsResolvingRoutes(false);
       return;
     }
 
     let cancelled = false;
 
     const resolveRoutes = async () => {
-      for (const trip of trips) {
+      const tripsNeedingRoutes = trips.filter(
+        (trip) => trip.waypoints.length >= 2 && !getCachedRoute(trip.waypoints)
+      );
+
+      if (tripsNeedingRoutes.length === 0) {
+        setIsResolvingRoutes(false);
+        return;
+      }
+
+      setIsResolvingRoutes(true);
+
+      for (const trip of tripsNeedingRoutes) {
         if (cancelled) {
           return;
-        }
-
-        if ((trip.pathCoordinates && trip.pathCoordinates.length >= 2) || trip.waypoints.length < 2) {
-          continue;
-        }
-
-        if (getCachedRoute(trip.waypoints)) {
-          continue;
         }
 
         try {
@@ -76,6 +83,10 @@ export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true
           // Keep straight-line fallback when route resolution fails.
         }
       }
+
+      if (!cancelled) {
+        setIsResolvingRoutes(false);
+      }
     };
 
     void resolveRoutes();
@@ -85,5 +96,8 @@ export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true
     };
   }, [autoResolveRoutes, trips]);
 
-  return resolvedTrips;
+  return {
+    resolvedTrips,
+    isResolvingRoutes,
+  };
 }

@@ -2,7 +2,11 @@
   min-height: calc(100vh - 114px);
   padding: 18px;
   background:
-    radial-gradient(circle at top left, rgba(244, 218, 195, 0.7), transparent 34%),
+    radial-gradient(
+      circle at top left,
+      rgba(244, 218, 195, 0.7),
+      transparent 34%
+    ),
     linear-gradient(180deg, #f7f2ea 0%, #eef3f8 100%);
   color: #2f2419;
 }
@@ -86,7 +90,11 @@
 .roadTrips__statCard {
   padding: 18px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(45, 76, 70, 0.97), rgba(59, 99, 91, 0.95));
+  background: linear-gradient(
+    180deg,
+    rgba(45, 76, 70, 0.97),
+    rgba(59, 99, 91, 0.95)
+  );
   color: #f6f1eb;
   box-shadow: 0 12px 28px rgba(41, 82, 74, 0.18);
 }
@@ -198,7 +206,10 @@
   background: #ffffff;
   color: #345650;
   cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
 }
 
 .roadTrips__filterButton:hover,
@@ -239,14 +250,13 @@
 }
 
 .roadTrips__legendSwatch--wishlist {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #d69a71 0,
-      #d69a71 7px,
-      #ffffff 7px,
-      #ffffff 12px
-    );
+  background: repeating-linear-gradient(
+    90deg,
+    #d69a71 0,
+    #d69a71 7px,
+    #ffffff 7px,
+    #ffffff 12px
+  );
   border-color: #ad6639;
 }
 
@@ -577,5 +587,201 @@
 
   .roadTrips__tripHeading {
     flex-direction: column;
+  }
+}
+
+.roadTrips__topNav {
+  margin-bottom: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(73, 57, 39, 0.12);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.roadTrips__topNavCopy {
+  margin: 10px 0 0;
+}
+
+.roadTrips__heroActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.roadTrips__tabBar {
+  display: inline-flex;
+  gap: 10px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(45, 76, 70, 0.08);
+}
+
+.roadTrips__tabButton {
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 18px;
+  background: transparent;
+  color: #345650;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.roadTrips__tabButton:hover,
+.roadTrips__tabButton:focus-visible {
+  transform: translateY(-1px);
+  background: rgba(45, 76, 70, 0.1);
+}
+
+.roadTrips__tabButton--active {
+  background: #2d4c46;
+  color: #f7f2ea;
+  box-shadow: 0 10px 22px rgba(45, 76, 70, 0.18);
+}
+
+.roadTrips__manageLayout {
+  display: grid;
+  gap: 16px;
+}
+
+.roadTrips__saveButton {
+  background: linear-gradient(135deg, #b45324 0%, #cf6e2d 45%, #e39d4c 100%);
+  box-shadow: 0 14px 26px rgba(180, 83, 36, 0.22);
+}
+
+.roadTrips__saveButton:hover,
+.roadTrips__saveButton:focus-visible {
+  box-shadow: 0 18px 30px rgba(180, 83, 36, 0.28);
+}
+
+.roadTrips__routeStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 14px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(45, 76, 70, 0.08);
+  color: #345650;
+  font-weight: 600;
+}
+
+.roadTrips__routeSpinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(45, 76, 70, 0.16);
+  border-top-color: #2d4c46;
+  animation: roadTrips-spin 0.8s linear infinite;
+}
+
+.roadTrips__waypointSection {
+  margin-top: 18px;
+}
+
+.roadTrips__compactWaypointList {
+  display: grid;
+  gap: 10px;
+}
+
+.roadTrips__compactWaypointCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(45, 76, 70, 0.12);
+  background: rgba(245, 248, 250, 0.9);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.roadTrips__compactWaypointCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(45, 76, 70, 0.08);
+}
+
+.roadTrips__compactWaypointCard--dragging {
+  opacity: 0.78;
+  border-color: rgba(45, 76, 70, 0.32);
+  box-shadow: 0 16px 30px rgba(45, 76, 70, 0.14);
+}
+
+.roadTrips__dragHandle {
+  cursor: grab;
+  color: #6a7f7a;
+}
+
+.roadTrips__dragHandle:active {
+  cursor: grabbing;
+}
+
+.roadTrips__compactWaypointMain {
+  min-width: 0;
+}
+
+.roadTrips__compactWaypointMain strong {
+  display: block;
+  color: #2d4c46;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roadTrips__compactWaypointMeta {
+  margin: 4px 0 0;
+  color: #5b4c3f;
+  font-size: 0.92rem;
+}
+
+.roadTrips__emptyState {
+  margin: 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(245, 248, 250, 0.82);
+}
+
+.roadTrips__savedTripMeta {
+  margin: 6px 0 0;
+  color: #5b4c3f;
+}
+
+.roadTrips__modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 42px 18px;
+  background: rgba(26, 36, 36, 0.5);
+  overflow-y: auto;
+}
+
+.roadTrips__modalCard {
+  width: min(920px, 100%);
+  border-radius: 22px;
+  border: 1px solid rgba(73, 57, 39, 0.12);
+  box-shadow: 0 24px 44px rgba(22, 28, 28, 0.22);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.roadTrips__modalCard--narrow {
+  width: min(620px, 100%);
+}
+
+@keyframes roadTrips-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }

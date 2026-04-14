@@ -11,6 +11,8 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import usStatesGeoJson from "./data/us-states.json";
+import canadaRegionsGeoJson from "./data/canada-regions.json";
+import mexicoRegionsGeoJson from "./data/mexico-regions.json";
 import {
   getRoadTripMapTileConfig,
   RoadTripAppearanceSettings,
@@ -21,9 +23,10 @@ import {
   formatNumber,
   getCategoryLabel,
   getTripRenderCoordinates,
-  getTripStateCodes,
-  getTripStateNames,
+  getTripRegionCodes,
+  getTripRegionNames,
   normalizeStateCode,
+  REGION_NAME_BY_CODE,
   STATE_NAME_BY_CODE,
   summarizeStateCompletion,
   summarizeRoadTrips,
@@ -39,6 +42,7 @@ interface RoadTripShowcaseProps extends RoadTripShowcaseConfig {
   appearanceSettings?: RoadTripAppearanceSettings;
   autoResolveRoutes?: boolean;
   className?: string;
+  headerActions?: React.ReactNode;
   showBreakdowns?: boolean;
   showFilter?: boolean;
   showHero?: boolean;
@@ -58,6 +62,22 @@ const FILTER_OPTIONS: { label: string; value: TripVisibilityFilter }[] = [
   { label: "Trip Wishlist", value: "wishlist" },
 ];
 
+const REGIONAL_BOUNDARY_COLLECTIONS = [
+  usStatesGeoJson,
+  canadaRegionsGeoJson,
+  mexicoRegionsGeoJson,
+];
+
+function getFeatureRegionCode(feature: any): string | null {
+  const rawCode =
+    feature?.properties?.regionCode ?? feature?.properties?.name ?? "";
+  return normalizeStateCode(String(rawCode));
+}
+
+function getFeatureRegionName(feature: any): string {
+  return String(feature?.properties?.name ?? "Unknown region");
+}
+
 function MapResizerAndViewport({ trips }: { trips: RoadTrip[] }) {
   const map = useMap();
 
@@ -74,7 +94,7 @@ function MapResizerAndViewport({ trips }: { trips: RoadTrip[] }) {
           invalidate();
         }
       },
-      { threshold: 0.01 }
+      { threshold: 0.01 },
     );
 
     observer.observe(container);
@@ -110,11 +130,11 @@ function MapResizerAndViewport({ trips }: { trips: RoadTrip[] }) {
 }
 
 function getStateLayerStyle(
-  stateName: string,
+  regionIdentifier: string,
   stateCoverage: ReturnType<typeof buildStateCoverage>,
-  appearanceSettings: RoadTripAppearanceSettings
+  appearanceSettings: RoadTripAppearanceSettings,
 ) {
-  const stateCode = normalizeStateCode(stateName);
+  const stateCode = normalizeStateCode(regionIdentifier);
   const coverage = stateCode ? stateCoverage[stateCode] : undefined;
 
   if (coverage?.taken && coverage?.wishlist) {
@@ -160,38 +180,56 @@ function RoadTripShowcase({
   appearanceSettings,
   autoResolveRoutes = true,
   className = "",
+  headerActions,
   showBreakdowns = true,
   showFilter = true,
   showHero = true,
   showHint = true,
 }: RoadTripShowcaseProps) {
   const [filter, setFilter] = useState<TripVisibilityFilter>("all");
-  const resolvedTrips = useResolvedRoadTrips(trips, autoResolveRoutes);
-  const effectiveAppearanceSettings = appearanceSettings ?? loadAppearanceSettings();
+  const { resolvedTrips, isResolvingRoutes } = useResolvedRoadTrips(
+    trips,
+    autoResolveRoutes,
+  );
+  const effectiveAppearanceSettings =
+    appearanceSettings ?? loadAppearanceSettings();
   const mapTileConfig = useMemo(
     () => getRoadTripMapTileConfig(effectiveAppearanceSettings.mapStyle),
-    [effectiveAppearanceSettings.mapStyle]
+    [effectiveAppearanceSettings.mapStyle],
   );
 
-  const summary = useMemo(() => summarizeRoadTrips(resolvedTrips), [resolvedTrips]);
+  const summary = useMemo(
+    () => summarizeRoadTrips(resolvedTrips),
+    [resolvedTrips],
+  );
   const stateCompletion = useMemo(
     () => summarizeStateCompletion(summary.taken.statesVisited),
-    [summary.taken.statesVisited]
+    [summary.taken.statesVisited],
   );
   const remainingStatesTooltip = useMemo(
     () =>
       stateCompletion.remainingStateCodes
         .map((stateCode) => STATE_NAME_BY_CODE[stateCode])
         .join(", "),
-    [stateCompletion.remainingStateCodes]
+    [stateCompletion.remainingStateCodes],
+  );
+  const additionalVisitedPlaces = useMemo(
+    () =>
+      summary.taken.additionalRegionsVisited
+        .map((regionCode) => REGION_NAME_BY_CODE[regionCode])
+        .filter(Boolean),
+    [summary.taken.additionalRegionsVisited],
   );
   const visibleTrips = useMemo(
-    () => resolvedTrips.filter((trip) => filter === "all" || trip.category === filter),
-    [filter, resolvedTrips]
+    () =>
+      resolvedTrips.filter(
+        (trip) => filter === "all" || trip.category === filter,
+      ),
+    [filter, resolvedTrips],
   );
   const visibleStateCoverage = useMemo(
     () => buildStateCoverage(visibleTrips),
-    [visibleTrips]
+    [visibleTrips],
   );
 
   const groupedVisibleTrips = useMemo(
@@ -199,28 +237,40 @@ function RoadTripShowcase({
       taken: visibleTrips.filter((trip) => trip.category === "taken"),
       wishlist: visibleTrips.filter((trip) => trip.category === "wishlist"),
     }),
-    [visibleTrips]
+    [visibleTrips],
   );
 
   return (
     <div className={`roadTrips ${className}`.trim()}>
       {showHero ? (
         <section className="roadTrips__hero card-panel">
-          <p className="roadTrips__eyebrow">Reusable Road Trip Component</p>
-          <h1 className="roadTrips__title">{title}</h1>
-          <p className="roadTrips__intro">{intro}</p>
-          {showHint ? (
-            <p className="roadTrips__hint">
-              Routes fall back to straight waypoint lines first, then resolve to
-              likely roads and cache locally when routing data is available.
-            </p>
-          ) : null}
+          <div className="roadTrips__sectionHeader">
+            <div>
+              <p className="roadTrips__eyebrow">Reusable Road Trip Component</p>
+              <h1 className="roadTrips__title">{title}</h1>
+              <p className="roadTrips__intro">{intro}</p>
+              {showHint ? (
+                <p className="roadTrips__hint">
+                  Routes start from waypoint lines, then resolve to likely roads
+                  each time the trip atlas is viewed.
+                </p>
+              ) : null}
+            </div>
+            {headerActions ? (
+              <div className="roadTrips__heroActions">{headerActions}</div>
+            ) : null}
+          </div>
         </section>
       ) : (
         <div className="roadTrips__inlineHeader">
-          <div>
-            <h3 className="roadTrips__inlineTitle">{title}</h3>
-            <p className="roadTrips__inlineCopy">{intro}</p>
+          <div className="roadTrips__sectionHeader">
+            <div>
+              <h3 className="roadTrips__inlineTitle">{title}</h3>
+              <p className="roadTrips__inlineCopy">{intro}</p>
+            </div>
+            {headerActions ? (
+              <div className="roadTrips__heroActions">{headerActions}</div>
+            ) : null}
           </div>
         </div>
       )}
@@ -228,7 +278,9 @@ function RoadTripShowcase({
       <section className="roadTrips__summaryGrid">
         <article className="roadTrips__statCard">
           <span className="roadTrips__statLabel">Trips Taken</span>
-          <strong className="roadTrips__statValue">{formatNumber(summary.taken.tripCount)}</strong>
+          <strong className="roadTrips__statValue">
+            {formatNumber(summary.taken.tripCount)}
+          </strong>
           <span className="roadTrips__statMeta">
             {formatNumber(summary.taken.totalMiles)} miles logged
           </span>
@@ -247,14 +299,18 @@ function RoadTripShowcase({
           <strong className="roadTrips__statValue">
             {formatNumber(summary.taken.statesVisited.length)}
           </strong>
-          <span className="roadTrips__statMeta">Filled in from completed trips</span>
+          <span className="roadTrips__statMeta">
+            Filled in from completed trips
+          </span>
         </article>
         <article className="roadTrips__statCard">
-          <span className="roadTrips__statLabel">All Covered States</span>
+          <span className="roadTrips__statLabel">All Covered U.S. States</span>
           <strong className="roadTrips__statValue">
             {formatNumber(summary.totalStatesVisited.length)}
           </strong>
-          <span className="roadTrips__statMeta">Taken and wishlist combined</span>
+          <span className="roadTrips__statMeta">
+            Taken and wishlist combined
+          </span>
         </article>
       </section>
 
@@ -263,8 +319,8 @@ function RoadTripShowcase({
           <div>
             <h2 className="roadTrips__sectionTitle">State Completion</h2>
             <p className="roadTrips__sectionCopy">
-              Based on completed trips only. Wishlist routes do not count toward visited-state
-              completion.
+              Based on completed trips only. Wishlist routes do not count toward
+              visited-state completion.
             </p>
           </div>
           <div
@@ -292,11 +348,38 @@ function RoadTripShowcase({
         </div>
         <div className="roadTrips__completionStats">
           <span>
-            {stateCompletion.visitedCount}/{stateCompletion.totalStates} states visited
+            {stateCompletion.visitedCount}/{stateCompletion.totalStates} states
+            visited
           </span>
           <span>{stateCompletion.completionPercent}% complete</span>
         </div>
       </section>
+
+      {additionalVisitedPlaces.length > 0 ? (
+        <section className="roadTrips__completionCard card-panel">
+          <div className="roadTrips__sectionHeader roadTrips__sectionHeader--stacked">
+            <div>
+              <h2 className="roadTrips__sectionTitle">
+                Additional Visited Places
+              </h2>
+              <p className="roadTrips__sectionCopy">
+                Non-U.S. provinces, territories, and states reached on completed
+                trips.
+              </p>
+            </div>
+          </div>
+          <div className="roadTrips__stateList">
+            {additionalVisitedPlaces.map((placeName) => (
+              <span
+                key={placeName}
+                className="roadTrips__stateChip roadTrips__stateChip--taken"
+              >
+                {placeName}
+              </span>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="roadTrips__mapSection card-panel">
         <div className="roadTrips__sectionHeader">
@@ -304,7 +387,7 @@ function RoadTripShowcase({
             <h2 className="roadTrips__sectionTitle">Trip Map</h2>
             <p className="roadTrips__sectionCopy">
               Completed trips use solid lines, wishlist routes use dashed lines,
-              and state shading updates with the active filter.
+              and region shading updates with the active filter.
             </p>
           </div>
           {showFilter ? (
@@ -313,7 +396,9 @@ function RoadTripShowcase({
                 <button
                   key={option.value}
                   className={`roadTrips__filterButton${
-                    filter === option.value ? " roadTrips__filterButton--active" : ""
+                    filter === option.value
+                      ? " roadTrips__filterButton--active"
+                      : ""
                   }`}
                   type="button"
                   onClick={() => setFilter(option.value)}
@@ -347,11 +432,24 @@ function RoadTripShowcase({
           <span className="roadTrips__legendItem">
             <span
               className="roadTrips__legendSwatch"
-              style={{ background: effectiveAppearanceSettings.takenStateFillColor }}
+              style={{
+                background: effectiveAppearanceSettings.takenStateFillColor,
+              }}
             />
             Overlap uses visited color
           </span>
         </div>
+
+        {isResolvingRoutes ? (
+          <div
+            className="roadTrips__routeStatus"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="roadTrips__routeSpinner" />
+            Calculating exact routes...
+          </div>
+        ) : null}
 
         <div className="roadTrips__mapShell">
           <MapContainer
@@ -370,40 +468,47 @@ function RoadTripShowcase({
                 url: mapTileConfig.url,
               } as any)}
             />
-            <GeoJSON
-              {...({
-                data: usStatesGeoJson as any,
-                style: (feature: any) =>
-                  getStateLayerStyle(
-                    feature?.properties?.name ?? "",
-                    visibleStateCoverage,
-                    effectiveAppearanceSettings
-                  ),
-                onEachFeature: (feature: any, layer: any) => {
-                  const stateName = feature?.properties?.name ?? "Unknown state";
-                  const stateCode = normalizeStateCode(stateName);
-                  const coverage = stateCode ? visibleStateCoverage[stateCode] : undefined;
+            {REGIONAL_BOUNDARY_COLLECTIONS.map((boundaryCollection, index) => (
+              <GeoJSON
+                key={`boundary-layer-${index}`}
+                {...({
+                  data: boundaryCollection as any,
+                  style: (feature: any) =>
+                    getStateLayerStyle(
+                      feature?.properties?.regionCode ??
+                        feature?.properties?.name ??
+                        "",
+                      visibleStateCoverage,
+                      effectiveAppearanceSettings,
+                    ),
+                  onEachFeature: (feature: any, layer: any) => {
+                    const regionName = getFeatureRegionName(feature);
+                    const regionCode = getFeatureRegionCode(feature);
+                    const coverage = regionCode
+                      ? visibleStateCoverage[regionCode]
+                      : undefined;
 
-                  let coverageLabel = "No currently visible trips";
-                  if (coverage?.taken && coverage?.wishlist) {
-                    coverageLabel = "Visited";
-                  } else if (coverage?.taken) {
-                    coverageLabel = "Visited";
-                  } else if (coverage?.wishlist) {
-                    coverageLabel = "Wishlist";
-                  }
+                    let coverageLabel = "No currently visible trips";
+                    if (coverage?.taken && coverage?.wishlist) {
+                      coverageLabel = "Visited";
+                    } else if (coverage?.taken) {
+                      coverageLabel = "Visited";
+                    } else if (coverage?.wishlist) {
+                      coverageLabel = "Wishlist";
+                    }
 
-                  layer.bindTooltip(`${stateName}: ${coverageLabel}`);
-                },
-              } as any)}
-            />
+                    layer.bindTooltip(`${regionName}: ${coverageLabel}`);
+                  },
+                } as any)}
+              />
+            ))}
 
             {visibleTrips.map((trip) => {
               const positions = getTripRenderCoordinates(trip);
               const color = resolveTripLineColor(
                 trip.category,
                 trip.lineColor,
-                effectiveAppearanceSettings
+                effectiveAppearanceSettings,
               );
 
               return (
@@ -415,7 +520,8 @@ function RoadTripShowcase({
                         color,
                         weight: trip.category === "taken" ? 4 : 3.5,
                         opacity: trip.category === "taken" ? 0.88 : 0.78,
-                        dashArray: trip.category === "wishlist" ? "10 10" : undefined,
+                        dashArray:
+                          trip.category === "wishlist" ? "10 10" : undefined,
                       },
                     } as any)}
                   />
@@ -512,7 +618,9 @@ function RoadTripShowcase({
               <section key={category} className="roadTrips__tripSection">
                 <div className="roadTrips__sectionHeader roadTrips__sectionHeader--stacked">
                   <div>
-                    <h2 className="roadTrips__sectionTitle">{getCategoryLabel(category)}</h2>
+                    <h2 className="roadTrips__sectionTitle">
+                      {getCategoryLabel(category)}
+                    </h2>
                     <p className="roadTrips__sectionCopy">
                       {category === "taken"
                         ? "Completed drives with miles already counted in your running total."
@@ -522,12 +630,17 @@ function RoadTripShowcase({
                 </div>
                 <div className="roadTrips__tripGrid">
                   {categoryTrips.map((trip) => (
-                    <article key={trip.id} className="roadTrips__tripCard card-panel">
+                    <article
+                      key={trip.id}
+                      className="roadTrips__tripCard card-panel"
+                    >
                       <div className="roadTrips__tripHeading">
                         <div>
                           <h3 className="roadTrips__tripTitle">{trip.name}</h3>
                           {trip.description ? (
-                            <p className="roadTrips__tripDescription">{trip.description}</p>
+                            <p className="roadTrips__tripDescription">
+                              {trip.description}
+                            </p>
                           ) : null}
                         </div>
                         {trip.dateLabel ? (
@@ -541,13 +654,15 @@ function RoadTripShowcase({
                       <div className="roadTrips__tripStats">
                         <span>{formatNumber(trip.miles)} miles</span>
                         <span>{trip.waypoints.length} waypoints</span>
-                        <span>{getTripStateCodes(trip).length} states</span>
+                        <span>{getTripRegionCodes(trip).length} regions</span>
                       </div>
                       <p className="roadTrips__tripRoute">
-                        {trip.waypoints.map((waypoint) => waypoint.name).join(" -> ")}
+                        {trip.waypoints
+                          .map((waypoint) => waypoint.name)
+                          .join(" -> ")}
                       </p>
                       <div className="roadTrips__stateList">
-                        {getTripStateNames(trip).map((stateName) => (
+                        {getTripRegionNames(trip).map((stateName) => (
                           <span
                             key={`${trip.id}-${stateName}`}
                             className={`roadTrips__stateChip roadTrips__stateChip--${trip.category}`}

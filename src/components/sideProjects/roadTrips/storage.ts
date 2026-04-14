@@ -136,7 +136,13 @@ export function saveTrips(trips: RoadTrip[]) {
     return;
   }
 
-  window.localStorage.setItem(ROAD_TRIPS_STORAGE_KEY, JSON.stringify(trips));
+  const serializableTrips = trips.map((trip) => ({
+    ...trip,
+    pathCoordinates: undefined,
+    routeSource: trip.routeSource === "straight-line" ? "straight-line" : undefined,
+  }));
+
+  window.localStorage.setItem(ROAD_TRIPS_STORAGE_KEY, JSON.stringify(serializableTrips));
 }
 
 export function clearSavedTrips() {

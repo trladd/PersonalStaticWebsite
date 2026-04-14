@@ -1,9 +1,9 @@
 import { RoadTripCoordinate, RoadTripWaypoint } from "./types";
 
-const ROUTE_CACHE_STORAGE_KEY = "roadTrips.routeCache.v1";
 const OSRM_ROUTE_ENDPOINT = "https://router.project-osrm.org/route/v1/driving";
 const MAX_WAYPOINTS_PER_REQUEST = 20;
 const REQUEST_DELAY_MS = 1050;
+const routeCache = new Map<string, CachedRoute>();
 
 interface OsrmRouteResponse {
   code: string;
@@ -38,41 +38,10 @@ export function buildRouteCacheKey(waypoints: RoadTripWaypoint[]): string {
     .join(";");
 }
 
-function loadRouteCache(): Record<string, CachedRoute> {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  try {
-    const raw = window.localStorage.getItem(ROUTE_CACHE_STORAGE_KEY);
-    if (!raw) {
-      return {};
-    }
-
-    const parsed = JSON.parse(raw) as Record<string, CachedRoute>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    return {};
-  }
-}
-
-function saveRouteCache(nextCache: Record<string, CachedRoute>) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(ROUTE_CACHE_STORAGE_KEY, JSON.stringify(nextCache));
-  } catch (error) {
-    // Ignore storage quota issues and continue without cache persistence.
-  }
-}
-
 export function getCachedRoute(
   waypoints: RoadTripWaypoint[]
 ): ResolvedRoute | null {
-  const cache = loadRouteCache();
-  const cached = cache[buildRouteCacheKey(waypoints)];
+  const cached = routeCache.get(buildRouteCacheKey(waypoints));
 
   if (!cached || cached.pathCoordinates.length < 2) {
     return null;
@@ -86,12 +55,10 @@ export function getCachedRoute(
 }
 
 function cacheRoute(waypoints: RoadTripWaypoint[], route: ResolvedRoute) {
-  const cache = loadRouteCache();
-  cache[buildRouteCacheKey(waypoints)] = {
+  routeCache.set(buildRouteCacheKey(waypoints), {
     miles: route.miles,
     pathCoordinates: route.pathCoordinates,
-  };
-  saveRouteCache(cache);
+  });
 }
 
 export function buildWaypointChunks(

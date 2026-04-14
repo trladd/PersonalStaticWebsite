@@ -1,4 +1,4 @@
-import { STATE_NAME_BY_CODE, normalizeStateCode } from "./roadTripUtils";
+import { REGION_NAME_BY_CODE, normalizeStateCode } from "./roadTripUtils";
 
 const GEOCODE_CACHE_STORAGE_KEY = "roadTrips.geocodeCache.v1";
 const NOMINATIM_SEARCH_ENDPOINT = "https://nominatim.openstreetmap.org/search";
@@ -62,7 +62,10 @@ function saveGeocodeCache(nextCache: Record<string, GeocodeResult[]>) {
   }
 
   try {
-    window.localStorage.setItem(GEOCODE_CACHE_STORAGE_KEY, JSON.stringify(nextCache));
+    window.localStorage.setItem(
+      GEOCODE_CACHE_STORAGE_KEY,
+      JSON.stringify(nextCache),
+    );
   } catch (error) {
     // Ignore cache persistence issues and continue with in-memory-only behavior.
   }
@@ -79,7 +82,7 @@ function getStateFromAddress(result: NominatimSearchResult): string {
     return addressState;
   }
 
-  return STATE_NAME_BY_CODE[normalizedCode] || addressState;
+  return REGION_NAME_BY_CODE[normalizedCode] || addressState;
 }
 
 function normalizeResults(results: NominatimSearchResult[]): GeocodeResult[] {
@@ -94,7 +97,7 @@ function normalizeResults(results: NominatimSearchResult[]): GeocodeResult[] {
       (result) =>
         Number.isFinite(result.latitude) &&
         Number.isFinite(result.longitude) &&
-        result.displayName.trim().length > 0
+        result.displayName.trim().length > 0,
     );
 }
 
@@ -126,7 +129,9 @@ export async function searchAddresses(query: string): Promise<GeocodeResult[]> {
     limit: "5",
   });
 
-  const response = await fetch(`${NOMINATIM_SEARCH_ENDPOINT}?${params.toString()}`);
+  const response = await fetch(
+    `${NOMINATIM_SEARCH_ENDPOINT}?${params.toString()}`,
+  );
   if (!response.ok) {
     throw new Error(`Address lookup failed with status ${response.status}.`);
   }

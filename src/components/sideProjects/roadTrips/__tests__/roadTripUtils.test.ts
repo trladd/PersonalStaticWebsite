@@ -2,6 +2,8 @@ import {
   buildStateCoverage,
   deriveStateCodesFromCoordinates,
   estimateMilesFromWaypoints,
+  getTripAdditionalRegionCodes,
+  getTripRegionCodes,
   getTripStateCodes,
   normalizeStateCode,
   summarizeStateCompletion,
@@ -18,7 +20,12 @@ const trips: RoadTrip[] = [
     miles: 500,
     statesCovered: ["IN", "Illinois", "KY"],
     waypoints: [
-      { name: "Indianapolis", latitude: 39.7684, longitude: -86.1581, state: "IN" },
+      {
+        name: "Indianapolis",
+        latitude: 39.7684,
+        longitude: -86.1581,
+        state: "IN",
+      },
       { name: "Chicago", latitude: 41.8781, longitude: -87.6298, state: "IL" },
     ],
   },
@@ -40,6 +47,8 @@ describe("roadTripUtils", () => {
     expect(normalizeStateCode("in")).toBe("IN");
     expect(normalizeStateCode("Indiana")).toBe("IN");
     expect(normalizeStateCode("  utah ")).toBe("UT");
+    expect(normalizeStateCode("Ontario")).toBe("CA-ON");
+    expect(normalizeStateCode("Yucatán")).toBe("MX-YUC");
     expect(normalizeStateCode("")).toBeNull();
   });
 
@@ -56,8 +65,40 @@ describe("roadTripUtils", () => {
     expect(summary.taken.tripCount).toBe(1);
     expect(summary.wishlist.tripCount).toBe(1);
     expect(summary.totalStatesVisited).toEqual(["IN", "IL", "KY", "CO", "UT"]);
+    expect(summary.totalAdditionalRegionsVisited).toEqual([]);
     expect(coverage.IN).toEqual({ taken: true, wishlist: false });
     expect(coverage.UT).toEqual({ taken: false, wishlist: true });
+  });
+
+  it("keeps non-us regions separate from tracked us states", () => {
+    const internationalTrip: RoadTrip = {
+      id: "north-america",
+      name: "North America",
+      category: "taken",
+      miles: 1000,
+      statesCovered: ["Ontario", "MX-CHH"],
+      waypoints: [
+        {
+          name: "Toronto",
+          latitude: 43.6532,
+          longitude: -79.3832,
+          state: "ON",
+        },
+        {
+          name: "Chihuahua",
+          latitude: 28.6329,
+          longitude: -106.0691,
+          state: "Chihuahua",
+        },
+      ],
+    };
+
+    expect(getTripRegionCodes(internationalTrip)).toEqual(["CA-ON", "MX-CHH"]);
+    expect(getTripStateCodes(internationalTrip)).toEqual([]);
+    expect(getTripAdditionalRegionCodes(internationalTrip)).toEqual([
+      "CA-ON",
+      "MX-CHH",
+    ]);
   });
 
   it("estimates miles from waypoint coordinates", () => {
