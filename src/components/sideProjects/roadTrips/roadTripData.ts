@@ -940,57 +940,5 @@ export const roadTripShowcaseData: RoadTripShowcaseConfig = {
       description: "",
       routeSource: "straight-line",
     },
-    {
-      id: "alaska-1776133863535",
-      name: "Alaska",
-      category: "wishlist",
-      miles: 8802,
-      waypoints: [
-        {
-          name: "Home",
-          latitude: 39.84005,
-          longitude: -86.43149,
-          state: "Indiana",
-          notes:
-            "1716, Hawk Lane, Summer Ridge, Brownsburg, Hendricks County, Indiana, 46112, United States",
-        },
-        {
-          name: "Waypoint 5",
-          latitude: 61.20774,
-          longitude: -149.8645,
-          state: "",
-        },
-        {
-          name: "Denali National Park, United States",
-          latitude: 63.23166,
-          longitude: -151.04056,
-          state: "",
-        },
-        {
-          name: "Prudhoe Bay, Alaska, 99734, United States",
-          latitude: 70.32668,
-          longitude: -148.94325,
-          state: "Alaska",
-        },
-        {
-          name: "Waypoint 4",
-          latitude: 64.88044,
-          longitude: -148.18359,
-          state: "",
-        },
-        {
-          name: "Home",
-          latitude: 39.84005,
-          longitude: -86.43149,
-          state: "Indiana",
-          notes:
-            "1716, Hawk Lane, Summer Ridge, Brownsburg, Hendricks County, Indiana, 46112, United States",
-        },
-      ],
-      statesCovered: ["Indiana", "Alaska", "Indiana"],
-      dateLabel: "",
-      description: "",
-      routeSource: "straight-line",
-    },
   ]),
 };
