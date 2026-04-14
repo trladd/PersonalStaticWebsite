@@ -106,6 +106,11 @@ const Introduction: React.FC = () => {
               src="images/wrx.JPG"
               alt="Trevar's Subaru WRX on a road trip"
             />
+            <p>
+              Below you can see a map of various road trips I've gone on, and
+              some that I would really like to do. The blue line represents that
+              awesome 2018 trip.
+            </p>
 
             <RoadTripShowcase
               title={roadTripShowcaseData.title}
