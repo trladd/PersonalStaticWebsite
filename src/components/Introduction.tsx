@@ -21,7 +21,7 @@ const Introduction: React.FC = () => {
           id="profilePicture"
           src="images/profileimage.jfif"
           className="circle"
-          alt="Trevar Ladd portrait"
+          alt="Trevar Ladd Portrait"
         />
         <p>
           <b>Hi! My name is Trevar</b>, a software engineer with a passion for
