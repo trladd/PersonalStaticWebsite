@@ -77,7 +77,7 @@ const MainPage: React.FC = () => {
                   <i className="material-icons right">close</i>
                 </span>
                 <p>
-                  Emaily is an application that I built after completing a
+                  Emaily was an application that I built after completing a
                   fullstack JavaScript course. I took what was started with the
                   course and extended functionality to include LinkedIn and
                   Google oauth, custom web surveys, personal and global survey
