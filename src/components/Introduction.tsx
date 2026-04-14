@@ -1,8 +1,7 @@
 import React, { useEffect } from "react";
 import { checkProfileSizing, getAge } from "../utility/utility";
 import M from "materialize-css"; // Import the necessary library
-import RoadTripShowcase from "./sideProjects/roadTrips/RoadTripShowcase";
-import { roadTripShowcaseData } from "./sideProjects/roadTrips/roadTripData";
+import RoadTripSnapshotLoader from "./sideProjects/roadTrips/RoadTripSnapshotLoader";
 
 const Introduction: React.FC = () => {
   useEffect(() => {
@@ -112,11 +111,7 @@ const Introduction: React.FC = () => {
               awesome 2018 trip.
             </p>
 
-            <RoadTripShowcase
-              title={roadTripShowcaseData.title}
-              intro={roadTripShowcaseData.intro}
-              trips={roadTripShowcaseData.trips}
-              autoResolveRoutes={false}
+            <RoadTripSnapshotLoader
               className="roadTrips--embedded"
               compactSummary
               mapFirst

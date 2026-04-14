@@ -19,7 +19,11 @@ import {
 } from "./appearance";
 import { GeocodeResult, searchAddresses } from "./geocoding";
 import RoadTripShowcase from "./RoadTripShowcase";
-import { buildRouteCacheKey, fetchDrivingRoute } from "./routing";
+import {
+  buildRouteCacheKey,
+  fetchDrivingRoute,
+  primeRouteCache,
+} from "./routing";
 import { buildShareableRoadTripUrl, parseSharedRoadTripPayload } from "./share";
 import {
   estimateMilesFromWaypoints,
@@ -869,6 +873,26 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
     const fallbackStates = draftTrip.waypoints
       .map((waypoint) => waypoint.state)
       .filter(Boolean);
+
+    if (
+      draftTrip.routeSource === "osrm" &&
+      (draftTrip.pathCoordinates?.length ?? 0) >= 2
+    ) {
+      primeRouteCache([
+        {
+          waypoints: draftTrip.waypoints,
+          route: {
+            miles:
+              draftTrip.miles > 0
+                ? draftTrip.miles
+                : estimateMilesFromWaypoints(draftTrip.waypoints),
+            pathCoordinates: draftTrip.pathCoordinates ?? [],
+            routeSource: "osrm",
+          },
+        },
+      ]);
+    }
+
     const nextTrip: RoadTrip = stripResolvedRouteData({
       ...cloneTrip(draftTrip),
       id: isEditingExistingTrip ? draftTrip.id : buildTripId(trimmedName),

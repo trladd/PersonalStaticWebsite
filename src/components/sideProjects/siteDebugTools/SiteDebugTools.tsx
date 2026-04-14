@@ -11,6 +11,7 @@ import M from "materialize-css";
 import { ThemeContext } from "../../../utility/ThemeContext";
 import UserDeviceInfo from "./UserDeviceInfo";
 import LocalStorageInspector from "./LocalStorageInspector";
+import RoadTripSnapshotWorkbench from "./RoadTripSnapshotWorkbench";
 import styles from "./SiteDebugTools.module.css";
 
 interface SiteDebugToolsProps {
@@ -101,6 +102,10 @@ const SiteDebugTools: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
       content: <LocalStorageInspector />,
     },
     {
+      name: "Road Trips",
+      content: <RoadTripSnapshotWorkbench />,
+    },
+    {
       name: "Device Info",
       content: <UserDeviceInfo />,
     },
@@ -156,7 +161,11 @@ const SiteDebugTools: React.FC<SiteDebugToolsProps> = ({ navWrapperRef }) => {
       </ul>
       <div className={styles.tabContent}>
         {tabs.map((tab, index) => (
-          <div id={`tab-${index}`} key={tab.name} className={styles.debugTabPane}>
+          <div
+            id={`tab-${index}`}
+            key={tab.name}
+            className={styles.debugTabPane}
+          >
             {tab.content}
           </div>
         ))}

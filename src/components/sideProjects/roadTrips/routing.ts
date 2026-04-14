@@ -1,10 +1,12 @@
+import { compressToUTF16, decompressFromUTF16 } from "lz-string";
 import { ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY } from "./storage";
 import { RoadTripCoordinate, RoadTripWaypoint } from "./types";
 
 const OSRM_ROUTE_ENDPOINT = "https://router.project-osrm.org/route/v1/driving";
 const MAX_WAYPOINTS_PER_REQUEST = 20;
 const REQUEST_DELAY_MS = 1050;
-const MAX_PERSISTED_ROUTE_CACHE_ENTRIES = 80;
+const MAX_PERSISTED_ROUTE_CACHE_ENTRIES = 320;
+const COMPRESSED_ROUTE_CACHE_PREFIX = "lz:";
 const routeCache = new Map<string, CachedRoute>();
 let hasHydratedRouteCache = false;
 
@@ -27,6 +29,19 @@ interface PersistedRouteCacheEntry {
   key: string;
   miles: number;
   pathCoordinates: RoadTripCoordinate[];
+}
+
+function roundCoordinate(value: number): number {
+  return Number(value.toFixed(5));
+}
+
+function normalizePathCoordinates(
+  pathCoordinates: RoadTripCoordinate[],
+): RoadTripCoordinate[] {
+  return pathCoordinates.map(([latitude, longitude]) => [
+    roundCoordinate(latitude),
+    roundCoordinate(longitude),
+  ]);
 }
 
 export interface ResolvedRoute {
@@ -54,7 +69,29 @@ function sanitizePathCoordinates(value: unknown): RoadTripCoordinate[] | null {
       typeof item[1] === "number",
   );
 
-  return coordinates.length >= 2 ? coordinates : null;
+  return coordinates.length >= 2 ? normalizePathCoordinates(coordinates) : null;
+}
+
+function parsePersistedRouteCache(raw: string): unknown {
+  const trimmed = raw.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  if (trimmed.startsWith(COMPRESSED_ROUTE_CACHE_PREFIX)) {
+    const decompressed = decompressFromUTF16(
+      trimmed.slice(COMPRESSED_ROUTE_CACHE_PREFIX.length),
+    );
+
+    if (!decompressed) {
+      return null;
+    }
+
+    return JSON.parse(decompressed) as unknown;
+  }
+
+  return JSON.parse(trimmed) as unknown;
 }
 
 function hydrateRouteCache() {
@@ -70,7 +107,7 @@ function hydrateRouteCache() {
       return;
     }
 
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = parsePersistedRouteCache(raw);
     if (!Array.isArray(parsed)) {
       return;
     }
@@ -117,13 +154,13 @@ function persistRouteCache() {
     .map(([key, route]) => ({
       key,
       miles: route.miles,
-      pathCoordinates: route.pathCoordinates,
+      pathCoordinates: normalizePathCoordinates(route.pathCoordinates),
     }));
 
   try {
     window.localStorage.setItem(
       ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY,
-      JSON.stringify(entries),
+      `${COMPRESSED_ROUTE_CACHE_PREFIX}${compressToUTF16(JSON.stringify(entries))}`,
     );
   } catch (error) {
     // Ignore storage quota or serialization failures.
@@ -159,10 +196,13 @@ export function getCachedRoute(
 function cacheRoute(waypoints: RoadTripWaypoint[], route: ResolvedRoute) {
   hydrateRouteCache();
   const cacheKey = buildRouteCacheKey(waypoints);
+  const normalizedPathCoordinates = normalizePathCoordinates(
+    route.pathCoordinates,
+  );
   routeCache.delete(cacheKey);
   routeCache.set(cacheKey, {
     miles: route.miles,
-    pathCoordinates: route.pathCoordinates,
+    pathCoordinates: normalizedPathCoordinates,
   });
   persistRouteCache();
 }
@@ -183,11 +223,16 @@ export function primeRouteCache(
 
     routeCache.set(cacheKey, {
       miles: route.miles,
-      pathCoordinates: route.pathCoordinates,
+      pathCoordinates: normalizePathCoordinates(route.pathCoordinates),
     });
   });
 
   persistRouteCache();
+}
+
+export function resetRouteCacheForTests() {
+  routeCache.clear();
+  hasHydratedRouteCache = false;
 }
 
 export function buildWaypointChunks(
@@ -283,7 +328,7 @@ export async function fetchDrivingRoute(
 
   const resolvedRoute: ResolvedRoute = {
     miles: totalMiles,
-    pathCoordinates: mergedPathCoordinates,
+    pathCoordinates: normalizePathCoordinates(mergedPathCoordinates),
     routeSource: "osrm",
   };
 

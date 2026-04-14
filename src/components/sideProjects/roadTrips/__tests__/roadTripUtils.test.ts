@@ -9,7 +9,14 @@ import {
   summarizeStateCompletion,
   summarizeRoadTrips,
 } from "../roadTripUtils";
-import { buildRouteCacheKey, buildWaypointChunks } from "../routing";
+import {
+  buildRouteCacheKey,
+  buildWaypointChunks,
+  getCachedRoute,
+  primeRouteCache,
+  resetRouteCacheForTests,
+} from "../routing";
+import { ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY } from "../storage";
 import { RoadTrip } from "../types";
 
 const trips: RoadTrip[] = [
@@ -43,6 +50,11 @@ const trips: RoadTrip[] = [
 ];
 
 describe("roadTripUtils", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetRouteCacheForTests();
+  });
+
   it("normalizes state names and postal codes", () => {
     expect(normalizeStateCode("in")).toBe("IN");
     expect(normalizeStateCode("Indiana")).toBe("IN");
@@ -131,5 +143,41 @@ describe("roadTripUtils", () => {
     expect(derivedStates).toEqual(expect.arrayContaining(["IN", "IL"]));
     expect(completion.visitedCount).toBe(2);
     expect(completion.remainingCount).toBeGreaterThan(0);
+  });
+
+  it("persists compressed route cache entries across reloads", () => {
+    const waypoints = trips[0].waypoints;
+
+    primeRouteCache([
+      {
+        waypoints,
+        route: {
+          miles: 182,
+          pathCoordinates: [
+            [39.76840123, -86.15810001],
+            [40.51234567, -86.91999999],
+            [41.87810045, -87.62980003],
+          ],
+          routeSource: "osrm",
+        },
+      },
+    ]);
+
+    const rawPersistedCache = localStorage.getItem(
+      ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY,
+    );
+    expect(rawPersistedCache?.startsWith("lz:")).toBe(true);
+
+    resetRouteCacheForTests();
+
+    expect(getCachedRoute(waypoints)).toEqual({
+      miles: 182,
+      pathCoordinates: [
+        [39.7684, -86.1581],
+        [40.51235, -86.92],
+        [41.8781, -87.6298],
+      ],
+      routeSource: "osrm",
+    });
   });
 });

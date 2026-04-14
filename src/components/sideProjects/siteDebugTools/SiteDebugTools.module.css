@@ -305,6 +305,29 @@
   background: var(--debug-accent) !important;
 }
 
+.snapshotField {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.snapshotLabel {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+  color: var(--debug-text);
+}
+
+.snapshotField :global(input),
+.snapshotField :global(textarea) {
+  color: var(--debug-text);
+}
+
+.snapshotTextarea {
+  min-height: 460px !important;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  white-space: pre;
+}
+
 .modalActions {
   display: flex;
   justify-content: flex-end;
