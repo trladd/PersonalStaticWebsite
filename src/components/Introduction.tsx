@@ -53,8 +53,9 @@ const Introduction: React.FC = () => {
             <p>
               My weekends are filled with family activities. I stay busy with
               kids activities, family outings, and home projects. Of course
-              having a busy house with many kids, there is always some house
-              work that needs caught up over the weekends. From there I enjoy
+              having a busy house with three kids, there is always some house
+              work that needs caught up over the weekends. Aside from the
+              typical suburban dad activities and maintaining the house, I like
               watching movies with the kids, going on walks around our
               neighborhood, and going to various sporting events.
             </p>
@@ -136,15 +137,15 @@ const Introduction: React.FC = () => {
             </div>
 
             <p>
-              As my youngest daughter grows older we plan to get back to our
-              adventures. Our future plans are to explore the Northeastern U.S.
-              since my wife (who grew up in Texas) hasn't been to many of the
-              eastern states. After that, I aim to head back north to Montana
-              again to soak in the mountain air, then another trip exploring the
-              far west coast through California, up to Washington. At some point
-              I hope to drive to Alaska, and have always had a dream of buying a
-              car just to drive south as far as I could get in to south america
-              and fly back home.
+              As my youngest daughter grows older I would like to get back to
+              our adventures. Our future plans are to explore the Northeastern
+              U.S. since my wife (who grew up in Texas) hasn't been to many of
+              the eastern states. After that, I aim to head back north to
+              Montana again to soak in the mountain air, then another trip
+              exploring the far west coast through California, up to Washington.
+              At some point I hope to drive to Alaska, and have always had a
+              dream of buying a cheap car just to drive south as far as I could
+              get in central america, sell the car, and fly back home.
             </p>
           </li>
           <li>

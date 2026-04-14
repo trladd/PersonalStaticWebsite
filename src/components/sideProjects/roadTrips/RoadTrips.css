@@ -697,42 +697,116 @@
 }
 
 .roadTrips--embedded .roadTrips__summaryGrid {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .roadTrips--embedded .roadTrips__summaryGrid--compact {
-  margin-top: 12px;
+  margin-top: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .roadTrips--embedded .roadTrips__statCard {
-  padding: 12px 13px;
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(41, 82, 74, 0.14);
+  padding: 10px 11px;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(41, 82, 74, 0.12);
 }
 
 .roadTrips--embedded .roadTrips__statLabel {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   letter-spacing: 0.08em;
 }
 
 .roadTrips--embedded .roadTrips__statValue {
-  margin-top: 6px;
-  font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+  margin-top: 4px;
+  font-size: clamp(1rem, 1.7vw, 1.35rem);
 }
 
 .roadTrips--embedded .roadTrips__statMeta {
-  margin-top: 5px;
-  font-size: 0.84rem;
+  margin-top: 4px;
+  font-size: 0.74rem;
   line-height: 1.4;
 }
 
 .roadTrips--embedded .roadTrips__mapSection {
   margin-bottom: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
 }
 
 .roadTrips--embedded .roadTrips__mapShell {
-  height: min(58vh, 520px);
-  min-height: 320px;
+  height: min(54vh, 460px);
+  min-height: 280px;
+  border-radius: 14px;
+}
+
+.roadTrips--embedded .roadTrips__sectionTitle {
+  font-size: clamp(1.1rem, 1.8vw, 1.45rem);
+}
+
+.roadTrips--embedded .roadTrips__sectionCopy {
+  margin-top: 4px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.roadTrips--embedded .roadTrips__legend {
+  gap: 12px;
+  margin: 8px 0 10px;
+  font-size: 0.88rem;
+}
+
+.roadTrips--embedded .roadTrips__legendItem {
+  gap: 7px;
+}
+
+.roadTrips--embedded .roadTrips__legendSwatch {
+  width: 22px;
+  height: 10px;
+}
+
+.roadTrips--embedded .roadTrips__completionCard {
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+}
+
+.roadTrips--embedded .roadTrips__completionBadge {
+  padding: 5px 9px;
+  font-size: 0.82rem;
+}
+
+.roadTrips--embedded .roadTrips__completionMeter {
+  height: 10px;
+  margin: 8px 0 6px;
+}
+
+.roadTrips--embedded .roadTrips__completionStats {
+  font-size: 0.9rem;
+}
+
+.roadTrips--embedded .roadTrips__stateList {
+  gap: 6px;
+}
+
+.roadTrips--embedded .roadTrips__stateChip {
+  padding: 4px 8px;
+  font-size: 0.76rem;
+}
+
+.roadTrips--embedded .roadTrips__embedCallout {
+  margin: 10px 0 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+}
+
+.roadTrips--embedded .roadTrips__embedCalloutCopy {
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.roadTrips--embedded .roadTrips__embedCalloutLink {
+  font-size: 0.92rem;
 }
 
 @media (max-width: 700px) {
@@ -744,6 +818,10 @@
     padding: 12px 0 0;
   }
 
+  .roadTrips--embedded .roadTrips__summaryGrid--compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .roadTrips__plannerGrid,
   .roadTrips__editorFields,
   .roadTrips__paletteGrid {
@@ -753,6 +831,11 @@
   .roadTrips__mapShell {
     min-height: 360px;
     height: 58vh;
+  }
+
+  .roadTrips--embedded .roadTrips__mapShell {
+    min-height: 240px;
+    height: 38vh;
   }
 
   .roadTrips__tripHeading {

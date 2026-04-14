@@ -209,6 +209,8 @@ function RoadTripShowcase({
     () => getRoadTripMapTileConfig(effectiveAppearanceSettings.mapStyle),
     [effectiveAppearanceSettings.mapStyle],
   );
+  const isMinimalEmbeddedView =
+    compactSummary && !showHeader && !showBreakdowns && !showFilter;
 
   const summary = useMemo(
     () => summarizeRoadTrips(resolvedTrips),
@@ -292,40 +294,69 @@ function RoadTripShowcase({
         compactSummary ? " roadTrips__summaryGrid--compact" : ""
       }`}
     >
-      <article className="roadTrips__statCard">
-        <span className="roadTrips__statLabel">Trips Taken</span>
-        <strong className="roadTrips__statValue">
-          {formatNumber(summary.taken.tripCount)}
-        </strong>
-        <span className="roadTrips__statMeta">
-          {formatNumber(summary.taken.totalMiles)} miles logged
-        </span>
-      </article>
-      <article className="roadTrips__statCard">
-        <span className="roadTrips__statLabel">Trip Wishlist</span>
-        <strong className="roadTrips__statValue">
-          {formatNumber(summary.wishlist.tripCount)}
-        </strong>
-        <span className="roadTrips__statMeta">
-          {formatNumber(summary.wishlist.totalMiles)} planned miles
-        </span>
-      </article>
-      <article className="roadTrips__statCard">
-        <span className="roadTrips__statLabel">Visited States</span>
-        <strong className="roadTrips__statValue">
-          {formatNumber(summary.taken.statesVisited.length)}
-        </strong>
-        <span className="roadTrips__statMeta">
-          Filled in from completed trips
-        </span>
-      </article>
-      <article className="roadTrips__statCard">
-        <span className="roadTrips__statLabel">All Covered U.S. States</span>
-        <strong className="roadTrips__statValue">
-          {formatNumber(summary.totalStatesVisited.length)}
-        </strong>
-        <span className="roadTrips__statMeta">Taken and wishlist combined</span>
-      </article>
+      {isMinimalEmbeddedView ? (
+        <>
+          <article className="roadTrips__statCard">
+            <span className="roadTrips__statLabel">Taken Trips</span>
+            <strong className="roadTrips__statValue">
+              {formatNumber(summary.taken.tripCount)}
+            </strong>
+          </article>
+          <article className="roadTrips__statCard">
+            <span className="roadTrips__statLabel">Miles</span>
+            <strong className="roadTrips__statValue">
+              {formatNumber(summary.taken.totalMiles)}
+            </strong>
+          </article>
+          <article className="roadTrips__statCard">
+            <span className="roadTrips__statLabel">Visited States</span>
+            <strong className="roadTrips__statValue">
+              {formatNumber(summary.taken.statesVisited.length)}
+            </strong>
+          </article>
+        </>
+      ) : (
+        <>
+          <article className="roadTrips__statCard">
+            <span className="roadTrips__statLabel">Trips Taken</span>
+            <strong className="roadTrips__statValue">
+              {formatNumber(summary.taken.tripCount)}
+            </strong>
+            <span className="roadTrips__statMeta">
+              {formatNumber(summary.taken.totalMiles)} miles logged
+            </span>
+          </article>
+          <article className="roadTrips__statCard">
+            <span className="roadTrips__statLabel">Trip Wishlist</span>
+            <strong className="roadTrips__statValue">
+              {formatNumber(summary.wishlist.tripCount)}
+            </strong>
+            <span className="roadTrips__statMeta">
+              {formatNumber(summary.wishlist.totalMiles)} planned miles
+            </span>
+          </article>
+          <article className="roadTrips__statCard">
+            <span className="roadTrips__statLabel">Visited States</span>
+            <strong className="roadTrips__statValue">
+              {formatNumber(summary.taken.statesVisited.length)}
+            </strong>
+            <span className="roadTrips__statMeta">
+              Filled in from completed trips
+            </span>
+          </article>
+          <article className="roadTrips__statCard">
+            <span className="roadTrips__statLabel">
+              All Covered U.S. States
+            </span>
+            <strong className="roadTrips__statValue">
+              {formatNumber(summary.totalStatesVisited.length)}
+            </strong>
+            <span className="roadTrips__statMeta">
+              Taken and wishlist combined
+            </span>
+          </article>
+        </>
+      )}
     </section>
   );
   const mapSection = (
@@ -333,10 +364,12 @@ function RoadTripShowcase({
       <div className="roadTrips__sectionHeader">
         <div>
           <h2 className="roadTrips__sectionTitle">Trip Map</h2>
-          <p className="roadTrips__sectionCopy">
-            Completed trips use solid lines, wishlist routes use dashed lines,
-            and region shading updates with the active filter.
-          </p>
+          {!isMinimalEmbeddedView ? (
+            <p className="roadTrips__sectionCopy">
+              Completed trips use solid lines, wishlist routes use dashed lines,
+              and region shading updates with the active filter.
+            </p>
+          ) : undefined}
         </div>
         <div className="roadTrips__mapActions">
           {showFilter ? (
@@ -392,15 +425,6 @@ function RoadTripShowcase({
             }}
           />
           Wishlist trips
-        </span>
-        <span className="roadTrips__legendItem">
-          <span
-            className="roadTrips__legendSwatch"
-            style={{
-              background: effectiveAppearanceSettings.takenStateFillColor,
-            }}
-          />
-          Overlap uses visited color
         </span>
       </div>
 
@@ -570,10 +594,12 @@ function RoadTripShowcase({
         <div className="roadTrips__completionHeader">
           <div>
             <h2 className="roadTrips__sectionTitle">State Completion</h2>
-            <p className="roadTrips__sectionCopy">
-              Based on completed trips only. Wishlist routes do not count toward
-              visited-state completion.
-            </p>
+            {!isMinimalEmbeddedView ? (
+              <p className="roadTrips__sectionCopy">
+                Based on completed trips only. Wishlist routes do not count
+                toward visited-state completion.
+              </p>
+            ) : null}
           </div>
           <div
             className="roadTrips__completionBadge"
@@ -614,10 +640,12 @@ function RoadTripShowcase({
               <h2 className="roadTrips__sectionTitle">
                 Additional Visited Places
               </h2>
-              <p className="roadTrips__sectionCopy">
-                Non-U.S. provinces, territories, and states reached on completed
-                trips.
-              </p>
+              {!isMinimalEmbeddedView ? (
+                <p className="roadTrips__sectionCopy">
+                  Non-U.S. provinces, territories, and states reached on
+                  completed trips.
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="roadTrips__stateList">
