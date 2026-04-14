@@ -4,16 +4,17 @@ import { RoadTrip } from "./types";
 
 function applyCachedRoutes(trips: RoadTrip[]): RoadTrip[] {
   return trips.map((trip) => {
+    if (trip.pathCoordinates && trip.pathCoordinates.length >= 2) {
+      return trip;
+    }
+
     if (trip.waypoints.length < 2) {
       return trip;
     }
 
     const cachedRoute = getCachedRoute(trip.waypoints);
     if (!cachedRoute) {
-      return {
-        ...trip,
-        pathCoordinates: undefined,
-      };
+      return trip;
     }
 
     return {
@@ -25,11 +26,16 @@ function applyCachedRoutes(trips: RoadTrip[]): RoadTrip[] {
   });
 }
 
-export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true): {
+export function useResolvedRoadTrips(
+  trips: RoadTrip[],
+  autoResolveRoutes = true,
+): {
   resolvedTrips: RoadTrip[];
   isResolvingRoutes: boolean;
 } {
-  const [resolvedTrips, setResolvedTrips] = useState<RoadTrip[]>(() => applyCachedRoutes(trips));
+  const [resolvedTrips, setResolvedTrips] = useState<RoadTrip[]>(() =>
+    applyCachedRoutes(trips),
+  );
   const [isResolvingRoutes, setIsResolvingRoutes] = useState(false);
 
   useEffect(() => {
@@ -46,7 +52,10 @@ export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true
 
     const resolveRoutes = async () => {
       const tripsNeedingRoutes = trips.filter(
-        (trip) => trip.waypoints.length >= 2 && !getCachedRoute(trip.waypoints)
+        (trip) =>
+          trip.waypoints.length >= 2 &&
+          (!trip.pathCoordinates || trip.pathCoordinates.length < 2) &&
+          !getCachedRoute(trip.waypoints),
       );
 
       if (tripsNeedingRoutes.length === 0) {
@@ -72,12 +81,13 @@ export function useResolvedRoadTrips(trips: RoadTrip[], autoResolveRoutes = true
               currentTrip.id === trip.id
                 ? {
                     ...currentTrip,
-                    miles: currentTrip.miles > 0 ? currentTrip.miles : route.miles,
+                    miles:
+                      currentTrip.miles > 0 ? currentTrip.miles : route.miles,
                     pathCoordinates: route.pathCoordinates,
                     routeSource: route.routeSource,
                   }
-                : currentTrip
-            )
+                : currentTrip,
+            ),
           );
         } catch (error) {
           // Keep straight-line fallback when route resolution fails.

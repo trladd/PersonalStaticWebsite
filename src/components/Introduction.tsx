@@ -22,6 +22,7 @@ const Introduction: React.FC = () => {
           id="profilePicture"
           src="images/profileimage.jfif"
           className="circle"
+          alt="Trevar Ladd portrait"
         />
         <p>
           <b>Hi! My name is Trevar</b>, a software engineer with a passion for
@@ -103,7 +104,36 @@ const Introduction: React.FC = () => {
             <img
               className="materialboxed responsive-img mainImage"
               src="images/wrx.JPG"
+              alt="Trevar's Subaru WRX on a road trip"
             />
+
+            <RoadTripShowcase
+              title={roadTripShowcaseData.title}
+              intro={roadTripShowcaseData.intro}
+              trips={roadTripShowcaseData.trips}
+              autoResolveRoutes={false}
+              className="roadTrips--embedded"
+              compactSummary
+              mapFirst
+              showHero={false}
+              showHeader={false}
+              showBreakdowns={false}
+              showFilter={false}
+              showHint={false}
+            />
+
+            <div className="roadTrips__embedCallout card-panel">
+              <p className="roadTrips__embedCalloutCopy">
+                If you want to build a map like this for yourself, build it
+                here.
+              </p>
+              <a
+                className="roadTrips__embedCalloutLink"
+                href="/sideProjects/roadTrips"
+              >
+                Open the Road Trip Atlas builder
+              </a>
+            </div>
 
             <p>
               As my youngest daughter grows older we plan to get back to our
@@ -116,17 +146,6 @@ const Introduction: React.FC = () => {
               car just to drive south as far as I could get in to south america
               and fly back home.
             </p>
-
-            <RoadTripShowcase
-              title={roadTripShowcaseData.title}
-              intro={roadTripShowcaseData.intro}
-              trips={roadTripShowcaseData.trips}
-              className="roadTrips--embedded"
-              showHero={false}
-              showBreakdowns={false}
-              showFilter={false}
-              showHint={false}
-            />
           </li>
           <li>
             <h4>

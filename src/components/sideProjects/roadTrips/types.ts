@@ -17,6 +17,7 @@ export interface RoadTrip {
   name: string;
   category: RoadTripCategory;
   miles: number;
+  isShared?: boolean;
   waypoints: RoadTripWaypoint[];
   statesCovered?: string[];
   dateLabel?: string;

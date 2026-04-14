@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import M from "materialize-css";
 import {
   CircleMarker,
   GeoJSON,
@@ -9,6 +10,7 @@ import {
   Tooltip,
   useMap,
 } from "react-leaflet";
+import { toPng } from "html-to-image";
 import "leaflet/dist/leaflet.css";
 import usStatesGeoJson from "./data/us-states.json";
 import canadaRegionsGeoJson from "./data/canada-regions.json";
@@ -43,8 +45,12 @@ interface RoadTripShowcaseProps extends RoadTripShowcaseConfig {
   autoResolveRoutes?: boolean;
   className?: string;
   headerActions?: React.ReactNode;
+  compactSummary?: boolean;
+  mapFirst?: boolean;
+  showImageExport?: boolean;
   showBreakdowns?: boolean;
   showFilter?: boolean;
+  showHeader?: boolean;
   showHero?: boolean;
   showHint?: boolean;
 }
@@ -181,12 +187,18 @@ function RoadTripShowcase({
   autoResolveRoutes = true,
   className = "",
   headerActions,
+  compactSummary = false,
+  mapFirst = false,
+  showImageExport = false,
   showBreakdowns = true,
   showFilter = true,
+  showHeader = true,
   showHero = true,
   showHint = true,
 }: RoadTripShowcaseProps) {
   const [filter, setFilter] = useState<TripVisibilityFilter>("all");
+  const [isExportingImage, setIsExportingImage] = useState(false);
+  const mapShellRef = useRef<HTMLDivElement | null>(null);
   const { resolvedTrips, isResolvingRoutes } = useResolvedRoadTrips(
     trips,
     autoResolveRoutes,
@@ -239,10 +251,286 @@ function RoadTripShowcase({
     }),
     [visibleTrips],
   );
+  const handleExportMapImage = async () => {
+    if (!mapShellRef.current) {
+      return;
+    }
+
+    try {
+      setIsExportingImage(true);
+      const dataUrl = await toPng(mapShellRef.current, {
+        cacheBust: true,
+        pixelRatio: Math.max(window.devicePixelRatio || 1, 2.5),
+        backgroundColor: "#f7f2ea",
+      });
+      const link = document.createElement("a");
+      const titleSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+      link.download = `${titleSlug || "road-trip-atlas"}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      M.toast({
+        html: "Saved a PNG snapshot of the current atlas view.",
+        displayLength: 2400,
+      });
+    } catch (error) {
+      M.toast({
+        html: "Couldn't export the map image with this basemap right now.",
+        displayLength: 3200,
+      });
+    } finally {
+      setIsExportingImage(false);
+    }
+  };
+  const summarySection = (
+    <section
+      className={`roadTrips__summaryGrid${
+        compactSummary ? " roadTrips__summaryGrid--compact" : ""
+      }`}
+    >
+      <article className="roadTrips__statCard">
+        <span className="roadTrips__statLabel">Trips Taken</span>
+        <strong className="roadTrips__statValue">
+          {formatNumber(summary.taken.tripCount)}
+        </strong>
+        <span className="roadTrips__statMeta">
+          {formatNumber(summary.taken.totalMiles)} miles logged
+        </span>
+      </article>
+      <article className="roadTrips__statCard">
+        <span className="roadTrips__statLabel">Trip Wishlist</span>
+        <strong className="roadTrips__statValue">
+          {formatNumber(summary.wishlist.tripCount)}
+        </strong>
+        <span className="roadTrips__statMeta">
+          {formatNumber(summary.wishlist.totalMiles)} planned miles
+        </span>
+      </article>
+      <article className="roadTrips__statCard">
+        <span className="roadTrips__statLabel">Visited States</span>
+        <strong className="roadTrips__statValue">
+          {formatNumber(summary.taken.statesVisited.length)}
+        </strong>
+        <span className="roadTrips__statMeta">
+          Filled in from completed trips
+        </span>
+      </article>
+      <article className="roadTrips__statCard">
+        <span className="roadTrips__statLabel">All Covered U.S. States</span>
+        <strong className="roadTrips__statValue">
+          {formatNumber(summary.totalStatesVisited.length)}
+        </strong>
+        <span className="roadTrips__statMeta">Taken and wishlist combined</span>
+      </article>
+    </section>
+  );
+  const mapSection = (
+    <section className="roadTrips__mapSection card-panel">
+      <div className="roadTrips__sectionHeader">
+        <div>
+          <h2 className="roadTrips__sectionTitle">Trip Map</h2>
+          <p className="roadTrips__sectionCopy">
+            Completed trips use solid lines, wishlist routes use dashed lines,
+            and region shading updates with the active filter.
+          </p>
+        </div>
+        <div className="roadTrips__mapActions">
+          {showFilter ? (
+            <div className="roadTrips__filterRow" aria-label="Trip filters">
+              {FILTER_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  className={`roadTrips__filterButton${
+                    filter === option.value
+                      ? " roadTrips__filterButton--active"
+                      : ""
+                  }`}
+                  type="button"
+                  onClick={() => setFilter(option.value)}
+                  aria-pressed={filter === option.value}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {showImageExport ? (
+            <button
+              type="button"
+              className="btn-flat roadTrips__exportButton"
+              onClick={() => {
+                void handleExportMapImage();
+              }}
+              disabled={isExportingImage}
+              title="Save the current visible atlas view as a PNG"
+            >
+              <i className="material-icons tiny">download</i>
+              {isExportingImage ? "Saving..." : "Save PNG"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="roadTrips__legend" aria-label="Map legend">
+        <span className="roadTrips__legendItem">
+          <span
+            className="roadTrips__legendSwatch"
+            style={{ background: effectiveAppearanceSettings.takenLineColor }}
+          />
+          Trips taken
+        </span>
+        <span className="roadTrips__legendItem">
+          <span
+            className="roadTrips__legendSwatch"
+            style={{
+              background: `repeating-linear-gradient(90deg, ${effectiveAppearanceSettings.wishlistLineColor} 0, ${effectiveAppearanceSettings.wishlistLineColor} 7px, #ffffff 7px, #ffffff 12px)`,
+              borderColor: effectiveAppearanceSettings.wishlistLineColor,
+            }}
+          />
+          Wishlist trips
+        </span>
+        <span className="roadTrips__legendItem">
+          <span
+            className="roadTrips__legendSwatch"
+            style={{
+              background: effectiveAppearanceSettings.takenStateFillColor,
+            }}
+          />
+          Overlap uses visited color
+        </span>
+      </div>
+
+      {isResolvingRoutes ? (
+        <div
+          className="roadTrips__routeStatus"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="roadTrips__routeSpinner" />
+          Calculating exact routes...
+        </div>
+      ) : null}
+
+      <div ref={mapShellRef} className="roadTrips__mapShell">
+        <MapContainer
+          {...({
+            center: DEFAULT_CENTER,
+            zoom: DEFAULT_ZOOM,
+            minZoom: 3,
+            style: { height: "100%", width: "100%" },
+            scrollWheelZoom: true,
+          } as any)}
+        >
+          <MapResizerAndViewport trips={visibleTrips} />
+          <TileLayer
+            {...({
+              attribution: mapTileConfig.attribution,
+              crossOrigin: "anonymous",
+              url: mapTileConfig.url,
+            } as any)}
+          />
+          {REGIONAL_BOUNDARY_COLLECTIONS.map((boundaryCollection, index) => (
+            <GeoJSON
+              key={`boundary-layer-${index}`}
+              {...({
+                data: boundaryCollection as any,
+                style: (feature: any) =>
+                  getStateLayerStyle(
+                    feature?.properties?.regionCode ??
+                      feature?.properties?.name ??
+                      "",
+                    visibleStateCoverage,
+                    effectiveAppearanceSettings,
+                  ),
+                onEachFeature: (feature: any, layer: any) => {
+                  const regionName = getFeatureRegionName(feature);
+                  const regionCode = getFeatureRegionCode(feature);
+                  const coverage = regionCode
+                    ? visibleStateCoverage[regionCode]
+                    : undefined;
+
+                  let coverageLabel = "No currently visible trips";
+                  if (coverage?.taken && coverage?.wishlist) {
+                    coverageLabel = "Visited";
+                  } else if (coverage?.taken) {
+                    coverageLabel = "Visited";
+                  } else if (coverage?.wishlist) {
+                    coverageLabel = "Wishlist";
+                  }
+
+                  layer.bindTooltip(`${regionName}: ${coverageLabel}`);
+                },
+              } as any)}
+            />
+          ))}
+
+          {visibleTrips.map((trip) => {
+            const positions = getTripRenderCoordinates(trip);
+            const color = resolveTripLineColor(
+              trip.category,
+              trip.lineColor,
+              effectiveAppearanceSettings,
+            );
+
+            return (
+              <React.Fragment key={trip.id}>
+                <Polyline
+                  {...({
+                    positions,
+                    pathOptions: {
+                      color,
+                      weight: trip.category === "taken" ? 4 : 3.5,
+                      opacity: trip.category === "taken" ? 0.88 : 0.78,
+                      dashArray:
+                        trip.category === "wishlist" ? "10 10" : undefined,
+                    },
+                  } as any)}
+                />
+                {trip.waypoints.map((waypoint, index) => (
+                  <CircleMarker
+                    key={`${trip.id}-${waypoint.name}-${index}`}
+                    {...({
+                      center: [waypoint.latitude, waypoint.longitude],
+                      radius: 5.5,
+                      pathOptions: {
+                        color,
+                        fillColor: "#ffffff",
+                        fillOpacity: 0.95,
+                        weight: 2,
+                      },
+                    } as any)}
+                  >
+                    <Tooltip direction="top" offset={[0, -8]}>
+                      {trip.name}: stop {index + 1}
+                    </Tooltip>
+                    <Popup>
+                      <strong>{waypoint.name}</strong>
+                      <br />
+                      {trip.name}
+                      {waypoint.notes ? (
+                        <>
+                          <br />
+                          {waypoint.notes}
+                        </>
+                      ) : null}
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </React.Fragment>
+            );
+          })}
+        </MapContainer>
+      </div>
+    </section>
+  );
 
   return (
     <div className={`roadTrips ${className}`.trim()}>
-      {showHero ? (
+      {showHeader && showHero ? (
         <section className="roadTrips__hero card-panel">
           <div className="roadTrips__sectionHeader">
             <div>
@@ -261,7 +549,7 @@ function RoadTripShowcase({
             ) : null}
           </div>
         </section>
-      ) : (
+      ) : showHeader ? (
         <div className="roadTrips__inlineHeader">
           <div className="roadTrips__sectionHeader">
             <div>
@@ -273,46 +561,10 @@ function RoadTripShowcase({
             ) : null}
           </div>
         </div>
-      )}
+      ) : null}
 
-      <section className="roadTrips__summaryGrid">
-        <article className="roadTrips__statCard">
-          <span className="roadTrips__statLabel">Trips Taken</span>
-          <strong className="roadTrips__statValue">
-            {formatNumber(summary.taken.tripCount)}
-          </strong>
-          <span className="roadTrips__statMeta">
-            {formatNumber(summary.taken.totalMiles)} miles logged
-          </span>
-        </article>
-        <article className="roadTrips__statCard">
-          <span className="roadTrips__statLabel">Trip Wishlist</span>
-          <strong className="roadTrips__statValue">
-            {formatNumber(summary.wishlist.tripCount)}
-          </strong>
-          <span className="roadTrips__statMeta">
-            {formatNumber(summary.wishlist.totalMiles)} planned miles
-          </span>
-        </article>
-        <article className="roadTrips__statCard">
-          <span className="roadTrips__statLabel">Visited States</span>
-          <strong className="roadTrips__statValue">
-            {formatNumber(summary.taken.statesVisited.length)}
-          </strong>
-          <span className="roadTrips__statMeta">
-            Filled in from completed trips
-          </span>
-        </article>
-        <article className="roadTrips__statCard">
-          <span className="roadTrips__statLabel">All Covered U.S. States</span>
-          <strong className="roadTrips__statValue">
-            {formatNumber(summary.totalStatesVisited.length)}
-          </strong>
-          <span className="roadTrips__statMeta">
-            Taken and wishlist combined
-          </span>
-        </article>
-      </section>
+      {mapFirst ? mapSection : summarySection}
+      {mapFirst ? summarySection : mapSection}
 
       <section className="roadTrips__completionCard card-panel">
         <div className="roadTrips__completionHeader">
@@ -380,187 +632,6 @@ function RoadTripShowcase({
           </div>
         </section>
       ) : null}
-
-      <section className="roadTrips__mapSection card-panel">
-        <div className="roadTrips__sectionHeader">
-          <div>
-            <h2 className="roadTrips__sectionTitle">Trip Map</h2>
-            <p className="roadTrips__sectionCopy">
-              Completed trips use solid lines, wishlist routes use dashed lines,
-              and region shading updates with the active filter.
-            </p>
-          </div>
-          {showFilter ? (
-            <div className="roadTrips__filterRow" aria-label="Trip filters">
-              {FILTER_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={`roadTrips__filterButton${
-                    filter === option.value
-                      ? " roadTrips__filterButton--active"
-                      : ""
-                  }`}
-                  type="button"
-                  onClick={() => setFilter(option.value)}
-                  aria-pressed={filter === option.value}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="roadTrips__legend" aria-label="Map legend">
-          <span className="roadTrips__legendItem">
-            <span
-              className="roadTrips__legendSwatch"
-              style={{ background: effectiveAppearanceSettings.takenLineColor }}
-            />
-            Trips taken
-          </span>
-          <span className="roadTrips__legendItem">
-            <span
-              className="roadTrips__legendSwatch"
-              style={{
-                background: `repeating-linear-gradient(90deg, ${effectiveAppearanceSettings.wishlistLineColor} 0, ${effectiveAppearanceSettings.wishlistLineColor} 7px, #ffffff 7px, #ffffff 12px)`,
-                borderColor: effectiveAppearanceSettings.wishlistLineColor,
-              }}
-            />
-            Wishlist trips
-          </span>
-          <span className="roadTrips__legendItem">
-            <span
-              className="roadTrips__legendSwatch"
-              style={{
-                background: effectiveAppearanceSettings.takenStateFillColor,
-              }}
-            />
-            Overlap uses visited color
-          </span>
-        </div>
-
-        {isResolvingRoutes ? (
-          <div
-            className="roadTrips__routeStatus"
-            role="status"
-            aria-live="polite"
-          >
-            <span className="roadTrips__routeSpinner" />
-            Calculating exact routes...
-          </div>
-        ) : null}
-
-        <div className="roadTrips__mapShell">
-          <MapContainer
-            {...({
-              center: DEFAULT_CENTER,
-              zoom: DEFAULT_ZOOM,
-              minZoom: 3,
-              style: { height: "100%", width: "100%" },
-              scrollWheelZoom: true,
-            } as any)}
-          >
-            <MapResizerAndViewport trips={visibleTrips} />
-            <TileLayer
-              {...({
-                attribution: mapTileConfig.attribution,
-                url: mapTileConfig.url,
-              } as any)}
-            />
-            {REGIONAL_BOUNDARY_COLLECTIONS.map((boundaryCollection, index) => (
-              <GeoJSON
-                key={`boundary-layer-${index}`}
-                {...({
-                  data: boundaryCollection as any,
-                  style: (feature: any) =>
-                    getStateLayerStyle(
-                      feature?.properties?.regionCode ??
-                        feature?.properties?.name ??
-                        "",
-                      visibleStateCoverage,
-                      effectiveAppearanceSettings,
-                    ),
-                  onEachFeature: (feature: any, layer: any) => {
-                    const regionName = getFeatureRegionName(feature);
-                    const regionCode = getFeatureRegionCode(feature);
-                    const coverage = regionCode
-                      ? visibleStateCoverage[regionCode]
-                      : undefined;
-
-                    let coverageLabel = "No currently visible trips";
-                    if (coverage?.taken && coverage?.wishlist) {
-                      coverageLabel = "Visited";
-                    } else if (coverage?.taken) {
-                      coverageLabel = "Visited";
-                    } else if (coverage?.wishlist) {
-                      coverageLabel = "Wishlist";
-                    }
-
-                    layer.bindTooltip(`${regionName}: ${coverageLabel}`);
-                  },
-                } as any)}
-              />
-            ))}
-
-            {visibleTrips.map((trip) => {
-              const positions = getTripRenderCoordinates(trip);
-              const color = resolveTripLineColor(
-                trip.category,
-                trip.lineColor,
-                effectiveAppearanceSettings,
-              );
-
-              return (
-                <React.Fragment key={trip.id}>
-                  <Polyline
-                    {...({
-                      positions,
-                      pathOptions: {
-                        color,
-                        weight: trip.category === "taken" ? 4 : 3.5,
-                        opacity: trip.category === "taken" ? 0.88 : 0.78,
-                        dashArray:
-                          trip.category === "wishlist" ? "10 10" : undefined,
-                      },
-                    } as any)}
-                  />
-                  {trip.waypoints.map((waypoint, index) => (
-                    <CircleMarker
-                      key={`${trip.id}-${waypoint.name}-${index}`}
-                      {...({
-                        center: [waypoint.latitude, waypoint.longitude],
-                        radius: 5.5,
-                        pathOptions: {
-                          color,
-                          fillColor: "#ffffff",
-                          fillOpacity: 0.95,
-                          weight: 2,
-                        },
-                      } as any)}
-                    >
-                      <Tooltip direction="top" offset={[0, -8]}>
-                        {trip.name}: stop {index + 1}
-                      </Tooltip>
-                      <Popup>
-                        <strong>{waypoint.name}</strong>
-                        <br />
-                        {trip.name}
-                        {waypoint.notes ? (
-                          <>
-                            <br />
-                            {waypoint.notes}
-                          </>
-                        ) : null}
-                      </Popup>
-                    </CircleMarker>
-                  ))}
-                </React.Fragment>
-              );
-            })}
-          </MapContainer>
-        </div>
-      </section>
 
       {showBreakdowns ? (
         <>
@@ -643,13 +714,20 @@ function RoadTripShowcase({
                             </p>
                           ) : null}
                         </div>
-                        {trip.dateLabel ? (
-                          <span
-                            className={`roadTrips__tripPill roadTrips__tripPill--${trip.category}`}
-                          >
-                            {trip.dateLabel}
-                          </span>
-                        ) : null}
+                        <div className="roadTrips__tripPills">
+                          {trip.dateLabel ? (
+                            <span
+                              className={`roadTrips__tripPill roadTrips__tripPill--${trip.category}`}
+                            >
+                              {trip.dateLabel}
+                            </span>
+                          ) : null}
+                          {trip.isShared ? (
+                            <span className="roadTrips__tripPill roadTrips__tripPill--shared">
+                              Shared
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="roadTrips__tripStats">
                         <span>{formatNumber(trip.miles)} miles</span>

@@ -4,23 +4,35 @@ import {
   ROAD_TRIP_MAP_STYLE_OPTIONS,
 } from "./appearance";
 import { estimateMilesFromWaypoints } from "./roadTripUtils";
-import { RoadTrip, RoadTripCategory, RoadTripCoordinate, RoadTripWaypoint } from "./types";
+import {
+  RoadTrip,
+  RoadTripCategory,
+  RoadTripCoordinate,
+  RoadTripWaypoint,
+} from "./types";
 
 export const ROAD_TRIPS_STORAGE_KEY = "roadTrips.savedTrips.v1";
 export const ROAD_TRIPS_HOME_STORAGE_KEY = "roadTrips.homeBase.v1";
 export const ROAD_TRIPS_APPEARANCE_STORAGE_KEY = "roadTrips.appearance.v1";
+export const ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY = "roadTrips.routeCache.v1";
 
 function isRoadTripCategory(value: unknown): value is RoadTripCategory {
   return value === "taken" || value === "wishlist";
 }
 
-function sanitizeWaypoint(value: unknown, index: number): RoadTripWaypoint | null {
+function sanitizeWaypoint(
+  value: unknown,
+  index: number,
+): RoadTripWaypoint | null {
   if (!value || typeof value !== "object") {
     return null;
   }
 
   const candidate = value as Partial<RoadTripWaypoint>;
-  if (typeof candidate.latitude !== "number" || typeof candidate.longitude !== "number") {
+  if (
+    typeof candidate.latitude !== "number" ||
+    typeof candidate.longitude !== "number"
+  ) {
     return null;
   }
 
@@ -36,7 +48,9 @@ function sanitizeWaypoint(value: unknown, index: number): RoadTripWaypoint | nul
   };
 }
 
-function sanitizePathCoordinates(value: unknown): RoadTripCoordinate[] | undefined {
+function sanitizePathCoordinates(
+  value: unknown,
+): RoadTripCoordinate[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -46,7 +60,7 @@ function sanitizePathCoordinates(value: unknown): RoadTripCoordinate[] | undefin
       Array.isArray(item) &&
       item.length === 2 &&
       typeof item[0] === "number" &&
-      typeof item[1] === "number"
+      typeof item[1] === "number",
   );
 
   return coordinates.length >= 2 ? coordinates : undefined;
@@ -68,7 +82,9 @@ function sanitizeTrip(value: unknown, index: number): RoadTrip | null {
 
   const waypoints = Array.isArray(candidate.waypoints)
     ? candidate.waypoints
-        .map((waypoint, waypointIndex) => sanitizeWaypoint(waypoint, waypointIndex))
+        .map((waypoint, waypointIndex) =>
+          sanitizeWaypoint(waypoint, waypointIndex),
+        )
         .filter(isWaypoint)
     : [];
 
@@ -87,16 +103,26 @@ function sanitizeTrip(value: unknown, index: number): RoadTrip | null {
         : `Trip ${index + 1}`,
     category: candidate.category,
     miles:
-      typeof candidate.miles === "number" && Number.isFinite(candidate.miles) && candidate.miles > 0
+      typeof candidate.miles === "number" &&
+      Number.isFinite(candidate.miles) &&
+      candidate.miles > 0
         ? Math.round(candidate.miles)
         : estimateMilesFromWaypoints(waypoints),
+    isShared: candidate.isShared === true,
     waypoints,
     statesCovered: Array.isArray(candidate.statesCovered)
-      ? candidate.statesCovered.filter((state): state is string => typeof state === "string")
+      ? candidate.statesCovered.filter(
+          (state): state is string => typeof state === "string",
+        )
       : undefined,
-    dateLabel: typeof candidate.dateLabel === "string" ? candidate.dateLabel : undefined,
-    description: typeof candidate.description === "string" ? candidate.description : undefined,
-    lineColor: typeof candidate.lineColor === "string" ? candidate.lineColor : undefined,
+    dateLabel:
+      typeof candidate.dateLabel === "string" ? candidate.dateLabel : undefined,
+    description:
+      typeof candidate.description === "string"
+        ? candidate.description
+        : undefined,
+    lineColor:
+      typeof candidate.lineColor === "string" ? candidate.lineColor : undefined,
     pathCoordinates: sanitizePathCoordinates(candidate.pathCoordinates),
     routeSource:
       candidate.routeSource === "manual" ||
@@ -105,6 +131,10 @@ function sanitizeTrip(value: unknown, index: number): RoadTrip | null {
         ? candidate.routeSource
         : undefined,
   };
+}
+
+export function sanitizeRoadTrip(value: unknown, index = 0): RoadTrip | null {
+  return sanitizeTrip(value, index);
 }
 
 export function loadSavedTrips(): RoadTrip[] {
@@ -124,7 +154,7 @@ export function loadSavedTrips(): RoadTrip[] {
     }
 
     return parsed
-      .map((trip, index) => sanitizeTrip(trip, index))
+      .map((trip, index) => sanitizeRoadTrip(trip, index))
       .filter((trip): trip is RoadTrip => Boolean(trip));
   } catch (error) {
     return [];
@@ -139,10 +169,14 @@ export function saveTrips(trips: RoadTrip[]) {
   const serializableTrips = trips.map((trip) => ({
     ...trip,
     pathCoordinates: undefined,
-    routeSource: trip.routeSource === "straight-line" ? "straight-line" : undefined,
+    routeSource:
+      trip.routeSource === "straight-line" ? "straight-line" : undefined,
   }));
 
-  window.localStorage.setItem(ROAD_TRIPS_STORAGE_KEY, JSON.stringify(serializableTrips));
+  window.localStorage.setItem(
+    ROAD_TRIPS_STORAGE_KEY,
+    JSON.stringify(serializableTrips),
+  );
 }
 
 export function clearSavedTrips() {
@@ -175,7 +209,10 @@ export function saveHomeBase(homeBase: RoadTripWaypoint) {
     return;
   }
 
-  window.localStorage.setItem(ROAD_TRIPS_HOME_STORAGE_KEY, JSON.stringify(homeBase));
+  window.localStorage.setItem(
+    ROAD_TRIPS_HOME_STORAGE_KEY,
+    JSON.stringify(homeBase),
+  );
 }
 
 export function clearHomeBase() {
@@ -191,14 +228,16 @@ function isHexColor(value: unknown): value is string {
 }
 
 function sanitizeAppearanceSettings(
-  value: unknown
+  value: unknown,
 ): RoadTripAppearanceSettings {
   if (!value || typeof value !== "object") {
     return DEFAULT_ROAD_TRIP_APPEARANCE;
   }
 
   const candidate = value as Partial<RoadTripAppearanceSettings>;
-  const validMapStyles = new Set(ROAD_TRIP_MAP_STYLE_OPTIONS.map((option) => option.value));
+  const validMapStyles = new Set(
+    ROAD_TRIP_MAP_STYLE_OPTIONS.map((option) => option.value),
+  );
 
   return {
     takenLineColor: isHexColor(candidate.takenLineColor)
@@ -259,7 +298,7 @@ export function saveAppearanceSettings(settings: RoadTripAppearanceSettings) {
 
   window.localStorage.setItem(
     ROAD_TRIPS_APPEARANCE_STORAGE_KEY,
-    JSON.stringify(settings)
+    JSON.stringify(settings),
   );
 }
 

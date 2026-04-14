@@ -107,6 +107,24 @@ const sideProjects: {
     component: About as ComponentWithNavWrapperRef,
   },
   {
+    link: "/sideProjects/trueCostToDrive",
+    label: "TrueCostToDrive.com",
+    iconImage: "/images/tctd_square_logo.png",
+    component: TrueCostToDriveEmbed as ComponentWithNavWrapperRef,
+  },
+  {
+    link: "/sideProjects/carCost",
+    label: "Car Cost Calculator",
+    icon: "directions_car",
+    component: CarCost as ComponentWithNavWrapperRef,
+  },
+  {
+    link: "/sideProjects/roadTrips",
+    label: "Road Trip Atlas",
+    icon: "map",
+    component: RoadTrips as ComponentWithNavWrapperRef,
+  },
+  {
     link: "/sideProjects/numeronym",
     label: "Numeronym Converter",
     icon: "shuffle",
@@ -116,24 +134,6 @@ const sideProjects: {
     link: "/sideProjects/siteDebugTools",
     label: "Site Debug Tools",
     component: SiteDebugTools as ComponentWithNavWrapperRef,
-  },
-  {
-    link: "/sideProjects/carCost",
-    label: "Car Cost Calculator",
-    icon: "directions_car",
-    component: CarCost as ComponentWithNavWrapperRef,
-  },
-  {
-    link: "/sideProjects/trueCostToDrive",
-    label: "TrueCostToDrive.com",
-    iconImage: "/images/tctd_square_logo.png",
-    component: TrueCostToDriveEmbed as ComponentWithNavWrapperRef,
-  },
-  {
-    link: "/sideProjects/roadTrips",
-    label: "Road Trip Atlas",
-    icon: "map",
-    component: RoadTrips as ComponentWithNavWrapperRef,
   },
 ];
 

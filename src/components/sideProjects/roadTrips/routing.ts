@@ -1,9 +1,12 @@
+import { ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY } from "./storage";
 import { RoadTripCoordinate, RoadTripWaypoint } from "./types";
 
 const OSRM_ROUTE_ENDPOINT = "https://router.project-osrm.org/route/v1/driving";
 const MAX_WAYPOINTS_PER_REQUEST = 20;
 const REQUEST_DELAY_MS = 1050;
+const MAX_PERSISTED_ROUTE_CACHE_ENTRIES = 80;
 const routeCache = new Map<string, CachedRoute>();
+let hasHydratedRouteCache = false;
 
 interface OsrmRouteResponse {
   code: string;
@@ -20,6 +23,12 @@ interface CachedRoute {
   pathCoordinates: RoadTripCoordinate[];
 }
 
+interface PersistedRouteCacheEntry {
+  key: string;
+  miles: number;
+  pathCoordinates: RoadTripCoordinate[];
+}
+
 export interface ResolvedRoute {
   miles: number;
   pathCoordinates: RoadTripCoordinate[];
@@ -32,15 +41,108 @@ function wait(ms: number): Promise<void> {
   });
 }
 
+function sanitizePathCoordinates(value: unknown): RoadTripCoordinate[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const coordinates = value.filter(
+    (item): item is RoadTripCoordinate =>
+      Array.isArray(item) &&
+      item.length === 2 &&
+      typeof item[0] === "number" &&
+      typeof item[1] === "number",
+  );
+
+  return coordinates.length >= 2 ? coordinates : null;
+}
+
+function hydrateRouteCache() {
+  if (hasHydratedRouteCache || typeof window === "undefined") {
+    return;
+  }
+
+  hasHydratedRouteCache = true;
+
+  try {
+    const raw = window.localStorage.getItem(ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY);
+    if (!raw) {
+      return;
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return;
+    }
+
+    parsed.forEach((item) => {
+      if (!item || typeof item !== "object") {
+        return;
+      }
+
+      const candidate = item as Partial<PersistedRouteCacheEntry>;
+      if (typeof candidate.key !== "string" || !candidate.key.trim()) {
+        return;
+      }
+
+      const pathCoordinates = sanitizePathCoordinates(
+        candidate.pathCoordinates,
+      );
+      if (
+        typeof candidate.miles !== "number" ||
+        !Number.isFinite(candidate.miles) ||
+        candidate.miles <= 0 ||
+        !pathCoordinates
+      ) {
+        return;
+      }
+
+      routeCache.set(candidate.key, {
+        miles: Math.round(candidate.miles),
+        pathCoordinates,
+      });
+    });
+  } catch (error) {
+    // Ignore malformed persisted route cache.
+  }
+}
+
+function persistRouteCache() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const entries = Array.from(routeCache.entries())
+    .slice(-MAX_PERSISTED_ROUTE_CACHE_ENTRIES)
+    .map(([key, route]) => ({
+      key,
+      miles: route.miles,
+      pathCoordinates: route.pathCoordinates,
+    }));
+
+  try {
+    window.localStorage.setItem(
+      ROAD_TRIPS_ROUTE_CACHE_STORAGE_KEY,
+      JSON.stringify(entries),
+    );
+  } catch (error) {
+    // Ignore storage quota or serialization failures.
+  }
+}
+
 export function buildRouteCacheKey(waypoints: RoadTripWaypoint[]): string {
   return waypoints
-    .map((waypoint) => `${waypoint.longitude.toFixed(5)},${waypoint.latitude.toFixed(5)}`)
+    .map(
+      (waypoint) =>
+        `${waypoint.longitude.toFixed(5)},${waypoint.latitude.toFixed(5)}`,
+    )
     .join(";");
 }
 
 export function getCachedRoute(
-  waypoints: RoadTripWaypoint[]
+  waypoints: RoadTripWaypoint[],
 ): ResolvedRoute | null {
+  hydrateRouteCache();
   const cached = routeCache.get(buildRouteCacheKey(waypoints));
 
   if (!cached || cached.pathCoordinates.length < 2) {
@@ -55,15 +157,42 @@ export function getCachedRoute(
 }
 
 function cacheRoute(waypoints: RoadTripWaypoint[], route: ResolvedRoute) {
-  routeCache.set(buildRouteCacheKey(waypoints), {
+  hydrateRouteCache();
+  const cacheKey = buildRouteCacheKey(waypoints);
+  routeCache.delete(cacheKey);
+  routeCache.set(cacheKey, {
     miles: route.miles,
     pathCoordinates: route.pathCoordinates,
   });
+  persistRouteCache();
+}
+
+export function primeRouteCache(
+  cacheEntries: Array<{
+    waypoints: RoadTripWaypoint[];
+    route: ResolvedRoute;
+  }>,
+) {
+  hydrateRouteCache();
+
+  cacheEntries.forEach(({ waypoints, route }) => {
+    const cacheKey = buildRouteCacheKey(waypoints);
+    if (routeCache.has(cacheKey)) {
+      return;
+    }
+
+    routeCache.set(cacheKey, {
+      miles: route.miles,
+      pathCoordinates: route.pathCoordinates,
+    });
+  });
+
+  persistRouteCache();
 }
 
 export function buildWaypointChunks(
   waypoints: RoadTripWaypoint[],
-  maxWaypointsPerRequest = MAX_WAYPOINTS_PER_REQUEST
+  maxWaypointsPerRequest = MAX_WAYPOINTS_PER_REQUEST,
 ): RoadTripWaypoint[][] {
   if (waypoints.length <= maxWaypointsPerRequest) {
     return [waypoints];
@@ -73,7 +202,10 @@ export function buildWaypointChunks(
   let startIndex = 0;
 
   while (startIndex < waypoints.length - 1) {
-    const endIndex = Math.min(startIndex + maxWaypointsPerRequest, waypoints.length);
+    const endIndex = Math.min(
+      startIndex + maxWaypointsPerRequest,
+      waypoints.length,
+    );
     chunks.push(waypoints.slice(startIndex, endIndex));
     startIndex = endIndex - 1;
   }
@@ -82,14 +214,14 @@ export function buildWaypointChunks(
 }
 
 async function requestChunkRoute(
-  waypoints: RoadTripWaypoint[]
+  waypoints: RoadTripWaypoint[],
 ): Promise<ResolvedRoute> {
   const coordinates = waypoints
     .map((waypoint) => `${waypoint.longitude},${waypoint.latitude}`)
     .join(";");
 
   const response = await fetch(
-    `${OSRM_ROUTE_ENDPOINT}/${coordinates}?overview=full&geometries=geojson&steps=false`
+    `${OSRM_ROUTE_ENDPOINT}/${coordinates}?overview=full&geometries=geojson&steps=false`,
   );
 
   if (!response.ok) {
@@ -100,24 +232,31 @@ async function requestChunkRoute(
   const route = payload.routes?.[0];
   const rawCoordinates = route?.geometry?.coordinates;
 
-  if (payload.code !== "Ok" || !route || !rawCoordinates || rawCoordinates.length < 2) {
+  if (
+    payload.code !== "Ok" ||
+    !route ||
+    !rawCoordinates ||
+    rawCoordinates.length < 2
+  ) {
     throw new Error("The route service did not return a usable driving route.");
   }
 
   return {
     miles: Math.round(route.distance / 1609.344),
     pathCoordinates: rawCoordinates.map(
-      ([longitude, latitude]) => [latitude, longitude] as RoadTripCoordinate
+      ([longitude, latitude]) => [latitude, longitude] as RoadTripCoordinate,
     ),
     routeSource: "osrm",
   };
 }
 
 export async function fetchDrivingRoute(
-  waypoints: RoadTripWaypoint[]
+  waypoints: RoadTripWaypoint[],
 ): Promise<ResolvedRoute> {
   if (waypoints.length < 2) {
-    throw new Error("At least two waypoints are required to calculate a route.");
+    throw new Error(
+      "At least two waypoints are required to calculate a route.",
+    );
   }
 
   const cachedRoute = getCachedRoute(waypoints);

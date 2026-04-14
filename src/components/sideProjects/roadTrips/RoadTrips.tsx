@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import M from "materialize-css";
 import {
@@ -19,7 +19,8 @@ import {
 } from "./appearance";
 import { GeocodeResult, searchAddresses } from "./geocoding";
 import RoadTripShowcase from "./RoadTripShowcase";
-import { fetchDrivingRoute } from "./routing";
+import { buildRouteCacheKey, fetchDrivingRoute } from "./routing";
+import { buildShareableRoadTripUrl, parseSharedRoadTripPayload } from "./share";
 import {
   estimateMilesFromWaypoints,
   formatNumber,
@@ -33,6 +34,7 @@ import {
   loadSavedTrips,
   saveAppearanceSettings,
   saveHomeBase,
+  sanitizeRoadTrip,
   saveTrips,
 } from "./storage";
 import { RoadTrip, RoadTripCategory, RoadTripWaypoint } from "./types";
@@ -171,6 +173,10 @@ function buildTripId(name: string): string {
   return `${slug || "road-trip"}-${Date.now()}`;
 }
 
+function buildImportedSharedTripId(name: string): string {
+  return `shared-${buildTripId(name)}`;
+}
+
 function cloneTrip(trip: RoadTrip): RoadTrip {
   return {
     ...trip,
@@ -191,15 +197,29 @@ function stripResolvedRouteData(trip: RoadTrip): RoadTrip {
   };
 }
 
-function statesToInputValue(statesCovered: string[] | undefined): string {
-  return (statesCovered ?? []).join(", ");
+function buildShareableTripSnapshot(trip: RoadTrip): RoadTrip {
+  return stripResolvedRouteData({
+    ...cloneTrip(trip),
+    name: trip.name.trim(),
+    isShared: undefined,
+    miles:
+      trip.miles > 0 ? trip.miles : estimateMilesFromWaypoints(trip.waypoints),
+  });
 }
 
-function parseStatesInput(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+function buildImportedSharedTrip(sharedTrip: RoadTrip): RoadTrip {
+  const sanitizedTrip = sanitizeRoadTrip(sharedTrip);
+  const baseTrip = sanitizedTrip
+    ? stripResolvedRouteData(sanitizedTrip)
+    : createEmptyDraft(null);
+  const trimmedName = baseTrip.name.trim() || "Shared trip";
+
+  return {
+    ...baseTrip,
+    id: buildImportedSharedTripId(trimmedName),
+    name: trimmedName,
+    isShared: true,
+  };
 }
 
 function DraftMapViewport({ draftTrip }: { draftTrip: RoadTrip }) {
@@ -312,11 +332,21 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
     [],
   );
   const [isSearchingHomeAddress, setIsSearchingHomeAddress] = useState(false);
+  const routeRequestSequenceRef = useRef(0);
+  const latestDraftWaypointsRef = useRef(draftTrip.waypoints);
 
   const isEditingExistingTrip = useMemo(
     () => savedTrips.some((trip) => trip.id === draftTrip.id),
     [draftTrip.id, savedTrips],
   );
+  const isSaveDisabled = draftTrip.name.trim().length === 0;
+  const saveDisabledReason = "Add a trip name before saving.";
+  const isShareDisabled =
+    draftTrip.name.trim().length === 0 || draftTrip.waypoints.length < 2;
+  const shareDisabledReason =
+    draftTrip.name.trim().length === 0
+      ? "Add a trip name before sharing."
+      : "Add at least two waypoints before sharing.";
   const mapTileConfig = useMemo(
     () => getRoadTripMapTileConfig(appearanceSettings.mapStyle),
     [appearanceSettings.mapStyle],
@@ -334,6 +364,51 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
       ),
     [appearanceSettings, draftTrip.category, draftTrip.lineColor],
   );
+  const draftRouteKey = useMemo(
+    () => buildRouteCacheKey(draftTrip.waypoints),
+    [draftTrip.waypoints],
+  );
+
+  useEffect(() => {
+    latestDraftWaypointsRef.current = draftTrip.waypoints;
+  }, [draftTrip.waypoints]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const sharedPayload = parseSharedRoadTripPayload(window.location.search);
+    if (!sharedPayload?.trip) {
+      return;
+    }
+
+    const importedTrip = buildImportedSharedTrip(sharedPayload.trip);
+    if (importedTrip.waypoints.length < 2) {
+      M.toast({
+        html: "That shared trip link didn't contain enough waypoint data.",
+        displayLength: 2800,
+      });
+      return;
+    }
+
+    setSavedTrips((current) => {
+      const nextTrips = [importedTrip, ...current];
+      saveTrips(nextTrips);
+      return nextTrips;
+    });
+    setDraftTrip(importedTrip);
+    setCurrentView("manage");
+
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete("roadTripShare");
+    window.history.replaceState({}, document.title, nextUrl.toString());
+
+    M.toast({
+      html: `Saved shared trip "${importedTrip.name}" to this browser.`,
+      displayLength: 2800,
+    });
+  }, []);
 
   useEffect(() => {
     if (
@@ -548,6 +623,99 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
     setWaypointEditor(null);
   };
 
+  const resolveDraftRoute = async (
+    waypoints: RoadTripWaypoint[],
+    options?: {
+      showSuccessToast?: boolean;
+      showFailureToast?: boolean;
+      showNeedMoreWaypointsToast?: boolean;
+    },
+  ) => {
+    const {
+      showSuccessToast = false,
+      showFailureToast = false,
+      showNeedMoreWaypointsToast = false,
+    } = options ?? {};
+
+    if (waypoints.length < 2) {
+      if (showNeedMoreWaypointsToast) {
+        M.toast({
+          html: "Add at least two waypoints to preview a routed trip.",
+          displayLength: 2400,
+        });
+      }
+      return;
+    }
+
+    const requestWaypoints = waypoints.map((waypoint) => ({ ...waypoint }));
+    const routeKey = buildRouteCacheKey(requestWaypoints);
+    const requestSequence = routeRequestSequenceRef.current + 1;
+    routeRequestSequenceRef.current = requestSequence;
+
+    try {
+      setIsResolvingRoute(true);
+      const route = await fetchDrivingRoute(requestWaypoints);
+      setDraftTrip((current) =>
+        buildRouteCacheKey(current.waypoints) === routeKey
+          ? {
+              ...current,
+              miles: route.miles,
+              pathCoordinates: route.pathCoordinates,
+              routeSource: route.routeSource,
+            }
+          : current,
+      );
+
+      if (
+        showSuccessToast &&
+        routeRequestSequenceRef.current === requestSequence
+      ) {
+        M.toast({
+          html: "Updated the draft with a likely driving route.",
+          displayLength: 2200,
+        });
+      }
+    } catch (error) {
+      if (
+        showFailureToast &&
+        routeRequestSequenceRef.current === requestSequence
+      ) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unable to resolve the route right now.";
+        M.toast({ html: message, displayLength: 3200 });
+      }
+    } finally {
+      if (routeRequestSequenceRef.current === requestSequence) {
+        setIsResolvingRoute(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (currentView !== "manage" || draftTrip.waypoints.length < 2) {
+      return;
+    }
+
+    if (draftTrip.routeSource === "osrm" && draftTrip.pathCoordinates?.length) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void resolveDraftRoute(latestDraftWaypointsRef.current);
+    }, 900);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    currentView,
+    draftRouteKey,
+    draftTrip.id,
+    draftTrip.pathCoordinates,
+    draftTrip.routeSource,
+    draftTrip.waypoints.length,
+  ]);
+
   const handlePreviewRoute = async () => {
     if (draftTrip.waypoints.length < 2) {
       M.toast({
@@ -557,28 +725,11 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
       return;
     }
 
-    try {
-      setIsResolvingRoute(true);
-      const route = await fetchDrivingRoute(draftTrip.waypoints);
-      setDraftTrip((current) => ({
-        ...current,
-        miles: route.miles,
-        pathCoordinates: route.pathCoordinates,
-        routeSource: route.routeSource,
-      }));
-      M.toast({
-        html: "Updated the draft with a likely driving route.",
-        displayLength: 2200,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to resolve the route right now.";
-      M.toast({ html: message, displayLength: 3200 });
-    } finally {
-      setIsResolvingRoute(false);
-    }
+    await resolveDraftRoute(draftTrip.waypoints, {
+      showSuccessToast: true,
+      showFailureToast: true,
+      showNeedMoreWaypointsToast: true,
+    });
   };
 
   const handleAddressSearch = async () => {
@@ -756,6 +907,61 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
     });
   };
 
+  const handleShareTrip = async () => {
+    const trimmedName = draftTrip.name.trim();
+    if (!trimmedName) {
+      M.toast({
+        html: "Add a trip name before sharing.",
+        displayLength: 2200,
+      });
+      return;
+    }
+
+    if (draftTrip.waypoints.length < 2) {
+      M.toast({
+        html: "Add at least two waypoints before sharing.",
+        displayLength: 2200,
+      });
+      return;
+    }
+
+    const shareUrl = buildShareableRoadTripUrl({
+      currentUrl: window.location.href,
+      trip: buildShareableTripSnapshot({
+        ...draftTrip,
+        name: trimmedName,
+      }),
+    });
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${trimmedName} road trip`,
+          text: `Take a look at this road trip: ${trimmedName}.`,
+          url: shareUrl,
+        });
+        return;
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      M.toast({
+        html: "Share link copied. Send it to someone and it will save into their atlas.",
+        displayLength: 3000,
+      });
+    } catch (error) {
+      M.toast({
+        html: "Couldn't copy the share link automatically.",
+        displayLength: 2500,
+      });
+    }
+  };
+
   const handleLoadTrip = (trip: RoadTrip) => {
     setDraftTrip(cloneTrip(trip));
     setIsTripLibraryOpen(false);
@@ -827,10 +1033,11 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
       {currentView === "atlas" ? (
         <RoadTripShowcase
           title="Your Saved Road Trip Atlas"
-          intro="Everything saved in this browser renders here with cumulative miles, trip counts, state completion, and exact routes recalculated when the atlas opens."
+          intro="Everything saved in this browser renders here with cumulative miles, trip counts, state completion, and exact routes cached locally so repeat visits load faster."
           trips={savedTrips}
           appearanceSettings={appearanceSettings}
           headerActions={settingsButton}
+          showImageExport
           showHint={false}
         />
       ) : (
@@ -843,7 +1050,7 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
                 <p className="roadTrips__intro">
                   Click the map to add stops, drag waypoint markers to refine
                   the route, search for addresses when you know the place name,
-                  and preview likely roads before you save.
+                  and share a trip link that saves into someone else's atlas.
                 </p>
               </div>
               <div className="roadTrips__heroActions">
@@ -877,72 +1084,21 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
                     road geometry when it is viewed.
                   </p>
                 </div>
-                {isEditingExistingTrip ? (
-                  <span className="roadTrips__tripPill roadTrips__tripPill--taken">
-                    Editing saved trip
-                  </span>
-                ) : null}
+                <div className="roadTrips__tripPills">
+                  {isEditingExistingTrip ? (
+                    <span className="roadTrips__tripPill roadTrips__tripPill--taken">
+                      Editing saved trip
+                    </span>
+                  ) : null}
+                  {draftTrip.isShared ? (
+                    <span className="roadTrips__tripPill roadTrips__tripPill--shared">
+                      Shared trip
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               <div className="roadTrips__editorFields">
-                <label className="roadTrips__field roadTrips__field--wide">
-                  <span className="roadTrips__fieldLabel">Address lookup</span>
-                  <div className="roadTrips__searchRow">
-                    <input
-                      type="text"
-                      value={addressQuery}
-                      onChange={(event) => setAddressQuery(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          void handleAddressSearch();
-                        }
-                      }}
-                      placeholder="Search for a city, park, attraction, or full address"
-                    />
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        void handleAddressSearch();
-                      }}
-                      disabled={isSearchingAddresses}
-                    >
-                      {isSearchingAddresses ? "Searching..." : "Search address"}
-                    </button>
-                  </div>
-                  <span className="roadTrips__fieldHelp">
-                    Search is button-triggered to stay friendly to the public
-                    OpenStreetMap Nominatim policy.
-                  </span>
-                </label>
-
-                {addressResults.length > 0 ? (
-                  <div className="roadTrips__searchResults">
-                    {addressResults.map((result) => (
-                      <article
-                        key={`${result.latitude}-${result.longitude}-${result.displayName}`}
-                        className="roadTrips__searchResult"
-                      >
-                        <div>
-                          <strong>{result.displayName}</strong>
-                          <p className="roadTrips__coordinateText">
-                            {result.latitude.toFixed(5)},{" "}
-                            {result.longitude.toFixed(5)}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-flat"
-                          onClick={() => handleAddAddressResult(result)}
-                        >
-                          Add waypoint
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                ) : null}
-
                 <label className="roadTrips__field">
                   <span className="roadTrips__fieldLabel">Trip name</span>
                   <input
@@ -1015,23 +1171,6 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
                   />
                 </label>
 
-                <label className="roadTrips__field roadTrips__field--wide">
-                  <span className="roadTrips__fieldLabel">
-                    States covered override
-                  </span>
-                  <input
-                    type="text"
-                    value={statesToInputValue(draftTrip.statesCovered)}
-                    onChange={(event) =>
-                      updateDraftTrip((current) => ({
-                        ...current,
-                        statesCovered: parseStatesInput(event.target.value),
-                      }))
-                    }
-                    placeholder="IN, TX, AZ, UT, WY"
-                  />
-                </label>
-
                 <label className="roadTrips__field roadTrips__field--full">
                   <span className="roadTrips__fieldLabel">Description</span>
                   <textarea
@@ -1055,7 +1194,7 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
                   onClick={handlePreviewRoute}
                   disabled={isResolvingRoute}
                 >
-                  {isResolvingRoute ? "Calculating..." : "Preview likely roads"}
+                  {isResolvingRoute ? "Calculating..." : "Refresh route now"}
                 </button>
                 <button
                   type="button"
@@ -1065,18 +1204,48 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
                 >
                   Head back home
                 </button>
-                <button
-                  type="button"
-                  className="btn roadTrips__saveButton"
-                  onClick={handleSaveTrip}
+                <span
+                  className="roadTrips__buttonTooltipWrapper"
+                  title={isShareDisabled ? shareDisabledReason : undefined}
                 >
-                  {isEditingExistingTrip
-                    ? "Update saved trip"
-                    : "Save trip locally"}
-                </button>
+                  <button
+                    type="button"
+                    className="btn-flat roadTrips__shareButton"
+                    onClick={() => {
+                      void handleShareTrip();
+                    }}
+                    disabled={isShareDisabled}
+                  >
+                    <i className="material-icons tiny">ios_share</i>
+                    Share trip
+                  </button>
+                </span>
+                <span
+                  className="roadTrips__buttonTooltipWrapper"
+                  title={isSaveDisabled ? saveDisabledReason : undefined}
+                >
+                  <button
+                    type="button"
+                    className="btn roadTrips__saveButton"
+                    onClick={handleSaveTrip}
+                    disabled={isSaveDisabled}
+                    aria-label={
+                      isSaveDisabled
+                        ? `${isEditingExistingTrip ? "Update saved trip" : "Save trip locally"} unavailable: ${saveDisabledReason}`
+                        : undefined
+                    }
+                  >
+                    {isEditingExistingTrip
+                      ? "Update saved trip"
+                      : "Save trip locally"}
+                  </button>
+                </span>
                 <span className="roadTrips__draftMeta">
                   {draftTrip.waypoints.length} waypoints /{" "}
                   {formatNumber(draftTrip.miles)} miles
+                </span>
+                <span className="roadTrips__draftMeta">
+                  Exact roads update automatically after waypoint changes.
                 </span>
               </div>
 
@@ -1145,73 +1314,168 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
                   <div>
                     <h3 className="roadTrips__sectionTitle">Waypoints</h3>
                     <p className="roadTrips__sectionCopy">
-                      Drag the stop rows to reorder them. Use Edit for names,
+                      Add stops by clicking the map or searching for a place,
+                      then drag the rows to reorder them. Use Edit for names,
                       notes, and state details.
                     </p>
                   </div>
                 </div>
-                <div className="roadTrips__compactWaypointList">
-                  {draftTrip.waypoints.length === 0 ? (
-                    <p className="roadTrips__sectionCopy roadTrips__emptyState">
-                      Click on the map or use address lookup to add your first
-                      waypoint.
-                    </p>
-                  ) : (
-                    draftTrip.waypoints.map((waypoint, index) => (
-                      <article
-                        key={`${waypoint.latitude}-${waypoint.longitude}-${index}`}
-                        className={`roadTrips__compactWaypointCard${draggedWaypointIndex === index ? " roadTrips__compactWaypointCard--dragging" : ""}`}
-                        draggable
-                        onDragStart={() => setDraggedWaypointIndex(index)}
-                        onDragEnd={() => setDraggedWaypointIndex(null)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={() => {
-                          if (draggedWaypointIndex === null) {
-                            return;
+                <div className="roadTrips__editorFields">
+                  <label className="roadTrips__field roadTrips__field--wide">
+                    <span className="roadTrips__fieldLabel">
+                      Address lookup
+                    </span>
+                    <div className="roadTrips__searchRow">
+                      <input
+                        type="text"
+                        value={addressQuery}
+                        onChange={(event) =>
+                          setAddressQuery(event.target.value)
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void handleAddressSearch();
                           }
-
-                          reorderWaypoint(draggedWaypointIndex, index);
-                          setDraggedWaypointIndex(null);
                         }}
+                        placeholder="Search for a city, park, attraction, or full address"
+                      />
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => {
+                          void handleAddressSearch();
+                        }}
+                        disabled={isSearchingAddresses}
                       >
-                        <button
-                          type="button"
-                          className="btn-flat roadTrips__dragHandle"
-                          aria-label={`Drag waypoint ${index + 1}`}
-                          title="Drag to reorder"
+                        {isSearchingAddresses
+                          ? "Searching..."
+                          : "Search address"}
+                      </button>
+                    </div>
+                    <span className="roadTrips__fieldHelp">
+                      Search is button-triggered to stay friendly to the public
+                      OpenStreetMap Nominatim policy.
+                    </span>
+                  </label>
+
+                  {addressResults.length > 0 ? (
+                    <div className="roadTrips__lookupPanel roadTrips__lookupPanel--results">
+                      <div className="roadTrips__miniSectionHeader">
+                        <span className="roadTrips__miniSectionEyebrow">
+                          Search results
+                        </span>
+                        <span className="roadTrips__miniSectionCount">
+                          {addressResults.length} match
+                          {addressResults.length === 1 ? "" : "es"}
+                        </span>
+                      </div>
+                      <div className="roadTrips__searchResults">
+                        {addressResults.map((result) => (
+                          <article
+                            key={`${result.latitude}-${result.longitude}-${result.displayName}`}
+                            className="roadTrips__searchResult"
+                          >
+                            <div>
+                              <strong>{result.displayName}</strong>
+                              <p className="roadTrips__coordinateText">
+                                {result.latitude.toFixed(5)},{" "}
+                                {result.longitude.toFixed(5)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-flat"
+                              onClick={() => handleAddAddressResult(result)}
+                            >
+                              Add waypoint
+                            </button>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="roadTrips__lookupDivider" aria-hidden="true">
+                  <span className="roadTrips__lookupDividerLine" />
+                  <span className="roadTrips__lookupDividerLabel">
+                    Current trip stops
+                  </span>
+                  <span className="roadTrips__lookupDividerLine" />
+                </div>
+                <div className="roadTrips__lookupPanel roadTrips__lookupPanel--waypoints">
+                  <div className="roadTrips__miniSectionHeader">
+                    <span className="roadTrips__miniSectionEyebrow">
+                      Active waypoints
+                    </span>
+                    <span className="roadTrips__miniSectionCount">
+                      {draftTrip.waypoints.length} stop
+                      {draftTrip.waypoints.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="roadTrips__compactWaypointList">
+                    {draftTrip.waypoints.length === 0 ? (
+                      <p className="roadTrips__sectionCopy roadTrips__emptyState">
+                        Click on the map or use address lookup to add your first
+                        waypoint.
+                      </p>
+                    ) : (
+                      draftTrip.waypoints.map((waypoint, index) => (
+                        <article
+                          key={`${waypoint.latitude}-${waypoint.longitude}-${index}`}
+                          className={`roadTrips__compactWaypointCard${draggedWaypointIndex === index ? " roadTrips__compactWaypointCard--dragging" : ""}`}
+                          draggable
+                          onDragStart={() => setDraggedWaypointIndex(index)}
+                          onDragEnd={() => setDraggedWaypointIndex(null)}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => {
+                            if (draggedWaypointIndex === null) {
+                              return;
+                            }
+
+                            reorderWaypoint(draggedWaypointIndex, index);
+                            setDraggedWaypointIndex(null);
+                          }}
                         >
-                          <i className="material-icons">drag_indicator</i>
-                        </button>
-                        <div className="roadTrips__compactWaypointMain">
-                          <strong>
-                            Stop {index + 1}:{" "}
-                            {waypoint.name || `Waypoint ${index + 1}`}
-                          </strong>
-                          <p className="roadTrips__compactWaypointMeta">
-                            {waypoint.state || "State not set"} /{" "}
-                            {waypoint.latitude.toFixed(5)},{" "}
-                            {waypoint.longitude.toFixed(5)}
-                          </p>
-                        </div>
-                        <div className="roadTrips__waypointActions">
                           <button
                             type="button"
-                            className="btn-flat"
-                            onClick={() => handleOpenWaypointEditor(index)}
+                            className="btn-flat roadTrips__dragHandle"
+                            aria-label={`Drag waypoint ${index + 1}`}
+                            title="Drag to reorder"
                           >
-                            Edit
+                            <i className="material-icons">drag_indicator</i>
                           </button>
-                          <button
-                            type="button"
-                            className="btn-flat"
-                            onClick={() => removeWaypoint(index)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </article>
-                    ))
-                  )}
+                          <div className="roadTrips__compactWaypointMain">
+                            <strong>
+                              Stop {index + 1}:{" "}
+                              {waypoint.name || `Waypoint ${index + 1}`}
+                            </strong>
+                            <p className="roadTrips__compactWaypointMeta">
+                              {waypoint.state || "State not set"} /{" "}
+                              {waypoint.latitude.toFixed(5)},{" "}
+                              {waypoint.longitude.toFixed(5)}
+                            </p>
+                          </div>
+                          <div className="roadTrips__waypointActions">
+                            <button
+                              type="button"
+                              className="btn-flat"
+                              onClick={() => handleOpenWaypointEditor(index)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-flat"
+                              onClick={() => removeWaypoint(index)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
                 </div>
               </section>
             </article>
@@ -1490,7 +1754,14 @@ function RoadTrips({ navWrapperRef: _navWrapperRef }: RoadTripsProps) {
               savedTrips.map((trip) => (
                 <article key={trip.id} className="roadTrips__savedTripItem">
                   <div>
-                    <strong>{trip.name}</strong>
+                    <div className="roadTrips__savedTripHeading">
+                      <strong>{trip.name}</strong>
+                      {trip.isShared ? (
+                        <span className="roadTrips__tripPill roadTrips__tripPill--shared">
+                          Shared
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="roadTrips__savedTripMeta">
                       {trip.category === "taken"
                         ? "Trips Taken"
