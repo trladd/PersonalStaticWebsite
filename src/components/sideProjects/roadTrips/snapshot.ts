@@ -119,11 +119,20 @@ export function buildRoadTripShowcaseSnapshot({
 }
 
 export async function fetchRoadTripMainPageSnapshot({
-  cache = "default",
+  cache = "no-store",
 }: {
   cache?: RequestCache;
 } = {}): Promise<RoadTripShowcaseConfig> {
-  const response = await fetch(ROAD_TRIP_MAIN_PAGE_SNAPSHOT_PATH, {
+  const snapshotUrl = new URL(
+    ROAD_TRIP_MAIN_PAGE_SNAPSHOT_PATH,
+    window.location.origin,
+  );
+
+  if (cache === "no-store") {
+    snapshotUrl.searchParams.set("_", String(Date.now()));
+  }
+
+  const response = await fetch(snapshotUrl.toString(), {
     cache,
   });
 
