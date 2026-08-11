@@ -1,5 +1,3 @@
-import exp from "constants";
-
 /**
  * Adjusts profile picture based on window width
  */
@@ -34,4 +32,19 @@ function getAge(date: string) {
   return Math.floor(years);
 }
 
-export { checkProfileSizing, getAge };
+function getYearsSince(
+  startYear: number,
+  startMonth: number,
+  currentDate: Date = new Date(),
+) {
+  let years = currentDate.getFullYear() - startYear;
+  const currentMonth = currentDate.getMonth() + 1;
+
+  if (currentMonth < startMonth) {
+    years -= 1;
+  }
+
+  return Math.max(0, years);
+}
+
+export { checkProfileSizing, getAge, getYearsSince };

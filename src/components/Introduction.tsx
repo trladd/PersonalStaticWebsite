@@ -1,9 +1,11 @@
 import React, { useEffect } from "react";
-import { checkProfileSizing, getAge } from "../utility/utility";
+import { checkProfileSizing, getAge, getYearsSince } from "../utility/utility";
 import M from "materialize-css"; // Import the necessary library
 import RoadTripSnapshotLoader from "./sideProjects/roadTrips/RoadTripSnapshotLoader";
 
 const Introduction: React.FC = () => {
+  const yearsOfExperience = getYearsSince(2017, 5);
+
   useEffect(() => {
     $(".scrollspy").scroll();
     checkProfileSizing();
@@ -24,22 +26,30 @@ const Introduction: React.FC = () => {
           alt="Trevar Ladd Portrait"
         />
         <p>
-          <b>Hi! My name is Trevar</b>, a software engineer with a passion for
-          creating impactful applications and continuously expanding my skill
-          set. I’m originally from Greencastle, Indiana, and now live in
-          Brownsburg with my wife Jessica and our three children: Adalyn (
-          <span id="adalynAge"></span>), Blakely (<span id="blakelyAge"></span>
-          ), and Chloe (<span id="chloeAge"></span>).
+          <b>Hi! My name is Trevar.</b> I’m a lead software engineer and
+          technical leader with {yearsOfExperience} years of experience building
+          enterprise platforms and customer-facing products. I’m originally from
+          Greencastle, Indiana, and now live in Brownsburg with my wife Jessica
+          and our three children: Adalyn (<span id="adalynAge"></span>), Blakely
+          (<span id="blakelyAge"></span>), and Chloe (
+          <span id="chloeAge"></span>).
         </p>
         <p>
-          I’m driven by the belief that leadership is about empowering others.
-          Through teaching and mentorship, I amplify the value I bring to teams,
-          fostering growth beyond individual contributions. I specialize in
-          NoSQL databases, full stack JavaScript development, and have a very
-          deep knowledge of Pega, and have led initiatives in agile adoption,
-          DevOps, and automated testing. These experiences have honed my skills
-          in both technical problem-solving and team organization, allowing me
-          to lead with a balance of strategy and hands-on execution.
+          I work at the intersection of architecture, product, and hands-on
+          engineering. My current focus is building scalable content authoring
+          and personalization experiences with React, TypeScript, Node.js, LWC,
+          and Java. I translate ambiguous customer and business needs into
+          practical technical direction, lead design and code reviews, mentor
+          engineers, and help teams organize around sound technical decisions.
+          That combination of technical ownership and customer impact was
+          recognized with Salesforce’s FY25 President’s Award.
+        </p>
+        <p>
+          Earlier in my career, I built and led enterprise systems using Pega,
+          MarkLogic, NoSQL, and Java. That experience remains an important part
+          of my foundation, while my work today is centered on full-stack
+          product engineering, software architecture, and cross-team technical
+          leadership.
         </p>
       </div>
       <div className="divider"></div>

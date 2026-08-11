@@ -17,17 +17,33 @@ const GoldStars: React.FC<GoldStarsProps> = ({
     let starList = [];
     for (let i = 0; i < scale; i++) {
       if (i < stars) {
-        starList.push(<i className="material-icons">star</i>);
+        starList.push(
+          <i className="material-icons" key={i} aria-hidden="true">
+            star
+          </i>,
+        );
       } else if (i === stars && scale === 10) {
-        starList.push(<i className="material-icons">star_half</i>);
+        starList.push(
+          <i className="material-icons" key={i} aria-hidden="true">
+            star_half
+          </i>,
+        );
       } else if (showEmptyStars) {
-        starList.push(<i className="material-icons">star_border</i>);
+        starList.push(
+          <i className="material-icons" key={i} aria-hidden="true">
+            star_border
+          </i>,
+        );
       }
     }
     return starList;
   };
 
-  return <span className="goldStars">{starList()}</span>;
+  return (
+    <span className="goldStars" aria-label={`${stars} out of ${scale} stars`}>
+      {starList()}
+    </span>
+  );
 };
 
 export default GoldStars;
