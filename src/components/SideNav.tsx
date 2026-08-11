@@ -9,7 +9,11 @@ const SideNav: React.FC = () => {
       <a href={navLink.link}>
         {navLink.label}
         <i className="material-icons">
-          <img className="navLinkIcon" src={navLink.image} alt={navLink.label} />
+          <img
+            className="navLinkIcon"
+            src={navLink.image}
+            alt={navLink.label}
+          />
         </i>
       </a>
     </li>
@@ -26,7 +30,9 @@ const SideNav: React.FC = () => {
             alt={`${sideProject.label} icon`}
           />
         ) : (
-          <i className="material-icons">{sideProject.icon || "developer_mode"}</i>
+          <i className="material-icons">
+            {sideProject.icon || "developer_mode"}
+          </i>
         )}
       </a>
     </li>
@@ -54,7 +60,7 @@ const SideNav: React.FC = () => {
       <li className="divider"></li>
       <li>
         <a
-          href="/resume.pdf"
+          href="/Trevar_Ladd_2026.pdf"
           className="primaryColor waves-effect waves-light btn"
         >
           <i className="material-icons left white-text">attach_file</i>My Resume
